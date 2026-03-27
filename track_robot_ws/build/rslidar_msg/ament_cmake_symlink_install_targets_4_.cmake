@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/prl/track_robot_ws/build/rslidar_msg/rosidl_generator_py/rslidar_msg/rslidar_msg_s__rosidl_typesupport_c.cpython-38-x86_64-linux-gnu.so" "TARGETS" "rslidar_msg__rosidl_typesupport_c__pyext" "DESTINATION" "lib/python3.8/site-packages/rslidar_msg")

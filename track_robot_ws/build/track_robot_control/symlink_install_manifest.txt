@@ -1,0 +1,15 @@
+/home/prl/track_robot_ws/install/track_robot_control/share/ament_index/resource_index/package_run_dependencies/track_robot_control
+/home/prl/track_robot_ws/install/track_robot_control/share/ament_index/resource_index/parent_prefix_path/track_robot_control
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/environment/ament_prefix_path.sh
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/environment/ament_prefix_path.dsv
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/environment/path.sh
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/environment/path.dsv
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/local_setup.bash
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/local_setup.sh
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/local_setup.zsh
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/local_setup.dsv
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/package.dsv
+/home/prl/track_robot_ws/install/track_robot_control/share/ament_index/resource_index/packages/track_robot_control
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/cmake/track_robot_controlConfig.cmake
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/cmake/track_robot_controlConfig-version.cmake
+/home/prl/track_robot_ws/install/track_robot_control/share/track_robot_control/package.xml

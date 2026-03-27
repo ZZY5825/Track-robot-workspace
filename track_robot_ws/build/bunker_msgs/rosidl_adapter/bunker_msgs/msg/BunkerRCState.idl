@@ -1,0 +1,28 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from bunker_msgs/msg/BunkerRCState.msg
+// generated code does not contain a copyright notice
+
+
+module bunker_msgs {
+  module msg {
+    struct BunkerRCState {
+      uint8 swa;
+
+      uint8 swb;
+
+      uint8 swc;
+
+      uint8 swd;
+
+      int8 stick_right_v;
+
+      int8 stick_right_h;
+
+      int8 stick_left_v;
+
+      int8 stick_left_h;
+
+      int8 var_a;
+    };
+  };
+};

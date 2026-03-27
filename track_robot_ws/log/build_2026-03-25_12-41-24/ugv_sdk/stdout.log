@@ -1,0 +1,127 @@
+-- The C compiler identification is GNU 9.4.0
+-- The CXX compiler identification is GNU 9.4.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Build package with cmake
+-- Setting build type to 'Release' as none was specified.
+-- Tests will not be built
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - found
+-- Found Threads: TRUE  
+-- Project will be installed to /home/prl/track_robot_ws/install/ugv_sdk with 'make install'
+--  - To install LIB components to /home/prl/track_robot_ws/install/ugv_sdk/lib
+--  - To install BIN components to /home/prl/track_robot_ws/install/ugv_sdk/bin
+--  - To install INCLUDE components to /home/prl/track_robot_ws/install/ugv_sdk/include
+--  - To install CMAKE components to /home/prl/track_robot_ws/install/ugv_sdk/share/cmake/ugv_sdk
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/prl/track_robot_ws/build/ugv_sdk
+[35m[1mScanning dependencies of target ugv_sdk[0m
+[  6%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/async_port/async_serial.cpp.o[0m
+[  6%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/async_port/async_can.cpp.o[0m
+[ 10%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/utilities/protocol_detector.cpp.o[0m
+[ 13%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/hunter_robot.cpp.o[0m
+[ 17%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/scout_robot.cpp.o[0m
+[ 20%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/bunker_robot.cpp.o[0m
+[ 24%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/ranger_robot.cpp.o[0m
+[ 27%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/titan_robot.cpp.o[0m
+[ 31%] [32mBuilding C object CMakeFiles/ugv_sdk.dir/src/protocol_v1/agilex_msg_parser_v1.c.o[0m
+[ 37%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/mobile_robot/tracer_robot.cpp.o[0m
+[ 37%] [32mBuilding C object CMakeFiles/ugv_sdk.dir/src/protocol_v2/agilex_msg_parser_v2.c.o[0m
+[ 41%] [32mBuilding CXX object CMakeFiles/ugv_sdk.dir/src/protocol_v2/protocol_v2_parser.cpp.o[0m
+[ 44%] [32m[1mLinking CXX static library lib/libugv_sdk.a[0m
+[ 44%] Built target ugv_sdk
+[35m[1mScanning dependencies of target demo_scout_mini_omni_robot[0m
+[35m[1mScanning dependencies of target demo_protocol_detector[0m
+[35m[1mScanning dependencies of target demo_hunter_robot[0m
+[35m[1mScanning dependencies of target demo_ranger_robot[0m
+[35m[1mScanning dependencies of target demo_scout_robot[0m
+[35m[1mScanning dependencies of target demo_robot_version[0m
+[35m[1mScanning dependencies of target demo_tracer_robot[0m
+[35m[1mScanning dependencies of target demo_bunker_robot[0m
+[ 48%] [32mBuilding CXX object sample/scout_demo/CMakeFiles/demo_scout_mini_omni_robot.dir/scout_mini_omni_demo.cpp.o[0m
+[ 51%] [32mBuilding CXX object sample/utils_demo/CMakeFiles/demo_protocol_detector.dir/demo_protocol_detector.cpp.o[0m
+[ 55%] [32mBuilding CXX object sample/hunter_demo/CMakeFiles/demo_hunter_robot.dir/hunter_robot_demo.cpp.o[0m
+[ 58%] [32mBuilding CXX object sample/scout_demo/CMakeFiles/demo_scout_robot.dir/scout_robot_demo.cpp.o[0m
+[ 65%] [32mBuilding CXX object sample/ranger_demo/CMakeFiles/demo_ranger_robot.dir/ranger_robot_demo.cpp.o[0m
+[ 68%] [32mBuilding CXX object sample/utils_demo/CMakeFiles/demo_robot_version.dir/demo_robot_version.cpp.o[0m
+[ 68%] [32mBuilding CXX object sample/tracer_demo/CMakeFiles/demo_tracer_robot.dir/tracer_robot_demo.cpp.o[0m
+[ 72%] [32mBuilding CXX object sample/bunker_demo/CMakeFiles/demo_bunker_robot.dir/bunker_robot_demo.cpp.o[0m
+[ 75%] [32m[1mLinking CXX executable ../../bin/demo_tracer_robot[0m
+[ 79%] [32m[1mLinking CXX executable ../../bin/demo_bunker_robot[0m
+[ 79%] Built target demo_tracer_robot
+[ 79%] Built target demo_bunker_robot
+[ 82%] [32m[1mLinking CXX executable ../../bin/demo_scout_robot[0m
+[ 82%] Built target demo_scout_robot
+[ 86%] [32m[1mLinking CXX executable ../../bin/demo_ranger_robot[0m
+[ 89%] [32m[1mLinking CXX executable ../../bin/demo_robot_version[0m
+[ 93%] [32m[1mLinking CXX executable ../../bin/demo_scout_mini_omni_robot[0m
+[ 93%] Built target demo_ranger_robot
+[ 93%] Built target demo_robot_version
+[ 93%] Built target demo_scout_mini_omni_robot
+[ 96%] [32m[1mLinking CXX executable ../../bin/demo_protocol_detector[0m
+[ 96%] Built target demo_protocol_detector
+[100%] [32m[1mLinking CXX executable ../../bin/demo_hunter_robot[0m
+[100%] Built target demo_hunter_robot
+-- Install configuration: "Release"
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/lib/libugv_sdk.a
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/hunter_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/ranger_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/scout_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/tracer_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/bunker_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/mobile_robot/titan_robot.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/bunker_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/tracer_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/agilex_message.h
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/ranger_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/scout_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/robot_common_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/titan_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/agilex_types.h
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/interface/hunter_interface.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/parser_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/bunker_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/hunter_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/titan_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/tracer_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/scout_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/agilex_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/robot_base/ranger_base.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v2
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v2/protocol_v2_parser.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/async_port
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/async_port/async_serial.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/async_port/async_can.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/async_port/ring_buffer.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v1
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v1/robot_limits.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v1/protocol_v1_parser.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/details/protocol_v1/agilex_msg_parser_v1.h
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/utilities
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/include/ugv_sdk/utilities/protocol_detector.hpp
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/lib/cmake/ugv_sdk/ugv_sdkTargets.cmake
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/lib/cmake/ugv_sdk/ugv_sdkTargets-release.cmake
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/lib/cmake/ugv_sdk/ugv_sdkConfig.cmake
+-- Installing: /home/prl/track_robot_ws/install/ugv_sdk/lib/cmake/ugv_sdk/ugv_sdkConfigVersion.cmake

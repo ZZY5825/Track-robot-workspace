@@ -1,0 +1,200 @@
+[0.046s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_msg': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/rslidar_ros2/rslidar_msg -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/rslidar_msg
+[0.376s] -- The C compiler identification is GNU 9.4.0
+[0.376s] -- The CXX compiler identification is GNU 9.4.0
+[0.377s] -- Check for working C compiler: /usr/bin/cc
+[0.377s] -- Check for working C compiler: /usr/bin/cc -- works
+[0.377s] -- Detecting C compiler ABI info
+[0.378s] -- Detecting C compiler ABI info - done
+[0.378s] -- Detecting C compile features
+[0.379s] -- Detecting C compile features - done
+[0.379s] -- Check for working CXX compiler: /usr/bin/c++
+[0.429s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[0.430s] -- Detecting CXX compiler ABI info
+[0.512s] -- Detecting CXX compiler ABI info - done
+[0.526s] -- Detecting CXX compile features
+[0.526s] -- Detecting CXX compile features - done
+[0.529s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[0.557s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[0.557s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[0.763s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.796s] -- Found std_msgs: 2.0.5 (/opt/ros/foxy/share/std_msgs/cmake)
+[0.842s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.852s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[0.959s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+[1.074s] -- Found FastRTPS: /opt/ros/foxy/include  
+[1.244s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.337s] -- Found rclcpp: 2.4.3 (/opt/ros/foxy/share/rclcpp/cmake)
+[1.426s] -- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)
+[1.428s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.429s] -- Looking for pthread.h
+[1.543s] -- Looking for pthread.h - found
+[1.543s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[1.664s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+[1.665s] -- Looking for pthread_create in pthreads
+[1.754s] -- Looking for pthread_create in pthreads - not found
+[1.754s] -- Looking for pthread_create in pthread
+[1.863s] -- Looking for pthread_create in pthread - found
+[1.864s] -- Found Threads: TRUE  
+[2.062s] -- Found rosidl_default_generators: 1.0.1 (/opt/ros/foxy/share/rosidl_default_generators/cmake)
+[2.123s] -- Found PythonInterp: /usr/bin/python3 (found version "3.8.10") 
+[2.425s] -- Found ament_cmake_ros: 0.9.2 (/opt/ros/foxy/share/ament_cmake_ros/cmake)
+[2.750s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.898s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.960s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3.5") 
+[2.960s] -- Found python_cmake_module: 0.8.1 (/opt/ros/foxy/share/python_cmake_module/cmake)
+[3.021s] -- Found PythonLibs: /usr/lib/x86_64-linux-gnu/libpython3.8.so (found suitable version "3.8.10", minimum required is "3.5") 
+[3.022s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[3.022s] -- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.8
+[3.022s] -- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.8.so
+[3.069s] -- Found PythonExtra: .so  
+[3.210s] -- Found ament_lint_auto: 0.9.8 (/opt/ros/foxy/share/ament_lint_auto/cmake)
+[3.252s] -- Added test 'copyright' to check source files copyright and LICENSE
+[3.277s] -- Added test 'lint_cmake' to check CMake code style
+[3.291s] -- Added test 'xmllint' to check XML markup files
+[3.303s] -- Configuring done
+[3.384s] -- Generating done
+[3.417s] -- Build files have been written to: /home/prl/track_robot_ws/build/rslidar_msg
+[3.437s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_msg' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/rslidar_ros2/rslidar_msg -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/rslidar_msg
+[3.442s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_msg': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --build /home/prl/track_robot_ws/build/rslidar_msg -- -j16 -l16
+[3.511s] [  3%] [34m[1mGenerating C code for ROS interfaces[0m
+[3.512s] [35m[1mScanning dependencies of target rslidar_msg__cpp[0m
+[3.531s] [  6%] [34m[1mGenerating C++ code for ROS interfaces[0m
+[4.123s] [  6%] Built target rslidar_msg__cpp
+[4.133s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_generator_c[0m
+[4.150s] [  9%] [34m[1mGenerating C++ introspection for ROS interfaces[0m
+[4.196s] [ 12%] [34m[1mGenerating C++ type support dispatch for ROS interfaces[0m
+[4.197s] [ 16%] [34m[1mGenerating C++ type support for eProsima Fast-RTPS[0m
+[4.201s] [ 19%] [32mBuilding C object CMakeFiles/rslidar_msg__rosidl_generator_c.dir/rosidl_generator_c/rslidar_msg/msg/detail/rslidar_packet__functions.c.o[0m
+[4.397s] [ 22%] [32m[1mLinking C shared library librslidar_msg__rosidl_generator_c.so[0m
+[4.545s] [ 22%] Built target rslidar_msg__rosidl_generator_c
+[4.587s] [ 25%] [34m[1mGenerating C type support dispatch for ROS interfaces[0m
+[4.599s] [ 29%] [34m[1mGenerating C introspection for ROS interfaces[0m
+[4.662s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_introspection_cpp[0m
+[4.692s] [ 32%] [32mBuilding CXX object CMakeFiles/rslidar_msg__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/rslidar_msg/msg/detail/rslidar_packet__type_support.cpp.o[0m
+[4.817s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_fastrtps_cpp[0m
+[4.819s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_cpp[0m
+[4.855s] [ 35%] [32mBuilding CXX object CMakeFiles/rslidar_msg__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/rslidar_msg/msg/detail/dds_fastrtps/rslidar_packet__type_support.cpp.o[0m
+[4.876s] [ 38%] [32mBuilding CXX object CMakeFiles/rslidar_msg__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/rslidar_msg/msg/rslidar_packet__type_support.cpp.o[0m
+[5.230s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_c[0m
+[5.282s] [ 41%] [32mBuilding CXX object CMakeFiles/rslidar_msg__rosidl_typesupport_c.dir/rosidl_typesupport_c/rslidar_msg/msg/rslidar_packet__type_support.cpp.o[0m
+[5.312s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_introspection_c[0m
+[5.342s] [ 45%] [32mBuilding C object CMakeFiles/rslidar_msg__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/rslidar_msg/msg/detail/rslidar_packet__type_support.c.o[0m
+[5.360s] [ 48%] [32m[1mLinking CXX shared library librslidar_msg__rosidl_typesupport_c.so[0m
+[5.400s] [ 51%] [32m[1mLinking C shared library librslidar_msg__rosidl_typesupport_introspection_c.so[0m
+[5.429s] [ 51%] Built target rslidar_msg__rosidl_typesupport_c
+[5.453s] [ 51%] Built target rslidar_msg__rosidl_typesupport_introspection_c
+[5.545s] [ 54%] [32m[1mLinking CXX shared library librslidar_msg__rosidl_typesupport_cpp.so[0m
+[5.587s] [ 58%] [32m[1mLinking CXX shared library librslidar_msg__rosidl_typesupport_introspection_cpp.so[0m
+[5.613s] [ 58%] Built target rslidar_msg__rosidl_typesupport_cpp
+[5.677s] [ 58%] Built target rslidar_msg__rosidl_typesupport_introspection_cpp
+[5.697s] [ 61%] [32m[1mLinking CXX shared library librslidar_msg__rosidl_typesupport_fastrtps_cpp.so[0m
+[5.800s] [ 61%] Built target rslidar_msg__rosidl_typesupport_fastrtps_cpp
+[5.810s] [ 64%] [34m[1mGenerating C type support for eProsima Fast-RTPS[0m
+[6.075s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_fastrtps_c[0m
+[6.090s] [ 67%] [32mBuilding CXX object CMakeFiles/rslidar_msg__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/rslidar_msg/msg/detail/rslidar_packet__type_support_c.cpp.o[0m
+[6.512s] [ 70%] [32m[1mLinking CXX shared library librslidar_msg__rosidl_typesupport_fastrtps_c.so[0m
+[6.633s] [ 70%] Built target rslidar_msg__rosidl_typesupport_fastrtps_c
+[6.653s] [35m[1mScanning dependencies of target rslidar_msg[0m
+[6.670s] [ 70%] Built target rslidar_msg
+[6.681s] [35m[1mScanning dependencies of target rslidar_msg__py[0m
+[6.692s] [ 74%] [34m[1mGenerating Python code for ROS interfaces[0m
+[7.322s] [ 74%] Built target rslidar_msg__py
+[7.338s] [35m[1mScanning dependencies of target rslidar_msg__python[0m
+[7.367s] [ 77%] [32mBuilding C object CMakeFiles/rslidar_msg__python.dir/rosidl_generator_py/rslidar_msg/msg/_rslidar_packet_s.c.o[0m
+[7.473s] [ 80%] [32m[1mLinking C shared library rosidl_generator_py/rslidar_msg/librslidar_msg__python.so[0m
+[7.518s] [ 80%] Built target rslidar_msg__python
+[7.529s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_fastrtps_c__pyext[0m
+[7.533s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_introspection_c__pyext[0m
+[7.533s] [35m[1mScanning dependencies of target rslidar_msg__rosidl_typesupport_c__pyext[0m
+[7.553s] [ 83%] [32mBuilding C object CMakeFiles/rslidar_msg__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/rslidar_msg/_rslidar_msg_s.ep.rosidl_typesupport_fastrtps_c.c.o[0m
+[7.560s] [ 87%] [32mBuilding C object CMakeFiles/rslidar_msg__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/rslidar_msg/_rslidar_msg_s.ep.rosidl_typesupport_c.c.o[0m
+[7.561s] [ 90%] [32mBuilding C object CMakeFiles/rslidar_msg__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/rslidar_msg/_rslidar_msg_s.ep.rosidl_typesupport_introspection_c.c.o[0m
+[7.646s] [ 93%] [32m[1mLinking C shared library rosidl_generator_py/rslidar_msg/rslidar_msg_s__rosidl_typesupport_c.cpython-38-x86_64-linux-gnu.so[0m
+[7.686s] [ 93%] Built target rslidar_msg__rosidl_typesupport_c__pyext
+[7.703s] [ 96%] [32m[1mLinking C shared library rosidl_generator_py/rslidar_msg/rslidar_msg_s__rosidl_typesupport_introspection_c.cpython-38-x86_64-linux-gnu.so[0m
+[7.703s] [100%] [32m[1mLinking CXX shared library rosidl_generator_py/rslidar_msg/rslidar_msg_s__rosidl_typesupport_fastrtps_c.cpython-38-x86_64-linux-gnu.so[0m
+[7.747s] [100%] Built target rslidar_msg__rosidl_typesupport_introspection_c__pyext
+[7.806s] [100%] Built target rslidar_msg__rosidl_typesupport_fastrtps_c__pyext
+[7.819s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_msg' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --build /home/prl/track_robot_ws/build/rslidar_msg -- -j16 -l16
+[7.822s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_msg': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --install /home/prl/track_robot_ws/build/rslidar_msg
+[7.832s] -- Install configuration: ""
+[7.832s] -- Execute custom install script
+[7.832s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/ament_index/resource_index/rosidl_interfaces/rslidar_msg
+[7.843s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__functions.h
+[7.853s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__struct.h
+[7.862s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__type_support.h
+[7.871s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rosidl_generator_c__visibility_control.h
+[7.881s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rslidar_packet.h
+[7.891s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/library_path.sh
+[7.900s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/library_path.dsv
+[7.910s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__rosidl_typesupport_fastrtps_c.h
+[7.920s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[7.929s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_fastrtps_c.so
+[7.939s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__rosidl_typesupport_fastrtps_cpp.hpp
+[7.949s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[7.959s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_fastrtps_cpp.so
+[7.969s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__rosidl_typesupport_introspection_c.h
+[7.979s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[7.989s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__builder.hpp
+[7.999s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__struct.hpp
+[8.010s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__traits.hpp
+[8.024s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__type_support.hpp
+[8.033s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rosidl_generator_cpp__visibility_control.hpp
+[8.044s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/rslidar_packet.hpp
+[8.054s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/include/rslidar_msg/msg/detail/rslidar_packet__rosidl_typesupport_introspection_cpp.hpp
+[8.064s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/pythonpath.sh
+[8.074s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/pythonpath.dsv
+[8.085s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/__init__.py
+[8.108s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/msg/__init__.py
+[8.115s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/msg/_rslidar_packet.py
+[8.131s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/rslidar_msg_s__rosidl_typesupport_fastrtps_c.cpython-38-x86_64-linux-gnu.so
+[8.147s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/rslidar_msg_s__rosidl_typesupport_introspection_c.cpython-38-x86_64-linux-gnu.so
+[8.163s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/rslidar_msg_s__rosidl_typesupport_c.cpython-38-x86_64-linux-gnu.so
+[8.179s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__python.so
+[8.195s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/msg/RslidarPacket.idl
+[8.211s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/msg/RslidarPacket.msg
+[8.223s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/ament_index/resource_index/package_run_dependencies/rslidar_msg
+[8.234s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/ament_index/resource_index/parent_prefix_path/rslidar_msg
+[8.245s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/ament_prefix_path.sh
+[8.256s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/ament_prefix_path.dsv
+[8.266s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/path.sh
+[8.277s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/environment/path.dsv
+[8.288s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/local_setup.bash
+[8.299s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/local_setup.sh
+[8.310s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/local_setup.zsh
+[8.326s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/local_setup.dsv
+[8.337s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/package.dsv
+[8.348s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/ament_index/resource_index/packages/rslidar_msg
+[8.359s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rosidl_cmake-extras.cmake
+[8.371s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/ament_cmake_export_dependencies-extras.cmake
+[8.382s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/ament_cmake_export_libraries-extras.cmake
+[8.393s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/ament_cmake_export_targets-extras.cmake
+[8.404s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/ament_cmake_export_include_directories-extras.cmake
+[8.415s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[8.427s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[8.438s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msgConfig.cmake
+[8.450s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msgConfig-version.cmake
+[8.461s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/package.xml
+[8.473s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_generator_c.so
+[8.473s] -- Set runtime path of "/home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_generator_c.so" to ""
+[8.474s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_introspection_c.so
+[8.474s] -- Set runtime path of "/home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_introspection_c.so" to ""
+[8.474s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_c.so
+[8.475s] -- Set runtime path of "/home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_c.so" to ""
+[8.475s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_introspection_cpp.so
+[8.476s] -- Set runtime path of "/home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_introspection_cpp.so" to ""
+[8.476s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_cpp.so
+[8.476s] -- Set runtime path of "/home/prl/track_robot_ws/install/rslidar_msg/lib/librslidar_msg__rosidl_typesupport_cpp.so" to ""
+[8.523s] Compiling '/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages/rslidar_msg/__init__.py'...
+[8.530s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_generator_cExport.cmake
+[8.530s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_generator_cExport-noconfig.cmake
+[8.531s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_introspection_cExport.cmake
+[8.531s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[8.531s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_cExport.cmake
+[8.531s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_cExport-noconfig.cmake
+[8.531s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_generator_cppExport.cmake
+[8.532s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_introspection_cppExport.cmake
+[8.532s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[8.532s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_cppExport.cmake
+[8.532s] -- Installing: /home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake/rslidar_msg__rosidl_typesupport_cppExport-noconfig.cmake
+[8.538s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_msg' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --install /home/prl/track_robot_ws/build/rslidar_msg

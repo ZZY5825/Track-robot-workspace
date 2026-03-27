@@ -1,0 +1,44 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from bunker_msgs/msg/BunkerStatus.msg
+// generated code does not contain a copyright notice
+
+#include "bunker_msgs/msg/BunkerActuatorState.idl"
+#include "std_msgs/msg/Header.idl"
+
+module bunker_msgs {
+  module msg {
+    typedef bunker_msgs::msg::BunkerActuatorState bunker_msgs__msg__BunkerActuatorState;
+    typedef bunker_msgs__msg__BunkerActuatorState bunker_msgs__msg__BunkerActuatorState__3[3];
+    module BunkerStatus_Constants {
+      const int8 MOTOR_ID_FRONT_RIGHT = 0;
+      const int8 MOTOR_ID_FRONT_LEFT = 1;
+      const int8 MOTOR_ID_REAR_RIGHT = 2;
+      const int8 MOTOR_ID_REAR_LEFT = 3;
+      const int8 LIGHT_ID_FRONT = 0;
+      const int8 LIGHT_ID_REAR = 1;
+    };
+    struct BunkerStatus {
+      std_msgs::msg::Header header;
+
+      @verbatim (language="comment", text=
+        " motion state")
+      double linear_velocity;
+
+      double angular_velocity;
+
+      @verbatim (language="comment", text=
+        " base state")
+      uint8 vehicle_state;
+
+      uint8 control_mode;
+
+      uint16 error_code;
+
+      double battery_voltage;
+
+      @verbatim (language="comment", text=
+        " motor state")
+      bunker_msgs__msg__BunkerActuatorState__3 actuator_states;
+    };
+  };
+};

@@ -1,0 +1,23 @@
+running develop
+running egg_info
+creating track_robot_teleop.egg-info
+writing track_robot_teleop.egg-info/PKG-INFO
+writing dependency_links to track_robot_teleop.egg-info/dependency_links.txt
+writing entry points to track_robot_teleop.egg-info/entry_points.txt
+writing requirements to track_robot_teleop.egg-info/requires.txt
+writing top-level names to track_robot_teleop.egg-info/top_level.txt
+writing manifest file 'track_robot_teleop.egg-info/SOURCES.txt'
+reading manifest file 'track_robot_teleop.egg-info/SOURCES.txt'
+writing manifest file 'track_robot_teleop.egg-info/SOURCES.txt'
+running build_ext
+Creating /home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages/site.py
+Creating /home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages/track-robot-teleop.egg-link (link to .)
+Installing keyboard_teleop_node script to /home/prl/track_robot_ws/install/track_robot_teleop/lib/track_robot_teleop
+
+Installed /home/prl/track_robot_ws/build/track_robot_teleop
+running symlink_data
+creating /home/prl/track_robot_ws/install/track_robot_teleop/share/ament_index
+creating /home/prl/track_robot_ws/install/track_robot_teleop/share/ament_index/resource_index
+creating /home/prl/track_robot_ws/install/track_robot_teleop/share/ament_index/resource_index/packages
+symbolically linking /home/prl/track_robot_ws/build/track_robot_teleop/resource/track_robot_teleop -> /home/prl/track_robot_ws/install/track_robot_teleop/share/ament_index/resource_index/packages
+symbolically linking /home/prl/track_robot_ws/build/track_robot_teleop/package.xml -> /home/prl/track_robot_ws/install/track_robot_teleop/share/track_robot_teleop

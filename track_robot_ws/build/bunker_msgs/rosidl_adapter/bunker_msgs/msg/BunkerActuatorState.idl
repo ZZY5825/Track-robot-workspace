@@ -1,0 +1,35 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from bunker_msgs/msg/BunkerActuatorState.msg
+// generated code does not contain a copyright notice
+
+
+module bunker_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      "define DRIVER_STATE_INPUT_VOLTAGE_LOW_MASK ((uint8_t)0x01)" "\n"
+      "define DRIVER_STATE_MOTOR_OVERHEAT_MASK ((uint8_t)0x02)" "\n"
+      "define DRIVER_STATE_DRIVER_OVERLOAD_MASK ((uint8_t)0x04)" "\n"
+      "define DRIVER_STATE_DRIVER_OVERHEAT_MASK ((uint8_t)0x08)" "\n"
+      "define DRIVER_STATE_SENSOR_FAULT_MASK ((uint8_t)0x10)" "\n"
+      "define DRIVER_STATE_DRIVER_FAULT_MASK ((uint8_t)0x20)" "\n"
+      "define DRIVER_STATE_DRIVER_ENABLED_MASK ((uint8_t)0x40)" "\n"
+      "define DRIVER_STATE_DRIVER_RESET_MASK ((uint8_t)0x80)")
+    struct BunkerActuatorState {
+      uint8 motor_id;
+
+      int16 rpm;
+
+      double current;
+
+      int32 pulse_count;
+
+      float driver_voltage;
+
+      float driver_temperature;
+
+      int8 motor_temperature;
+
+      uint8 driver_state;
+    };
+  };
+};

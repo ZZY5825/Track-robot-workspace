@@ -1,0 +1,88 @@
+[0.015s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_sdk': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/rslidar_ros2/rslidar_sdk -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/rslidar_sdk
+[0.084s] -- The C compiler identification is GNU 9.4.0
+[0.142s] -- The CXX compiler identification is GNU 9.4.0
+[0.147s] -- Check for working C compiler: /usr/bin/cc
+[0.218s] -- Check for working C compiler: /usr/bin/cc -- works
+[0.219s] -- Detecting C compiler ABI info
+[0.293s] -- Detecting C compiler ABI info - done
+[0.307s] -- Detecting C compile features
+[0.307s] -- Detecting C compile features - done
+[0.310s] -- Check for working CXX compiler: /usr/bin/c++
+[0.394s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[0.395s] -- Detecting CXX compiler ABI info
+[0.483s] -- Detecting CXX compiler ABI info - done
+[0.498s] -- Detecting CXX compile features
+[0.499s] -- Detecting CXX compile features - done
+[0.500s] =============================================================
+[0.500s] -- POINT_TYPE is XYZI
+[0.500s] =============================================================
+[0.511s] =============================================================
+[0.511s] -- ROS Not Found. ROS Support is turned Off.
+[0.511s] =============================================================
+[0.545s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[0.545s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[0.740s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.828s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.836s] -- Found rosidl_adapter: 1.3.1 (/opt/ros/foxy/share/rosidl_adapter/cmake)
+[0.916s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "1.1.1f")  
+[0.947s] -- Found FastRTPS: /opt/ros/foxy/include  
+[1.032s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.103s] -- Found rmw_implementation_cmake: 1.0.4 (/opt/ros/foxy/share/rmw_implementation_cmake/cmake)
+[1.105s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[1.106s] -- Looking for pthread.h
+[1.180s] -- Looking for pthread.h - found
+[1.181s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[1.250s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+[1.250s] -- Looking for pthread_create in pthreads
+[1.306s] -- Looking for pthread_create in pthreads - not found
+[1.306s] -- Looking for pthread_create in pthread
+[1.371s] -- Looking for pthread_create in pthread - found
+[1.373s] -- Found Threads: TRUE  
+[1.540s] =============================================================
+[1.540s] -- ROS2 Found. ROS2 Support is turned On.
+[1.540s] =============================================================
+[1.542s] -- Found sensor_msgs: 2.0.5 (/opt/ros/foxy/share/sensor_msgs/cmake)
+[1.662s] -- Found rslidar_msg: 0.0.0 (/home/prl/track_robot_ws/install/rslidar_msg/share/rslidar_msg/cmake)
+[1.701s] =============================================================
+[1.701s] -- CMake run for UNIX GNU Compiler
+[1.701s] =============================================================
+[1.702s] =============================================================
+[1.702s] -- rs_driver Version : v1.5.18
+[1.702s] =============================================================
+[1.771s] -- Configuring done
+[1.781s] -- Generating done
+[1.786s] -- Build files have been written to: /home/prl/track_robot_ws/build/rslidar_sdk
+[1.792s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_sdk' returned '0': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/rslidar_ros2/rslidar_sdk -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/rslidar_sdk
+[1.795s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_sdk': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake --build /home/prl/track_robot_ws/build/rslidar_sdk -- -j16 -l16
+[1.833s] [35m[1mScanning dependencies of target rslidar_sdk_node[0m
+[1.886s] [ 33%] [32mBuilding CXX object CMakeFiles/rslidar_sdk_node.dir/node/rslidar_sdk_node.cpp.o[0m
+[1.888s] [ 66%] [32mBuilding CXX object CMakeFiles/rslidar_sdk_node.dir/src/manager/node_manager.cpp.o[0m
+[15.510s] [100%] [32m[1mLinking CXX executable rslidar_sdk_node[0m
+[15.632s] [100%] Built target rslidar_sdk_node
+[15.640s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_sdk' returned '0': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake --build /home/prl/track_robot_ws/build/rslidar_sdk -- -j16 -l16
+[15.641s] Invoking command in '/home/prl/track_robot_ws/build/rslidar_sdk': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake --install /home/prl/track_robot_ws/build/rslidar_sdk
+[15.649s] -- Install configuration: "Release"
+[15.649s] -- Execute custom install script
+[15.650s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/lib/rslidar_sdk/rslidar_sdk_node
+[15.657s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/launch/elequent_start.py
+[15.664s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/launch/humble_start.py
+[15.672s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/launch/start.launch
+[15.679s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/launch/start.py
+[15.687s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/rviz/rviz.rviz
+[15.695s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/rviz/rviz2.rviz
+[15.703s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/ament_index/resource_index/package_run_dependencies/rslidar_sdk
+[15.711s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/ament_index/resource_index/parent_prefix_path/rslidar_sdk
+[15.719s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/environment/ament_prefix_path.sh
+[15.726s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/environment/ament_prefix_path.dsv
+[15.735s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/environment/path.sh
+[15.743s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/environment/path.dsv
+[15.751s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/local_setup.bash
+[15.760s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/local_setup.sh
+[15.768s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/local_setup.zsh
+[15.777s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/local_setup.dsv
+[15.785s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/package.dsv
+[15.794s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/ament_index/resource_index/packages/rslidar_sdk
+[15.802s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/cmake/rslidar_sdkConfig.cmake
+[15.811s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/cmake/rslidar_sdkConfig-version.cmake
+[15.819s] -- Symlinking: /home/prl/track_robot_ws/install/rslidar_sdk/share/rslidar_sdk/package.xml
+[15.830s] Invoked command in '/home/prl/track_robot_ws/build/rslidar_sdk' returned '0': CMAKE_PREFIX_PATH=/home/prl/track_robot_ws/install/rslidar_msg:/home/prl/track_robot_ws/install/bunker_base:/home/prl/track_robot_ws/install/ugv_sdk:/home/prl/track_robot_ws/install/track_robot_control:/home/prl/track_robot_ws/install/track_robot_interfaces:/home/prl/track_robot_ws/install/track_robot_drivers:/home/prl/track_robot_ws/install/track_robot_core:/home/prl/track_robot_ws/install/track_robot_bringup:/home/prl/track_robot_ws/install/rslidar_sdk:/home/prl/track_robot_ws/install/bunker_msgs:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy PYTHONPATH=/home/prl/track_robot_ws/install/rslidar_msg/lib/python3.8/site-packages:/home/prl/track_robot_ws/build/track_robot_teleop:/home/prl/track_robot_ws/install/track_robot_teleop/lib/python3.8/site-packages:/home/prl/track_robot_ws/install/bunker_msgs/lib/python3.8/site-packages:/opt/ros/foxy/lib/python3.8/site-packages /usr/bin/cmake --install /home/prl/track_robot_ws/build/rslidar_sdk

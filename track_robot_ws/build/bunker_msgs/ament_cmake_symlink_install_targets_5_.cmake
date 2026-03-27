@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/prl/track_robot_ws/build/bunker_msgs/rosidl_generator_py/bunker_msgs/libbunker_msgs__python.so" "TARGETS" "bunker_msgs__python" "ARCHIVE_DESTINATION" "lib" "LIBRARY_DESTINATION" "lib" "RUNTIME_DESTINATION" "bin")

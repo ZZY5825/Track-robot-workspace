@@ -1,0 +1,1 @@
+/home/prl/track_robot_ws/build/rslidar_msg/ament_cmake_environment_hooks/local_setup.sh

@@ -1,0 +1,6 @@
+Invoking command in '/home/prl/track_robot_ws/build/ugv_sdk': /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/ugv_sdk -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/ugv_sdk
+Invoked command in '/home/prl/track_robot_ws/build/ugv_sdk' returned '0': /usr/bin/cmake /home/prl/track_robot_ws/src/third_party_ros/ugv_sdk -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/ugv_sdk
+Invoking command in '/home/prl/track_robot_ws/build/ugv_sdk': /usr/bin/cmake --build /home/prl/track_robot_ws/build/ugv_sdk -- -j16 -l16
+Invoked command in '/home/prl/track_robot_ws/build/ugv_sdk' returned '0': /usr/bin/cmake --build /home/prl/track_robot_ws/build/ugv_sdk -- -j16 -l16
+Invoking command in '/home/prl/track_robot_ws/build/ugv_sdk': /usr/bin/cmake --install /home/prl/track_robot_ws/build/ugv_sdk
+Invoked command in '/home/prl/track_robot_ws/build/ugv_sdk' returned '0': /usr/bin/cmake --install /home/prl/track_robot_ws/build/ugv_sdk

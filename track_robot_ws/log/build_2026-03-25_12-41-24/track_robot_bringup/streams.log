@@ -1,0 +1,46 @@
+[0.041s] Invoking command in '/home/prl/track_robot_ws/build/track_robot_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake /home/prl/track_robot_ws/src/track_robot/track_robot_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/track_robot_bringup
+[0.364s] -- The C compiler identification is GNU 9.4.0
+[0.364s] -- The CXX compiler identification is GNU 9.4.0
+[0.364s] -- Check for working C compiler: /usr/bin/cc
+[0.364s] -- Check for working C compiler: /usr/bin/cc -- works
+[0.364s] -- Detecting C compiler ABI info
+[0.364s] -- Detecting C compiler ABI info - done
+[0.367s] -- Detecting C compile features
+[0.367s] -- Detecting C compile features - done
+[0.367s] -- Check for working CXX compiler: /usr/bin/c++
+[0.454s] -- Check for working CXX compiler: /usr/bin/c++ -- works
+[0.456s] -- Detecting CXX compiler ABI info
+[0.540s] -- Detecting CXX compiler ABI info - done
+[0.565s] -- Detecting CXX compile features
+[0.566s] -- Detecting CXX compile features - done
+[0.569s] -- Found ament_cmake: 0.9.12 (/opt/ros/foxy/share/ament_cmake/cmake)
+[0.599s] -- Found PythonInterp: /usr/bin/python3 (found suitable version "3.8.10", minimum required is "3") 
+[0.599s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[0.804s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.911s] -- Configuring done
+[0.912s] -- Generating done
+[0.915s] -- Build files have been written to: /home/prl/track_robot_ws/build/track_robot_bringup
+[0.927s] Invoked command in '/home/prl/track_robot_ws/build/track_robot_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake /home/prl/track_robot_ws/src/track_robot/track_robot_bringup -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/prl/track_robot_ws/install/track_robot_bringup
+[0.931s] Invoking command in '/home/prl/track_robot_ws/build/track_robot_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --build /home/prl/track_robot_ws/build/track_robot_bringup -- -j16 -l16
+[1.000s] Invoked command in '/home/prl/track_robot_ws/build/track_robot_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --build /home/prl/track_robot_ws/build/track_robot_bringup -- -j16 -l16
+[1.020s] Invoking command in '/home/prl/track_robot_ws/build/track_robot_bringup': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --install /home/prl/track_robot_ws/build/track_robot_bringup
+[1.039s] -- Install configuration: ""
+[1.039s] -- Execute custom install script
+[1.040s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/launch/pc_keyboard_teleop.launch.py
+[1.089s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/config/keyboard_teleop.yaml
+[1.115s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/ament_index/resource_index/package_run_dependencies/track_robot_bringup
+[1.130s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/ament_index/resource_index/parent_prefix_path/track_robot_bringup
+[1.151s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/environment/ament_prefix_path.sh
+[1.167s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/environment/ament_prefix_path.dsv
+[1.181s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/environment/path.sh
+[1.196s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/environment/path.dsv
+[1.210s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/local_setup.bash
+[1.226s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/local_setup.sh
+[1.241s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/local_setup.zsh
+[1.256s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/local_setup.dsv
+[1.271s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/package.dsv
+[1.286s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/ament_index/resource_index/packages/track_robot_bringup
+[1.301s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/cmake/track_robot_bringupConfig.cmake
+[1.316s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/cmake/track_robot_bringupConfig-version.cmake
+[1.330s] -- Symlinking: /home/prl/track_robot_ws/install/track_robot_bringup/share/track_robot_bringup/package.xml
+[1.348s] Invoked command in '/home/prl/track_robot_ws/build/track_robot_bringup' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/prl/track_robot_ws/install/track_robot_teleop:/opt/ros/foxy /usr/bin/cmake --install /home/prl/track_robot_ws/build/track_robot_bringup
