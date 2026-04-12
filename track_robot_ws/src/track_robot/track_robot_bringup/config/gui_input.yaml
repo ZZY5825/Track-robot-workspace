@@ -1,0 +1,11 @@
+gui_input_node:
+  ros__parameters:
+    input_topic: /teleop/input_state
+    publish_hz: 50.0
+    stop_on_focus_loss: true
+    max_linear: 0.6
+    max_angular: 1.0
+    linear_accel: 0.4
+    angular_accel: 0.8
+    linear_decay: 1.2
+    angular_decay: 2.0
