@@ -120,7 +120,6 @@ class TeleopLogic:
 
         linear_accel = max(0.0, self.config.linear_accel * dt)
         angular_accel = max(0.0, self.config.angular_accel * dt)
-        linear_decay = max(0.0, self.config.linear_decay * dt)
         angular_decay = max(0.0, self.config.angular_decay * dt)
 
         if input_state.forward and not input_state.backward:
@@ -128,7 +127,7 @@ class TeleopLogic:
         elif input_state.backward and not input_state.forward:
             self.linear_x -= linear_accel
         elif not input_state.forward and not input_state.backward:
-            self.linear_x = move_towards_zero(self.linear_x, linear_decay)
+            self.linear_x = 0.0
         # If both forward and backward are pressed, keep current linear_x unchanged.
 
         if input_state.left and not input_state.right:
