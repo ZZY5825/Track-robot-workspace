@@ -1,0 +1,14 @@
+track_robot_ws/build/
+track_robot_ws/install/
+track_robot_ws/log/
+track_robot_ws/.agents/
+track_robot_ws/.codex/
+track_robot_ws/dataset/
+track_robot_ws/dinov3_feature_outputs/
+track_robot_ws/models/*.pth
+
+__pycache__/
+*.py[cod]
+*.bag
+*.db3
+*.mcap

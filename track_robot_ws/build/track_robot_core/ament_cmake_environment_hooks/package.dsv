@@ -1,4 +1,0 @@
-source;share/track_robot_core/local_setup.bash
-source;share/track_robot_core/local_setup.dsv
-source;share/track_robot_core/local_setup.sh
-source;share/track_robot_core/local_setup.zsh

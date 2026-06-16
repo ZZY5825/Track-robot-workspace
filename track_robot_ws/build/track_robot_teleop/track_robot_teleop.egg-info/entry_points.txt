@@ -1,3 +1,0 @@
-[console_scripts]
-keyboard_teleop_node = track_robot_teleop.keyboard_teleop_node:main
-

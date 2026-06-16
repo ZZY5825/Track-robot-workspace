@@ -1,8 +1,0 @@
-{
-  "package_name": "bunker_msgs",
-  "non_idl_tuples": [
-    "/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_msgs:msg/BunkerActuatorState.msg",
-    "/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_msgs:msg/BunkerRCState.msg",
-    "/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_msgs:msg/BunkerStatus.msg"
-  ]
-}

@@ -1,0 +1,15 @@
+/**:
+  ros__parameters:
+    object_detection:
+      od_enabled: true
+      model: 'CUSTOM_YOLOLIKE_BOX_OBJECTS'
+      custom_onnx_file: '/home/track-robot/track_robot_ws/src/track_robot_core/models/yolo_custom.onnx'
+      custom_onnx_input_size: 640
+      custom_label_yaml: '/home/track-robot/track_robot_ws/src/track_robot_core/config/coco_labels.yaml'
+      allow_reduced_precision_inference: true
+      max_range: 20.0
+      confidence_threshold: 50.0
+      prediction_timeout: 0.5
+      enable_tracking: true
+      object_tracking_enabled: true
+      filtering_mode: 1

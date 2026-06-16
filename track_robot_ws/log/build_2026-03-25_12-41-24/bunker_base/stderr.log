@@ -1,6 +1,0 @@
-In file included from [01m[K/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_base/src/bunker_base_ros.cpp:12[m[K:
-/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_base/include/bunker_base/bunker_messenger.hpp: In instantiation of ‘[01m[Kvoid westonrobot::BunkerMessenger<BunkerType>::PublishStateToROS() [with BunkerType = westonrobot::BunkerRobot][m[K’:
-[01m[K/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_base/src/bunker_base_ros.cpp:121:34:[m[K   required from here
-[01m[K/home/prl/track_robot_ws/src/third_party_ros/bunker_ros2/bunker_base/include/bunker_base/bunker_messenger.hpp:110:15:[m[K [01;35m[Kwarning: [m[Kvariable ‘[01m[Kmotor_id[m[K’ set but not used [[01;35m[K-Wunused-but-set-variable[m[K]
-  110 |       uint8_t [01;35m[Kmotor_id[m[K = actuator.actuator_hs_state[i].motor_id;
-      |               [01;35m[K^~~~~~~~[m[K

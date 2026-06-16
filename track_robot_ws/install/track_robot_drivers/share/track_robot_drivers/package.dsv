@@ -1,8 +1,0 @@
-source;share/track_robot_drivers/hook/cmake_prefix_path.ps1
-source;share/track_robot_drivers/hook/cmake_prefix_path.dsv
-source;share/track_robot_drivers/hook/cmake_prefix_path.sh
-source;share/track_robot_drivers/local_setup.bash
-source;share/track_robot_drivers/local_setup.dsv
-source;share/track_robot_drivers/local_setup.ps1
-source;share/track_robot_drivers/local_setup.sh
-source;share/track_robot_drivers/local_setup.zsh

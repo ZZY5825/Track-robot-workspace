@@ -1,1 +1,0 @@
-/home/prl/track_robot_ws/build/bunker_msgs/rosidl_typesupport_introspection_c/bunker_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h

@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/home/prl/track_robot_ws/build/rslidar_msg/rosidl_generator_py/rslidar_msg/librslidar_msg__python.so" "TARGETS" "rslidar_msg__python" "ARCHIVE_DESTINATION" "lib" "LIBRARY_DESTINATION" "lib" "RUNTIME_DESTINATION" "bin")

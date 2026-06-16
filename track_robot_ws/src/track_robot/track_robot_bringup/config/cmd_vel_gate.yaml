@@ -1,0 +1,8 @@
+cmd_vel_gate:
+  ros__parameters:
+    input_topic: "/teleop/cmd_vel"
+    output_topic: "/cmd_vel"
+    timeout_sec: 0.2
+    publish_rate: 20.0
+    max_linear_x: 0.6
+    max_angular_z: 1.0

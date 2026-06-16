@@ -1,0 +1,19 @@
+/**:
+  ros__parameters:
+    object_detection:
+      od_enabled: true
+      model: 'MULTI_CLASS_BOX_FAST'
+      allow_reduced_precision_inference: true
+      max_range: 20.0
+      confidence_threshold: 50.0
+      prediction_timeout: 0.5
+      enable_tracking: true
+      object_tracking_enabled: true
+      filtering_mode: 1
+      mc_people: true
+      mc_vehicle: true
+      mc_bag: true
+      mc_animal: true
+      mc_electronics: true
+      mc_fruit_vegetable: true
+      mc_sport: true

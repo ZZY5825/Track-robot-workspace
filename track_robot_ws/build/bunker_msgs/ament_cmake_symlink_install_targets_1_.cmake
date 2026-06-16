@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/home/prl/track_robot_ws/build/bunker_msgs/libbunker_msgs__rosidl_typesupport_fastrtps_cpp.so" "TARGETS" "bunker_msgs__rosidl_typesupport_fastrtps_cpp" "ARCHIVE_DESTINATION" "lib" "LIBRARY_DESTINATION" "lib" "RUNTIME_DESTINATION" "bin")

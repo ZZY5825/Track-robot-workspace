@@ -1,1 +1,0 @@
-/home/prl/track_robot_ws/build/bunker_msgs/rosidl_generator_cpp/bunker_msgs/msg/bunker_status.hpp

@@ -1,0 +1,24 @@
+/**:
+  ros__parameters:
+    depth:
+      depth_mode: 'NEURAL_LIGHT'
+      point_cloud_freq: 15.0
+      point_cloud_res: 'COMPACT'
+      depth_confidence: 95
+      depth_texture_conf: 100
+
+    pos_tracking:
+      pos_tracking_enabled: true
+      imu_fusion: true
+      publish_tf: true
+      publish_map_tf: true
+      map_frame: 'map'
+      odometry_frame: 'odom'
+      area_memory: true
+      two_d_mode: false
+
+    mapping:
+      mapping_enabled: true
+      resolution: 0.05
+      max_mapping_range: 5.0
+      fused_pointcloud_freq: 1.0

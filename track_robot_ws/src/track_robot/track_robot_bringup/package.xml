@@ -9,10 +9,12 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <!-- launch 运行时依赖 -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+
+  <!-- 后面一般还会用到 -->
   <exec_depend>ament_index_python</exec_depend>
-  <exec_depend>track_robot_teleop</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

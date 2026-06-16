@@ -1,1 +1,0 @@
-/home/prl/track_robot_ws/build/bunker_msgs/rosidl_typesupport_fastrtps_c/bunker_msgs/msg/detail/bunker_actuator_state__rosidl_typesupport_fastrtps_c.h

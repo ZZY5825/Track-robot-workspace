@@ -1,0 +1,76 @@
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog for package cob_actions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.8.12 (2024-08-05)
+-------------------
+
+2.8.11 (2024-04-30)
+-------------------
+
+2.7.11 (2024-04-18)
+-------------------
+
+2.7.10 (2024-02-20)
+-------------------
+
+2.7.9 (2023-11-06)
+------------------
+
+2.7.8 (2022-11-18)
+------------------
+* add dependency action_msgs
+* Merge pull request `#299 <https://github.com/ipa320/cob_common/issues/299>`_ from fmessmer/foxy_port_ros2
+  [foxy] port packages
+* harmonize packages
+* port cob_actions
+* add COLCON_IGNORE
+* Contributors: Felix Messmer, fmessmer
+
+0.7.8 (2022-07-29)
+------------------
+
+0.7.7 (2021-12-23)
+------------------
+
+0.7.6 (2021-08-02)
+------------------
+
+0.7.5 (2021-07-01)
+------------------
+
+0.7.4 (2020-11-20)
+------------------
+* Merge pull request `#289 <https://github.com/ipa320/cob_common/issues/289>`_ from HannesBachter/feature/dock_service_action
+  add Dock service and -action
+* add Dock service and action
+* Contributors: Felix Messmer, hyb
+
+0.7.3 (2020-09-26)
+------------------
+* Merge pull request `#288 <https://github.com/ipa320/cob_common/issues/288>`_ from fmessmer/test_noetic
+  test noetic
+* Bump CMake version to avoid CMP0048 warning
+* Contributors: Felix Messmer, fmessmer
+
+0.7.2 (2020-03-18)
+------------------
+
+0.7.1 (2019-11-07)
+------------------
+
+0.7.0 (2019-08-06)
+------------------
+
+0.6.12 (2019-05-20)
+-------------------
+
+0.6.11 (2019-04-05)
+-------------------
+
+0.6.10 (2019-03-14)
+-------------------
+* Merge pull request `#263 <https://github.com/ipa320/cob_common/issues/263>`_ from fmessmer/add_cob_actions
+  add cob_actions
+* add cob_actions
+* Contributors: Felix Messmer, fmessmer

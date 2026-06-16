@@ -1,0 +1,32 @@
+phidget_spatial_imu:
+  ros__parameters:
+    serial_number: 166154
+    frame_id: phidget_imu_link
+
+    imu_topic: /imu/data_raw
+    magnetic_field_topic: /imu/mag
+    diagnostics_topic: /imu/time_sync_status
+
+    # The 1056 supports 4 ms samples (250 Hz). Samples are batched over USB.
+    data_interval_ms: 4
+    publish_magnetic_field: true
+
+    # The robot must remain stationary while zeroGyro runs during startup.
+    zero_gyro_on_start: true
+    gyro_zero_wait_sec: 2.0
+
+    # device_affine maps the IMU's free-running timestamp onto Jetson
+    # CLOCK_REALTIME. CLOCK_REALTIME must already be disciplined by phc2sys.
+    timestamp_mode: device_affine
+    calibrated_time_offset_sec: 0.0
+    sync_window_sec: 60.0
+    sync_fit_period_sec: 1.0
+    sync_lower_quantile: 0.2
+    max_clock_skew_ppm: 2000.0
+    clock_step_reset_sec: 0.5
+
+    # Board-level typical accelerometer noise from the 1056 specification.
+    # Gyroscope and magnetometer noise are undocumented, so zero means unknown.
+    acceleration_stddev: [0.002942, 0.002942, 0.004903]
+    angular_velocity_stddev: [0.0, 0.0, 0.0]
+    magnetic_field_stddev: [0.0, 0.0, 0.0]

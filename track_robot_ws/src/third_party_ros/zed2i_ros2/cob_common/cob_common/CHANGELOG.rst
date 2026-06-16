@@ -1,0 +1,154 @@
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changelog for package cob_common
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.8.12 (2024-08-05)
+-------------------
+
+2.8.11 (2024-04-30)
+-------------------
+
+2.7.11 (2024-04-18)
+-------------------
+* Merge pull request `#309 <https://github.com/4am-robotics/cob_common/issues/309>`_ from fmessmer/foxy_cleanup
+  [ROS2] cob4 eol cleanup
+* remove cob_description
+* remove raw_description
+* Contributors: Felix Messmer, fmessmer
+
+2.7.10 (2024-02-20)
+-------------------
+
+2.7.9 (2023-11-06)
+------------------
+
+2.7.8 (2022-11-18)
+------------------
+* Merge pull request `#299 <https://github.com/ipa320/cob_common/issues/299>`_ from fmessmer/foxy_port_ros2
+  [foxy] port packages
+* port cob_common
+* add COLCON_IGNORE
+* Contributors: Felix Messmer, fmessmer
+
+0.7.8 (2022-07-29)
+------------------
+
+0.7.7 (2021-12-23)
+------------------
+
+0.7.6 (2021-08-02)
+------------------
+
+0.7.5 (2021-07-01)
+------------------
+
+0.7.4 (2020-11-20)
+------------------
+
+0.7.3 (2020-09-26)
+------------------
+* Merge pull request `#288 <https://github.com/ipa320/cob_common/issues/288>`_ from fmessmer/test_noetic
+  test noetic
+* Bump CMake version to avoid CMP0048 warning
+* Contributors: Felix Messmer, fmessmer
+
+0.7.2 (2020-03-18)
+------------------
+
+0.7.1 (2019-11-07)
+------------------
+
+0.7.0 (2019-08-06)
+------------------
+
+0.6.12 (2019-05-20)
+-------------------
+
+0.6.11 (2019-04-05)
+-------------------
+
+0.6.10 (2019-03-14)
+-------------------
+* Merge pull request `#263 <https://github.com/ipa320/cob_common/issues/263>`_ from fmessmer/add_cob_actions
+  add cob_actions
+* add cob_actions
+* Contributors: Felix Messmer, fmessmer
+
+0.6.9 (2018-07-21)
+------------------
+* update maintainer
+* Contributors: fmessmer
+
+0.6.8 (2018-01-07)
+------------------
+* Merge pull request `#246 <https://github.com/ipa320/cob_common/issues/246>`_ from ipa320/indigo_release_candidate
+  Indigo release candidate
+* Merge pull request `#230 <https://github.com/ipa320/cob_common/issues/230>`_ from ipa-fxm/update_maintainer
+  update maintainer
+* update maintainer
+* Merge pull request `#224 <https://github.com/ipa320/cob_common/issues/224>`_ from ipa-fxm/APACHE_license
+  use license apache 2.0
+* use license apache 2.0
+* Contributors: Felix Messmer, ipa-fxm, ipa-uhr-mk
+
+0.6.7 (2017-07-17)
+------------------
+* manually fix changelog
+* Contributors: ipa-fxm
+
+0.6.6 (2016-10-10)
+------------------
+
+0.6.5 (2016-04-01)
+------------------
+
+0.6.4 (2015-08-29)
+------------------
+* migrate to package format 2
+* critically review dependencies
+* Contributors: ipa-fxm
+
+0.6.3 (2015-06-17)
+------------------
+* remove brics_actuator
+* Contributors: ipa-fxm
+
+0.6.2 (2014-12-15)
+------------------
+* merge
+* delete desire_description
+* Contributors: Florian Weisshardt, ipa-fxm
+
+0.6.1 (2014-09-24)
+------------------
+
+0.6.0 (2014-09-16)
+------------------
+
+0.5.5 (2014-08-27)
+------------------
+
+0.5.4 (2014-08-25)
+------------------
+* update changelog
+* introducing cob_msgs package in order to replace pr2_msgs
+* cleaning up debs
+* cleaning up debs
+* Merge pull request `#95 <https://github.com/ipa320/cob_common/issues/95>`_ from ipa320/hydro_release_candidate
+  bring back changes from Hydro release candidate
+* New maintainer
+* Contributors: Felix Messmer, Florian Weisshardt, Nadia Hammoudeh García, ipa-fxm, ipa-nhg
+
+0.5.3 (2014-03-31)
+------------------
+
+0.5.2 (2014-03-20)
+------------------
+
+0.5.1 (2013-08-16 01:14:35 -0700)
+---------------------------------
+
+0.5.0 (2013-08-16 01:14:35 -0700)
+---------------------------------
+* Catkin for cob_common
+* Contributors: abubeck

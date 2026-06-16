@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/home/prl/track_robot_ws/build/track_robot_core/cmd_vel_gate" "/home/prl/track_robot_ws/build/track_robot_core/lidar_sub" "TARGETS" "cmd_vel_gate" "lidar_sub" "DESTINATION" "lib/track_robot_core")

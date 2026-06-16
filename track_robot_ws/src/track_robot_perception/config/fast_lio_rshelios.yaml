@@ -1,0 +1,54 @@
+/**:
+  ros__parameters:
+    # true selects the original feature-based FAST-LIO pipeline.
+    feature_extract_enable: true
+    point_filter_num: 2
+    max_iteration: 4
+    filter_size_surf: 0.5
+    filter_size_map: 0.5
+    cube_side_length: 400.0
+    runtime_pos_log_enable: false
+    map_file_path: ""
+
+    common:
+      lid_topic: /rslidar_points
+      imu_topic: /imu/data_raw
+      # Both topics are already stamped in the Jetson/PTP clock domain.
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
+
+    preprocess:
+      # 5 is the local RSHELIOS PointCloud2 handler.
+      lidar_type: 5
+      scan_line: 32
+      scan_rate: 10
+      timestamp_unit: 0
+      blind: 0.5
+
+    mapping:
+      # These are conservative startup values. Replace them with Allan-variance
+      # results from this exact IMU for best accuracy.
+      acc_cov: 0.1
+      gyr_cov: 0.1
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.0001
+      fov_degree: 360.0
+      det_range: 120.0
+
+      # The physical LiDAR-to-IMU transform has not been measured yet.
+      # FAST-LIO defines this as the LiDAR pose expressed in the IMU frame.
+      extrinsic_est_en: true
+      extrinsic_T: [0.0, 0.0, 0.0]
+      extrinsic_R: [1.0, 0.0, 0.0,
+                    0.0, 1.0, 0.0,
+                    0.0, 0.0, 1.0]
+
+    publish:
+      path_en: true
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
+
+    pcd_save:
+      pcd_save_en: false
+      interval: -1
