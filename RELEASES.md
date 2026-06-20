@@ -1,5 +1,50 @@
 # Releases
 
+## V1.2.0 - 2026-06-20
+
+This release adds a ROS 2 Foxy Point-LIO path for the RoboSense RS-Helios-32
+and expands the LiDAR/IMU calibration and diagnosis workflow. Point-LIO is
+compile-validated, but its extrinsics, time offset, and IMU noise parameters
+must still be calibrated and field-validated before its odometry is trusted.
+
+### Point-LIO And LIO Workflows
+
+- Added a local ROS 2 Foxy port of Point-LIO under
+  `track_robot_ws/src/third_party_ros/point_lio` using `ament_cmake`, `rclcpp`,
+  ROS 2 message aliases, and a `tf2_ros` broadcaster bridge.
+- Added direct RS-Helios-32 `PointCloud2` support using the recorded
+  `x/y/z/intensity/ring/timestamp` layout.
+- Added Point-LIO launch, calibrated and LiDAR-only configs, RViz setup, IMU
+  frame/time adapter, and optional RoboSense field adapter.
+- Added LIO bag analysis and coarse/fine IMU time-offset sweep utilities for
+  repeatable drift investigations.
+- Added focused documentation covering topics, launch commands, output topics,
+  calibration placeholders, build steps, and remaining field-validation risk.
+
+### FAST-LIO And IMU Updates
+
+- Updated FAST-LIO RoboSense preprocessing to read the native Helios-32 point
+  fields with ROS 2 `PointCloud2` iterators and preserve per-point timestamps.
+- Made FAST-LIO IMU initialization frame count configurable and expanded its
+  initialization diagnostics.
+- Added separate FAST-LIO mapping launch support and updated RS-Helios tuning
+  and operational documentation.
+- Added Phidget IMU attachment timeout, acceleration/gyro bias and scale
+  correction, acceleration deadband, static sampling, six-face calibration,
+  and static-data validation tools.
+
+### Validation Status
+
+- Point-LIO and `track_robot_perception` are intended to build together with:
+
+  ```bash
+  colcon build --symlink-install --packages-select point_lio track_robot_perception
+  ```
+
+- The Point-LIO port is compile-validated, not yet field-validated. Measure the
+  LiDAR-to-IMU transform and validate timing/noise settings on recorded and
+  live data before relying on mapping or odometry output.
+
 ## 2026-06-16 Local Workspace Sync
 
 This release updates the GitHub repository to match the current local

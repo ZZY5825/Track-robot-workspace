@@ -1,5 +1,14 @@
 # Track Robot Perception
 
+## Point-LIO RS-Helios Integration
+
+Point-LIO setup notes for the RoboSense Helios-32 and PhidgetSpatial IMU are in
+[`docs/point_lio_rshelios.md`](docs/point_lio_rshelios.md). The integration
+includes a local ROS 2 Foxy Point-LIO port, direct support for the RoboSense
+`timestamp` field, an optional field adapter, and launch/configuration files.
+The port is compile-validated but still requires calibrated LiDAR-IMU
+extrinsics, timing, and noise parameters before field use.
+
 ## Pretrained LiDAR Model Evaluation
 
 The offline-first pretrained LiDAR evaluation workflow is documented in

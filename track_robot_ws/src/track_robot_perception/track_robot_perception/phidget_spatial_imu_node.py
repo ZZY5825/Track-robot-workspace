@@ -172,6 +172,7 @@ class PhidgetSpatialImuNode(Node):
         self.declare_parameter("publish_magnetic_field", True)
         self.declare_parameter("zero_gyro_on_start", True)
         self.declare_parameter("gyro_zero_wait_sec", 2.0)
+        self.declare_parameter("attach_timeout_ms", 5000)
         self.declare_parameter("timestamp_mode", "device_affine")
         self.declare_parameter("calibrated_time_offset_sec", 0.0)
         self.declare_parameter("sync_window_sec", 60.0)
@@ -183,6 +184,11 @@ class PhidgetSpatialImuNode(Node):
             "acceleration_stddev",
             [0.002942, 0.002942, 0.004903],
         )
+        self.declare_parameter("linear_acceleration_bias_mps2", [0.0, 0.0, 0.0])
+        self.declare_parameter("linear_acceleration_scale", [1.0, 1.0, 1.0])
+        self.declare_parameter("linear_acceleration_deadband_mps2", 0.02)
+        self.declare_parameter("angular_velocity_bias_radps", [0.0, 0.0, 0.0])
+        self.declare_parameter("angular_velocity_scale", [1.0, 1.0, 1.0])
         self.declare_parameter("angular_velocity_stddev", [0.0, 0.0, 0.0])
         self.declare_parameter("magnetic_field_stddev", [0.0, 0.0, 0.0])
 
@@ -198,6 +204,7 @@ class PhidgetSpatialImuNode(Node):
         self.gyro_zero_wait_sec = max(
             0.0, float(self.get_parameter("gyro_zero_wait_sec").value)
         )
+        self.attach_timeout_ms = int(self.get_parameter("attach_timeout_ms").value)
         self.timestamp_mode = str(self.get_parameter("timestamp_mode").value)
         self.calibrated_time_offset_sec = float(
             self.get_parameter("calibrated_time_offset_sec").value
@@ -206,6 +213,22 @@ class PhidgetSpatialImuNode(Node):
         if self.timestamp_mode not in ("device_affine", "arrival"):
             raise ValueError("timestamp_mode must be 'device_affine' or 'arrival'")
 
+        self.linear_acceleration_bias_mps2 = self._three_float_parameter(
+            "linear_acceleration_bias_mps2"
+        )
+        self.linear_acceleration_scale = self._three_float_parameter(
+            "linear_acceleration_scale"
+        )
+        self.angular_velocity_bias_radps = self._three_float_parameter(
+            "angular_velocity_bias_radps"
+        )
+        self.angular_velocity_scale = self._three_float_parameter(
+            "angular_velocity_scale"
+        )
+        self.linear_acceleration_deadband_mps2 = max(
+            0.0,
+            float(self.get_parameter("linear_acceleration_deadband_mps2").value),
+        )
         self.acceleration_covariance = self._diagonal_covariance(
             self.get_parameter("acceleration_stddev").value
         )
@@ -271,17 +294,24 @@ class PhidgetSpatialImuNode(Node):
         self.spatial.setOnDetachHandler(self._on_detach)
         self.spatial.setOnErrorHandler(self._on_error)
 
+        self.get_logger().info(
+            f"Waiting for PhidgetSpatial serial {self.serial_number}"
+        )
         try:
-            self.spatial.open()
+            self.spatial.openWaitForAttachment(self.attach_timeout_ms)
+            self._configure_attached_imu()
         except Exception:
             self.spatial.close()
             raise
 
         self.flush_timer = self.create_timer(0.001, self._flush_batches)
         self.diagnostic_timer = self.create_timer(1.0, self._publish_diagnostics)
-        self.get_logger().info(
-            f"Waiting for PhidgetSpatial serial {self.serial_number}"
-        )
+
+    def _three_float_parameter(self, name: str) -> Tuple[float, float, float]:
+        values = self.get_parameter(name).value
+        if len(values) != 3:
+            raise ValueError(f"{name} must have 3 values")
+        return tuple(float(value) for value in values)
 
     @staticmethod
     def _diagonal_covariance(stddev_values: Sequence[float]) -> List[float]:
@@ -294,7 +324,19 @@ class PhidgetSpatialImuNode(Node):
                 covariance[index * 3 + index] = value * value
         return covariance
 
+    @staticmethod
+    def _apply_deadband(value: float, deadband: float) -> float:
+        if deadband > 0.0 and abs(value) < deadband:
+            return 0.0
+        return value
+
     def _on_attach(self, _device: Spatial) -> None:
+        self._configure_attached_imu()
+
+    def _configure_attached_imu(self) -> None:
+        if self.attached:
+            return
+
         try:
             minimum_interval = int(self.spatial.getMinDataInterval())
             maximum_interval = int(self.spatial.getMaxDataInterval())
@@ -441,24 +483,31 @@ class PhidgetSpatialImuNode(Node):
         imu_message.header.stamp = stamp
         imu_message.header.frame_id = self.frame_id
         imu_message.orientation_covariance[0] = -1.0
-        imu_message.linear_acceleration.x = (
-            sample.acceleration_g[0] * G_TO_METRES_PER_SECOND_SQUARED
+        acceleration_mps2 = tuple(
+            self._apply_deadband(
+                (
+                    value * G_TO_METRES_PER_SECOND_SQUARED
+                    - self.linear_acceleration_bias_mps2[index]
+                )
+                * self.linear_acceleration_scale[index],
+                self.linear_acceleration_deadband_mps2,
+            )
+            for index, value in enumerate(sample.acceleration_g)
         )
-        imu_message.linear_acceleration.y = (
-            sample.acceleration_g[1] * G_TO_METRES_PER_SECOND_SQUARED
+        imu_message.linear_acceleration.x = acceleration_mps2[0]
+        imu_message.linear_acceleration.y = acceleration_mps2[1]
+        imu_message.linear_acceleration.z = acceleration_mps2[2]
+        angular_velocity_radps = tuple(
+            (
+                value * DEGREES_TO_RADIANS
+                - self.angular_velocity_bias_radps[index]
+            )
+            * self.angular_velocity_scale[index]
+            for index, value in enumerate(sample.angular_rate_deg_s)
         )
-        imu_message.linear_acceleration.z = (
-            sample.acceleration_g[2] * G_TO_METRES_PER_SECOND_SQUARED
-        )
-        imu_message.angular_velocity.x = (
-            sample.angular_rate_deg_s[0] * DEGREES_TO_RADIANS
-        )
-        imu_message.angular_velocity.y = (
-            sample.angular_rate_deg_s[1] * DEGREES_TO_RADIANS
-        )
-        imu_message.angular_velocity.z = (
-            sample.angular_rate_deg_s[2] * DEGREES_TO_RADIANS
-        )
+        imu_message.angular_velocity.x = angular_velocity_radps[0]
+        imu_message.angular_velocity.y = angular_velocity_radps[1]
+        imu_message.angular_velocity.z = angular_velocity_radps[2]
         imu_message.linear_acceleration_covariance = (
             self.acceleration_covariance
         )
@@ -564,6 +613,26 @@ class PhidgetSpatialImuNode(Node):
             KeyValue(
                 key="calibrated_time_offset_sec",
                 value=f"{self.calibrated_time_offset_sec:.9f}",
+            ),
+            KeyValue(
+                key="linear_acceleration_deadband_mps2",
+                value=f"{self.linear_acceleration_deadband_mps2:.6f}",
+            ),
+            KeyValue(
+                key="linear_acceleration_bias_mps2",
+                value="%.6f,%.6f,%.6f" % self.linear_acceleration_bias_mps2,
+            ),
+            KeyValue(
+                key="linear_acceleration_scale",
+                value="%.6f,%.6f,%.6f" % self.linear_acceleration_scale,
+            ),
+            KeyValue(
+                key="angular_velocity_bias_radps",
+                value="%.6f,%.6f,%.6f" % self.angular_velocity_bias_radps,
+            ),
+            KeyValue(
+                key="angular_velocity_scale",
+                value="%.6f,%.6f,%.6f" % self.angular_velocity_scale,
             ),
         ]
 

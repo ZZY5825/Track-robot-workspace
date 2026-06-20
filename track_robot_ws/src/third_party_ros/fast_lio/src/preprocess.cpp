@@ -487,14 +487,18 @@ void Preprocess::robosense_handler(const sensor_msgs::msg::PointCloud2::UniquePt
   pl_corn.clear();
   pl_full.clear();
 
-  pcl::PointCloud<robosense_ros::Point> pl_orig;
-  pcl::fromROSMsg(*msg, pl_orig);
-  const int plsize = pl_orig.points.size();
+  const int plsize = msg->height * msg->width;
   if (plsize == 0)
     return;
 
   pl_surf.reserve(plsize);
   const double cloud_stamp = rclcpp::Time(msg->header.stamp).seconds();
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(*msg, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(*msg, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(*msg, "z");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_intensity(*msg, "intensity");
+  sensor_msgs::PointCloud2ConstIterator<uint16_t> iter_ring(*msg, "ring");
+  sensor_msgs::PointCloud2ConstIterator<double> iter_timestamp(*msg, "timestamp");
 
   if (feature_enabled)
   {
@@ -506,27 +510,43 @@ void Preprocess::robosense_handler(const sensor_msgs::msg::PointCloud2::UniquePt
 
     for (int i = 0; i < plsize; i++)
     {
-      const int layer = pl_orig.points[i].ring;
+      const int layer = *iter_ring;
       if (layer < 0 || layer >= N_SCANS)
+      {
+        ++iter_x;
+        ++iter_y;
+        ++iter_z;
+        ++iter_intensity;
+        ++iter_ring;
+        ++iter_timestamp;
         continue;
+      }
 
       PointType added_pt;
       added_pt.normal_x = 0;
       added_pt.normal_y = 0;
       added_pt.normal_z = 0;
-      added_pt.x = pl_orig.points[i].x;
-      added_pt.y = pl_orig.points[i].y;
-      added_pt.z = pl_orig.points[i].z;
-      added_pt.intensity = pl_orig.points[i].intensity;
+      added_pt.x = *iter_x;
+      added_pt.y = *iter_y;
+      added_pt.z = *iter_z;
+      added_pt.intensity = *iter_intensity;
       added_pt.curvature =
-          (pl_orig.points[i].timestamp - cloud_stamp) * 1000.0;  // milliseconds from scan start
+          (*iter_timestamp - cloud_stamp) * 1000.0;  // milliseconds from scan start
 
-      if (!std::isfinite(added_pt.curvature) || added_pt.curvature < -1.0)
-        continue;
-      if (added_pt.curvature < 0.0)
-        added_pt.curvature = 0.0;
+      if (std::isfinite(added_pt.curvature) && added_pt.curvature >= -1.0)
+      {
+        if (added_pt.curvature < 0.0)
+          added_pt.curvature = 0.0;
 
-      pl_buff[layer].points.push_back(added_pt);
+        pl_buff[layer].points.push_back(added_pt);
+      }
+
+      ++iter_x;
+      ++iter_y;
+      ++iter_z;
+      ++iter_intensity;
+      ++iter_ring;
+      ++iter_timestamp;
     }
 
     for (int j = 0; j < N_SCANS; j++)
@@ -558,18 +578,26 @@ void Preprocess::robosense_handler(const sensor_msgs::msg::PointCloud2::UniquePt
     for (int i = 0; i < plsize; i++)
     {
       if (i % point_filter_num != 0)
+      {
+        ++iter_x;
+        ++iter_y;
+        ++iter_z;
+        ++iter_intensity;
+        ++iter_ring;
+        ++iter_timestamp;
         continue;
+      }
 
       PointType added_pt;
       added_pt.normal_x = 0;
       added_pt.normal_y = 0;
       added_pt.normal_z = 0;
-      added_pt.x = pl_orig.points[i].x;
-      added_pt.y = pl_orig.points[i].y;
-      added_pt.z = pl_orig.points[i].z;
-      added_pt.intensity = pl_orig.points[i].intensity;
+      added_pt.x = *iter_x;
+      added_pt.y = *iter_y;
+      added_pt.z = *iter_z;
+      added_pt.intensity = *iter_intensity;
       added_pt.curvature =
-          (pl_orig.points[i].timestamp - cloud_stamp) * 1000.0;  // milliseconds from scan start
+          (*iter_timestamp - cloud_stamp) * 1000.0;  // milliseconds from scan start
 
       const double range_sq =
           added_pt.x * added_pt.x + added_pt.y * added_pt.y + added_pt.z * added_pt.z;
@@ -580,6 +608,13 @@ void Preprocess::robosense_handler(const sensor_msgs::msg::PointCloud2::UniquePt
           added_pt.curvature = 0.0;
         pl_surf.points.push_back(added_pt);
       }
+
+      ++iter_x;
+      ++iter_y;
+      ++iter_z;
+      ++iter_intensity;
+      ++iter_ring;
+      ++iter_timestamp;
     }
   }
 }

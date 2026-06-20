@@ -14,6 +14,7 @@ phidget_spatial_imu:
     # The robot must remain stationary while zeroGyro runs during startup.
     zero_gyro_on_start: true
     gyro_zero_wait_sec: 2.0
+    attach_timeout_ms: 5000
 
     # device_affine maps the IMU's free-running timestamp onto Jetson
     # CLOCK_REALTIME. CLOCK_REALTIME must already be disciplined by phc2sys.
@@ -28,5 +29,15 @@ phidget_spatial_imu:
     # Board-level typical accelerometer noise from the 1056 specification.
     # Gyroscope and magnetometer noise are undocumented, so zero means unknown.
     acceleration_stddev: [0.002942, 0.002942, 0.004903]
+    # Sensor calibration terms. Bias is subtracted, then scale is applied.
+    # These do not remove gravity; FAST-LIO needs gravity in the raw IMU input.
+    linear_acceleration_bias_mps2: [0.0, 0.0, 0.0]
+    linear_acceleration_scale: [1.0, 1.0, 1.0]
+    # Per-axis deadband applied after converting accelerometer readings to m/s^2.
+    # This only suppresses tiny near-zero jitter; it intentionally does not
+    # remove gravity from the raw IMU message.
+    linear_acceleration_deadband_mps2: 0.02
+    angular_velocity_bias_radps: [0.0, 0.0, 0.0]
+    angular_velocity_scale: [1.0, 1.0, 1.0]
     angular_velocity_stddev: [0.0, 0.0, 0.0]
     magnetic_field_stddev: [0.0, 0.0, 0.0]

@@ -9,6 +9,10 @@ lidar:
       msop_port: 6699
       difop_port: 7788
       imu_port: 0
+      # Match the Jetson LiDAR NIC configured by the launch file. If the
+      # LiDAR target IP is changed, update host_ip in the launch command too.
+      host_address: 192.168.1.102
+      group_address: 0.0.0.0
       socket_recv_buf: 1064960
       user_layer_bytes: 0
       tail_layer_bytes: 0

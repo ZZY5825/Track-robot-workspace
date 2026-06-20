@@ -12,24 +12,34 @@ setup(
         ('share/' + package_name + '/docs', [
             'docs/fast_lio_rshelios.md',
             'docs/phidget_imu_time_sync.md',
+            'docs/point_lio_rshelios.md',
+            'docs/point_lio_ros2_port_assessment.md',
             'docs/pretrained_lidar_feasibility.md',
         ]),
         ('share/' + package_name + '/config', [
             'config/fast_lio_rshelios.yaml',
+            'config/imu_lio_adapter.yaml',
             'config/phidget_imu.yaml',
+            'config/point_lio_rshelios_lidar_only.yaml',
+            'config/point_lio_rshelios.yaml',
         ]),
         ('share/' + package_name + '/launch', [
             'launch/fast_lio_rshelios.launch.py',
+            'launch/fast_lio_rshelios_mapping.launch.py',
             'launch/lidar_camera_colorizer.launch.py',
             'launch/lidar_cluster_baseline.launch.py',
             'launch/lidar_ground_segment.launch.py',
             'launch/lidar_human_segment.launch.py',
             'launch/lidar_mask_projector.launch.py',
             'launch/phidget_imu.launch.py',
+            'launch/point_lio_rshelios.launch.py',
             'launch/zed_dinov3_feature.launch.py',
             'launch/zed_mask_rcnn.launch.py',
             'launch/zed_pose_rcnn.launch.py',
             'launch/zed_rfdetr_small.launch.py',
+        ]),
+        ('share/' + package_name + '/rviz', [
+            'rviz/point_lio.rviz',
         ]),
         ('share/' + package_name + '/scripts', [
             'scripts/prepare_lidar_for_pretrained_model.py',
@@ -58,8 +68,20 @@ setup(
             'track_robot_perception.export_lidar_frames_node:main',
             'lidar_mask_projector_node = '
             'track_robot_perception.lidar_mask_projector_node:main',
+            'imu_collect_static_sample = '
+            'track_robot_perception.imu_collect_static_sample:main',
+            'imu_six_face_calibrate = '
+            'track_robot_perception.imu_six_face_calibrate:main',
             'phidget_spatial_imu_node = '
             'track_robot_perception.phidget_spatial_imu_node:main',
+            'imu_lio_adapter_node = '
+            'track_robot_perception.imu_lio_adapter_node:main',
+            'analyze_lio_bag.py = track_robot_perception.analyze_lio_bag:main',
+            'point_lio_offset_sweep.py = '
+            'track_robot_perception.point_lio_offset_sweep:main',
+            'rslidar_point_lio_adapter_node = '
+            'track_robot_perception.rslidar_point_lio_adapter_node:main',
+            'imu_static_check = track_robot_perception.imu_static_check:main',
             'zed_mask_rcnn_node = track_robot_perception.zed_mask_rcnn_node:main',
             'zed_dinov3_feature_node = '
             'track_robot_perception.zed_dinov3_feature_node:main',

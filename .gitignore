@@ -9,6 +9,7 @@ track_robot_ws/models/*.pth
 
 __pycache__/
 *.py[cod]
+**/.vscode/
 *.bag
 *.db3
 *.mcap

@@ -18,6 +18,18 @@ The IMU node publishes:
 - `/imu/mag` (`sensor_msgs/msg/MagneticField`), tesla
 - `/imu/time_sync_status` (`diagnostic_msgs/msg/DiagnosticArray`)
 
+For LiDAR-inertial odometry, `imu_lio_adapter_node` republishes:
+
+- `/imu/data_lio` (`sensor_msgs/msg/Imu`), rotated into the LiDAR/body frame
+
+The adapter applies:
+
+```text
+corrected IMU stamp = raw IMU stamp - time_offset_sec
+```
+
+Point-LIO subscribes to `/imu/data_lio` by default.
+
 Start it with:
 
 ```bash

@@ -32,6 +32,9 @@
       gyr_cov: 0.1
       b_acc_cov: 0.0001
       b_gyr_cov: 0.0001
+      # Keep the full LiDAR+IMU rig completely still during this startup
+      # window. At ~18-20 Hz LiDAR, 100 frames is about 5 seconds.
+      imu_init_frame_count: 100
       fov_degree: 360.0
       det_range: 120.0
 

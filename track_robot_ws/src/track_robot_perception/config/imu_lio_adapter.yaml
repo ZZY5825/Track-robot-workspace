@@ -1,0 +1,11 @@
+imu_lio_adapter:
+  ros__parameters:
+    input_topic: /imu/data_raw
+    output_topic: /imu/data_lio
+    output_frame_id: rslidar
+    # Convention: output stamp = input stamp - time_offset_sec.
+    time_offset_sec: 0.0
+    # Row-major rotation from raw IMU frame into the LiDAR/body frame.
+    rotation_matrix: [1.0, 0.0, 0.0,
+                      0.0, 1.0, 0.0,
+                      0.0, 0.0, 1.0]
