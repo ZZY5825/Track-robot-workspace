@@ -5,7 +5,19 @@ imu_lio_adapter:
     output_frame_id: rslidar
     # Convention: output stamp = input stamp - time_offset_sec.
     time_offset_sec: 0.0
-    # Row-major rotation from raw IMU frame into the LiDAR/body frame.
-    rotation_matrix: [1.0, 0.0, 0.0,
-                      0.0, 1.0, 0.0,
+    # Plan A convention: vector_in_lidar = rotation_matrix * vector_in_raw_imu.
+    # This is R_lidar_imu, row-major. It must be a proper rotation with
+    # determinant +1. The naive observed X/Y swap [0,1,0; 1,0,0; 0,0,1]
+    # has determinant -1, so it is an invalid left-handed reflection.
+    #
+    # Right-hand-rule correction from the manual axis test:
+    #   IMU +X -> LiDAR +Y
+    #   IMU +Y -> LiDAR -X
+    #   IMU +Z -> LiDAR +Z
+    # Therefore:
+    #   lidar_x = -imu_y
+    #   lidar_y =  imu_x
+    #   lidar_z =  imu_z
+    rotation_matrix: [0.0, -1.0, 0.0,
+                      1.0, 0.0, 0.0,
                       0.0, 0.0, 1.0]

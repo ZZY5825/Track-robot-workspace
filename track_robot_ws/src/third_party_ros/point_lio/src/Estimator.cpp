@@ -19,9 +19,22 @@ esekfom::esekf<state_output, 30, input_ikfom> kf_output;
 input_ikfom input_in;
 V3D angvel_avr, acc_avr, acc_avr_norm;
 int feats_down_size = 0;  
+int lidar_debug_effect_num = 0;
+double lidar_debug_residual_mean = 0.0;
+double lidar_debug_residual_max = 0.0;
+double lidar_debug_nn_max_dist_mean = 0.0;
+double lidar_debug_nn_max_dist_max = 0.0;
 V3D Lidar_T_wrt_IMU(Zero3d);
 M3D Lidar_R_wrt_IMU(Eye3d);
 double G_m_s2 = 9.81;
+
+double point_distance_sq(const PointType &a, const PointType &b)
+{
+	const double dx = double(a.x) - double(b.x);
+	const double dy = double(a.y) - double(b.y);
+	const double dz = double(a.z) - double(b.z);
+	return dx * dx + dy * dy + dz * dz;
+}
 
 Eigen::Matrix<double, 24, 24> process_noise_cov_input()
 {
@@ -222,6 +235,11 @@ void h_model_output(state_output &s, Eigen::Matrix3d cov_p, Eigen::Matrix3d cov_
 	pabcd.setZero();
 	normvec->resize(time_seq[k]);
 	int effect_num_k = 0;
+	double residual_sum = 0.0;
+	double residual_max = 0.0;
+	double nn_max_dist_sum = 0.0;
+	double nn_max_dist_max = 0.0;
+	int nn_stat_count = 0;
 	for (int j = 0; j < time_seq[k]; j++)
 	{
 		PointType &point_body_j  = feats_down_body->points[idx+j+1];
@@ -235,6 +253,19 @@ void h_model_output(state_output &s, Eigen::Matrix3d cov_p, Eigen::Matrix3d cov_
 			auto &points_near = Nearest_Points[idx+j+1];
 			
             ivox_->GetClosestPoint(point_world_j, points_near, NUM_MATCH_POINTS); // 
+			double nn_max_dist = 0.0;
+			for (const auto &near_point : points_near)
+			{
+				nn_max_dist = std::max(
+					nn_max_dist,
+					std::sqrt(point_distance_sq(point_world_j, near_point)));
+			}
+			if (!points_near.empty())
+			{
+				nn_max_dist_sum += nn_max_dist;
+				nn_max_dist_max = std::max(nn_max_dist_max, nn_max_dist);
+				nn_stat_count++;
+			}
 			
 			if ((points_near.size() < NUM_MATCH_POINTS)) // || pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5)
 			{
@@ -273,11 +304,20 @@ void h_model_output(state_output &s, Eigen::Matrix3d cov_p, Eigen::Matrix3d cov_
 						normvec->points[j].z = pabcd(2);
 						normvec->points[j].intensity = pabcd(3);
 						effect_num_k ++;
+						residual_sum += pd2;
+						residual_max = std::max(residual_max, double(pd2));
 					}
 				}  
 			}
 		}
 	}
+	lidar_debug_effect_num = effect_num_k;
+	lidar_debug_residual_mean =
+		effect_num_k > 0 ? residual_sum / double(effect_num_k) : 0.0;
+	lidar_debug_residual_max = residual_max;
+	lidar_debug_nn_max_dist_mean =
+		nn_stat_count > 0 ? nn_max_dist_sum / double(nn_stat_count) : 0.0;
+	lidar_debug_nn_max_dist_max = nn_max_dist_max;
 	if (effect_num_k == 0) 
 	{
 		ekfom_data.valid = false;

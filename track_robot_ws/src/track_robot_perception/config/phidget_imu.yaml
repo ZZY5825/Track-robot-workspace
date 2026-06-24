@@ -14,7 +14,16 @@ phidget_spatial_imu:
     # The robot must remain stationary while zeroGyro runs during startup.
     zero_gyro_on_start: true
     gyro_zero_wait_sec: 2.0
-    attach_timeout_ms: 5000
+    # Keep the Phidget channel alive across USB detach/autosuspend events.
+    reconnect_period_sec: 2.0
+    detached_reopen_sec: 5.0
+    sample_timeout_sec: 3.0
+    # The 1056 can remain enumerated while its Phidget channel is unresponsive.
+    # usbreset performs the same recovery as unplugging/replugging the cable.
+    usb_reset_on_reconnect: true
+    usb_reset_device_id: "06c2:0033"
+    usb_reset_command: "/usr/bin/usbreset"
+    usb_reset_settle_sec: 1.0
 
     # device_affine maps the IMU's free-running timestamp onto Jetson
     # CLOCK_REALTIME. CLOCK_REALTIME must already be disciplined by phc2sys.

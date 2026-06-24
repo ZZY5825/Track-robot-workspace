@@ -36,8 +36,12 @@
 
     mapping:
       imu_en: true
-      # IMU is mounted directly above the Helios-32, so keep LiDAR-IMU
-      # extrinsic fixed as an identity transform for the first deployment.
+      # Diagnostic-only: writes Log/lio_update_debug.csv. It does not alter
+      # EKF state, reject updates, or change odometry.
+      lio_update_debug_log_en: true
+      # Plan A: /imu/data_lio has already been rotated into the rslidar frame
+      # by imu_lio_adapter.yaml. Keep Point-LIO's LiDAR-IMU rotation fixed as
+      # identity here to avoid double-rotating IMU data.
       extrinsic_est_en: false
       imu_time_inte: 0.004
       lidar_time_inte: 0.05
@@ -45,7 +49,9 @@
       # PhidgetSpatial placeholders. Tune with Allan variance/noise tests.
       satu_acc: 39.2
       satu_gyro: 34.9
-      acc_norm: 9.81
+      # Measured from the PhidgetSpatial while stationary in
+      # point_lio_pre_axis_test_20260623_133653.
+      acc_norm: 10.09
       lidar_meas_cov: 0.01
       acc_cov_output: 500.0
       gyr_cov_output: 1000.0
@@ -66,8 +72,9 @@
       gravity: [0.0, 0.0, -9.81]
       gravity_init: [0.0, 0.0, -9.81]
 
-      # Assumption for current hardware: LiDAR and IMU frames are colocated.
-      # Point-LIO defines this as the LiDAR pose expressed in the IMU body frame.
+      # Point-LIO defines this as the LiDAR pose expressed in the IMU/body frame.
+      # With Plan A, the IMU data is already expressed in rslidar, so use an
+      # identity rotation and near-zero translation for initial debugging.
       extrinsic_T: [0.0, 0.0, 0.0]
       extrinsic_R: [1.0, 0.0, 0.0,
                     0.0, 1.0, 0.0,

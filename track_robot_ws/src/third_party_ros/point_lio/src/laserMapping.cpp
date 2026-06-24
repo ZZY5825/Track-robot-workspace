@@ -12,6 +12,7 @@
 #include <tf/transform_broadcaster.h>
 #include "li_initialization.h"
 #include <malloc.h>
+#include <iomanip>
 // #include <cv_bridge/cv_bridge.h>
 // #include "matplotlibcpp.h"
 // #include <ros/console.h>
@@ -27,6 +28,7 @@ string root_dir = ROOT_DIR;
 int time_log_counter = 0; //, publish_count = 0;
 
 bool init_map = false, flg_first_scan = true;
+bool lio_odometry_published = false;
 
 // Time Log Variables
 double match_time = 0, solve_time = 0, propag_time = 0, update_time = 0;
@@ -52,6 +54,75 @@ void SigHandle(int sig)
     flg_exit = true;
     ROS_WARN("catch sig %d", sig);
     sig_buffer.notify_all();
+}
+
+void log_lidar_update_debug(
+    double scan_time,
+    double point_time,
+    bool update_ok,
+    const state_output &before,
+    const state_output &after)
+{
+    if (!lio_update_debug_log_en || !fout_lio_update)
+    {
+        return;
+    }
+
+    const V3D before_rpy = SO3ToEuler(before.rot) * 180.0 / M_PI;
+    const V3D after_rpy = SO3ToEuler(after.rot) * 180.0 / M_PI;
+    const V3D delta_rpy = after_rpy - before_rpy;
+
+    const double acc_norm_value = acc_avr.norm();
+    const double gyr_norm_value = angvel_avr.norm();
+    const double acc_roll_deg = std::atan2(acc_avr(1), acc_avr(2)) * 180.0 / M_PI;
+    const double acc_pitch_deg =
+        std::atan2(-acc_avr(0), std::sqrt(acc_avr(1) * acc_avr(1) + acc_avr(2) * acc_avr(2))) *
+        180.0 / M_PI;
+
+    const V3D dpos = after.pos - before.pos;
+    const V3D dvel = after.vel - before.vel;
+
+    fout_lio_update
+        << std::fixed << std::setprecision(6)
+        << Measures.lidar_beg_time - first_lidar_time << ","
+        << scan_time - first_lidar_time << ","
+        << point_time - first_lidar_time << ","
+        << (update_ok ? 1 : 0) << ","
+        << k << ","
+        << (k >= 0 && k < int(time_seq.size()) ? time_seq[k] : 0) << ","
+        << feats_down_size << ","
+        << lidar_debug_effect_num << ","
+        << lidar_debug_residual_mean << ","
+        << lidar_debug_residual_max << ","
+        << lidar_debug_nn_max_dist_mean << ","
+        << lidar_debug_nn_max_dist_max << ","
+        << acc_norm_value << ","
+        << gyr_norm_value << ","
+        << acc_roll_deg << ","
+        << acc_pitch_deg << ","
+        << before_rpy(0) << ","
+        << before_rpy(1) << ","
+        << before_rpy(2) << ","
+        << after_rpy(0) << ","
+        << after_rpy(1) << ","
+        << after_rpy(2) << ","
+        << delta_rpy(0) << ","
+        << delta_rpy(1) << ","
+        << delta_rpy(2) << ","
+        << before.pos(0) << ","
+        << before.pos(1) << ","
+        << before.pos(2) << ","
+        << after.pos(0) << ","
+        << after.pos(1) << ","
+        << after.pos(2) << ","
+        << dpos.norm() << ","
+        << before.vel.norm() << ","
+        << after.vel.norm() << ","
+        << dvel.norm() << ","
+        << after.vel(0) << ","
+        << after.vel(1) << ","
+        << after.vel(2)
+        << std::endl;
 }
 
 inline void dump_lio_state_to_log(FILE *fp)  
@@ -297,6 +368,22 @@ void publish_odometry(const ros::Publisher & pubOdomAftMapped)
     q.setZ(odomAftMapped.pose.pose.orientation.z);
     transform.setRotation( q );
     br.sendTransform( tf::StampedTransform( transform, odomAftMapped.header.stamp, "camera_init", "body") );
+    lio_odometry_published = true;
+}
+
+void publish_initial_body_tf(const ros::Time &stamp)
+{
+    static tf::TransformBroadcaster br;
+    tf::Transform transform;
+    tf::Quaternion q;
+    transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+    q.setX(0.0);
+    q.setY(0.0);
+    q.setZ(0.0);
+    q.setW(1.0);
+    transform.setRotation(q);
+    br.sendTransform(
+        tf::StampedTransform(transform, stamp, "camera_init", "body"));
 }
 
 void publish_path(const ros::Publisher pubPath)
@@ -397,10 +484,20 @@ int main(int argc, char** argv)
     signal(SIGINT, SigHandle);
     ros::Rate loop_rate(500);
     bool status = ros::ok();
+    double last_initial_tf_time = -1.0;
     while (status)
     {
         if (flg_exit) break;
         ros::spinOnce();
+        if (!lio_odometry_published)
+        {
+            const double now_sec = ros::node()->now().seconds();
+            if (last_initial_tf_time < 0.0 || now_sec - last_initial_tf_time >= 0.1)
+            {
+                publish_initial_body_tf(ros::Time().fromSec(now_sec));
+                last_initial_tf_time = now_sec;
+            }
+        }
         if(sync_packages(Measures)) 
         {
             if (flg_reset)
@@ -410,18 +507,20 @@ int main(int argc, char** argv)
                 feats_undistort.reset(new PointCloudXYZI());
                 if (use_imu_as_input)
                 {
-                    // state_in = kf_input.get_x();
                     state_in = state_input();
+                    kf_input.change_x(state_in);
                     kf_input.change_P(P_init);
                 }
                 else
                 {
-                    // state_out = kf_output.get_x();
                     state_out = state_output();
+                    kf_output.change_x(state_out);
                     kf_output.change_P(P_init_output);
                 }
                 flg_first_scan = true;
                 is_first_frame = true;
+                lio_odometry_published = false;
+                path.poses.clear();
                 flg_reset = false;
                 init_map = false;
                 
@@ -516,6 +615,10 @@ int main(int argc, char** argv)
                     p_imu->Set_init(tmp_gravity, rot_init);
                     kf_input.x_.rot = rot_init;
                     kf_output.x_.rot = rot_init;
+                    kf_input.x_.bg = p_imu->MeanGyr();
+                    kf_output.x_.bg = p_imu->MeanGyr();
+                    ROS_INFO("Initialized gyro bias from stationary IMU mean: %.6f %.6f %.6f",
+                             p_imu->MeanGyr()(0), p_imu->MeanGyr()(1), p_imu->MeanGyr()(2));
                     // kf_input.x_.rot; //.normalize();
                     // kf_output.x_.rot; //.normalize();
                     kf_output.x_.acc = - rot_init.transpose() * kf_output.x_.gravity;
@@ -704,7 +807,15 @@ int main(int argc, char** argv)
                         idx += time_seq[k];
                         continue;
                     }
-                    if (!kf_output.update_iterated_dyn_share_modified()) 
+                    const state_output state_before_lidar_update = kf_output.x_;
+                    const bool lidar_update_ok = kf_output.update_iterated_dyn_share_modified();
+                    log_lidar_update_debug(
+                        Measures.lidar_beg_time,
+                        time_current,
+                        lidar_update_ok,
+                        state_before_lidar_update,
+                        kf_output.x_);
+                    if (!lidar_update_ok)
                     {
                         idx = idx+time_seq[k];
                         continue;
@@ -1073,5 +1184,9 @@ int main(int argc, char** argv)
     }
     fout_out.close();
     fout_imu_pbp.close();
+    if (fout_lio_update)
+    {
+        fout_lio_update.close();
+    }
     return 0;
 }

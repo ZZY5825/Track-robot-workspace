@@ -1,0 +1,19 @@
+imu_lio_debug:
+  ros__parameters:
+    raw_imu_topic: /imu/data_raw
+    lio_imu_topic: /imu/data_lio
+    odom_topic: /aft_mapped_to_init
+    output_prefix: /imu_lio_debug
+
+    status_period_sec: 1.0
+    stationary_window_sec: 1.0
+    stationary_gyro_threshold_radps: 0.06
+    stationary_accel_std_threshold_mps2: 0.20
+    runaway_speed_threshold_mps: 0.20
+    runaway_hold_sec: 1.0
+    message_timeout_sec: 1.0
+    velocity_filter_alpha: 0.25
+
+    calibrate_on_start: false
+    calibration_duration_sec: 10.0
+    calibration_output_path: /tmp/imu_lio_stationary_calibration.json

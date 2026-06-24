@@ -38,6 +38,7 @@ class ImuProcess
   void set_gyr_cov(const V3D &scaler);
   void set_acc_cov(const V3D &scaler);
   void Set_init(Eigen::Vector3d &tmp_gravity, Eigen::Matrix3d &rot);
+  const V3D &MeanGyr() const { return mean_gyr; }
 
   MD(12, 12) state_cov = MD(12, 12)::Identity();
   int    lidar_type;

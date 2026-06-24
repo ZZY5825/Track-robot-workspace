@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name + '/docs', [
             'docs/fast_lio_rshelios.md',
             'docs/phidget_imu_time_sync.md',
+            'docs/imu_lio_debug.md',
             'docs/point_lio_rshelios.md',
             'docs/point_lio_ros2_port_assessment.md',
             'docs/pretrained_lidar_feasibility.md',
@@ -19,6 +20,7 @@ setup(
         ('share/' + package_name + '/config', [
             'config/fast_lio_rshelios.yaml',
             'config/imu_lio_adapter.yaml',
+            'config/imu_lio_debug.yaml',
             'config/phidget_imu.yaml',
             'config/point_lio_rshelios_lidar_only.yaml',
             'config/point_lio_rshelios.yaml',
@@ -32,6 +34,7 @@ setup(
             'launch/lidar_human_segment.launch.py',
             'launch/lidar_mask_projector.launch.py',
             'launch/phidget_imu.launch.py',
+            'launch/imu_lio_debug.launch.py',
             'launch/point_lio_rshelios.launch.py',
             'launch/zed_dinov3_feature.launch.py',
             'launch/zed_mask_rcnn.launch.py',
@@ -76,6 +79,8 @@ setup(
             'track_robot_perception.phidget_spatial_imu_node:main',
             'imu_lio_adapter_node = '
             'track_robot_perception.imu_lio_adapter_node:main',
+            'imu_lio_debug_node = '
+            'track_robot_perception.imu_lio_debug_node:main',
             'analyze_lio_bag.py = track_robot_perception.analyze_lio_bag:main',
             'point_lio_offset_sweep.py = '
             'track_robot_perception.point_lio_offset_sweep:main',

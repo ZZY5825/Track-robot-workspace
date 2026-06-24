@@ -18,6 +18,13 @@ The IMU node publishes:
 - `/imu/mag` (`sensor_msgs/msg/MagneticField`), tesla
 - `/imu/time_sync_status` (`diagnostic_msgs/msg/DiagnosticArray`)
 
+The Phidget channel is opened asynchronously and remains available for later
+attach/detach events. If serial `166154` remains enumerated but does not attach,
+the watchdog closes the channel, runs `usbreset 06c2:0033`, and reopens it. The
+default recovery starts after five seconds without attachment; unplugging the
+USB cable should no longer be necessary. The diagnostic message includes
+`attached`, `channel_open`, `reconnect_count`, and `usb_reset_count`.
+
 For LiDAR-inertial odometry, `imu_lio_adapter_node` republishes:
 
 - `/imu/data_lio` (`sensor_msgs/msg/Imu`), rotated into the LiDAR/body frame

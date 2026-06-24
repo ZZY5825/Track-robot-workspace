@@ -2,6 +2,7 @@
 
 import math
 import statistics
+import subprocess
 import threading
 import time
 from collections import deque
@@ -11,7 +12,12 @@ from typing import Deque, List, Optional, Sequence, Tuple
 import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+)
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, MagneticField
 
@@ -172,7 +178,13 @@ class PhidgetSpatialImuNode(Node):
         self.declare_parameter("publish_magnetic_field", True)
         self.declare_parameter("zero_gyro_on_start", True)
         self.declare_parameter("gyro_zero_wait_sec", 2.0)
-        self.declare_parameter("attach_timeout_ms", 5000)
+        self.declare_parameter("reconnect_period_sec", 2.0)
+        self.declare_parameter("detached_reopen_sec", 5.0)
+        self.declare_parameter("sample_timeout_sec", 3.0)
+        self.declare_parameter("usb_reset_on_reconnect", False)
+        self.declare_parameter("usb_reset_device_id", "06c2:0033")
+        self.declare_parameter("usb_reset_command", "/usr/bin/usbreset")
+        self.declare_parameter("usb_reset_settle_sec", 1.0)
         self.declare_parameter("timestamp_mode", "device_affine")
         self.declare_parameter("calibrated_time_offset_sec", 0.0)
         self.declare_parameter("sync_window_sec", 60.0)
@@ -204,7 +216,28 @@ class PhidgetSpatialImuNode(Node):
         self.gyro_zero_wait_sec = max(
             0.0, float(self.get_parameter("gyro_zero_wait_sec").value)
         )
-        self.attach_timeout_ms = int(self.get_parameter("attach_timeout_ms").value)
+        self.reconnect_period_sec = max(
+            0.25, float(self.get_parameter("reconnect_period_sec").value)
+        )
+        self.detached_reopen_sec = max(
+            self.reconnect_period_sec,
+            float(self.get_parameter("detached_reopen_sec").value),
+        )
+        self.sample_timeout_sec = max(
+            0.25, float(self.get_parameter("sample_timeout_sec").value)
+        )
+        self.usb_reset_on_reconnect = bool(
+            self.get_parameter("usb_reset_on_reconnect").value
+        )
+        self.usb_reset_device_id = str(
+            self.get_parameter("usb_reset_device_id").value
+        )
+        self.usb_reset_command = str(
+            self.get_parameter("usb_reset_command").value
+        )
+        self.usb_reset_settle_sec = max(
+            0.0, float(self.get_parameter("usb_reset_settle_sec").value)
+        )
         self.timestamp_mode = str(self.get_parameter("timestamp_mode").value)
         self.calibrated_time_offset_sec = float(
             self.get_parameter("calibrated_time_offset_sec").value
@@ -256,15 +289,21 @@ class PhidgetSpatialImuNode(Node):
         )
         self.clock_lock = threading.Lock()
 
+        sensor_output_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=100,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.VOLATILE,
+        )
         self.imu_publisher = self.create_publisher(
             Imu,
             str(self.get_parameter("imu_topic").value),
-            qos_profile_sensor_data,
+            sensor_output_qos,
         )
         self.magnetic_field_publisher = self.create_publisher(
             MagneticField,
             str(self.get_parameter("magnetic_field_topic").value),
-            qos_profile_sensor_data,
+            sensor_output_qos,
         )
         self.diagnostics_publisher = self.create_publisher(
             DiagnosticArray,
@@ -281,6 +320,12 @@ class PhidgetSpatialImuNode(Node):
         self.last_sample_monotonic_s: Optional[float] = None
         self.last_error = ""
         self.attached = False
+        self.channel_open = False
+        self.reconnect_count = 0
+        self.usb_reset_count = 0
+        self.last_open_monotonic_s = 0.0
+        self.last_attach_monotonic_s: Optional[float] = None
+        self.device_lock = threading.RLock()
         self.samples_since_diagnostic = 0
         self.last_diagnostic_monotonic_s = time.monotonic()
         self.measured_rate_hz = 0.0
@@ -294,18 +339,12 @@ class PhidgetSpatialImuNode(Node):
         self.spatial.setOnDetachHandler(self._on_detach)
         self.spatial.setOnErrorHandler(self._on_error)
 
-        self.get_logger().info(
-            f"Waiting for PhidgetSpatial serial {self.serial_number}"
-        )
-        try:
-            self.spatial.openWaitForAttachment(self.attach_timeout_ms)
-            self._configure_attached_imu()
-        except Exception:
-            self.spatial.close()
-            raise
-
         self.flush_timer = self.create_timer(0.001, self._flush_batches)
         self.diagnostic_timer = self.create_timer(1.0, self._publish_diagnostics)
+        self.reconnect_timer = self.create_timer(
+            self.reconnect_period_sec, self._check_connection
+        )
+        self._open_spatial()
 
     def _three_float_parameter(self, name: str) -> Tuple[float, float, float]:
         values = self.get_parameter(name).value
@@ -331,7 +370,104 @@ class PhidgetSpatialImuNode(Node):
         return value
 
     def _on_attach(self, _device: Spatial) -> None:
+        self.last_attach_monotonic_s = time.monotonic()
         self._configure_attached_imu()
+
+    def _open_spatial(self) -> None:
+        with self.device_lock:
+            if self.channel_open:
+                return
+            try:
+                self.spatial.open()
+                self.channel_open = True
+                self.last_open_monotonic_s = time.monotonic()
+                self.last_error = ""
+                self.get_logger().info(
+                    "Opened Phidget channel; waiting asynchronously for serial %d"
+                    % self.serial_number
+                )
+            except PhidgetException as exc:
+                self.channel_open = False
+                self.last_error = str(exc)
+                self.get_logger().warning(
+                    f"Failed to open Phidget channel; will retry: {exc}"
+                )
+
+    def _restart_spatial(self, reason: str) -> None:
+        with self.device_lock:
+            self.reconnect_count += 1
+            self.get_logger().warning(
+                f"Restarting Phidget channel ({reason}); attempt "
+                f"{self.reconnect_count}"
+            )
+            try:
+                self.spatial.close()
+            except PhidgetException as exc:
+                self.last_error = str(exc)
+            self.channel_open = False
+            self.attached = False
+            self.last_sample_monotonic_s = None
+            with self.clock_lock:
+                self.clock_mapper.reset()
+            with self.batch_lock:
+                self.current_batch.clear()
+                self.completed_batches.clear()
+        if self.usb_reset_on_reconnect:
+            self._reset_usb_device()
+        self._open_spatial()
+
+    def _reset_usb_device(self) -> None:
+        try:
+            result = subprocess.run(
+                [self.usb_reset_command, self.usb_reset_device_id],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5.0,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            self.last_error = f"USB reset failed: {exc}"
+            self.get_logger().error(self.last_error)
+            return
+
+        output = (result.stdout or result.stderr).strip()
+        if result.returncode != 0:
+            self.last_error = (
+                f"USB reset exited {result.returncode}: {output or 'no output'}"
+            )
+            self.get_logger().warning(self.last_error)
+            return
+
+        self.usb_reset_count += 1
+        self.get_logger().info(
+            f"USB reset succeeded for {self.usb_reset_device_id}: {output}"
+        )
+        if self.usb_reset_settle_sec > 0.0:
+            time.sleep(self.usb_reset_settle_sec)
+
+    def _check_connection(self) -> None:
+        now_monotonic_s = time.monotonic()
+        if not self.channel_open:
+            self._open_spatial()
+            return
+
+        if not self.attached:
+            if now_monotonic_s - self.last_open_monotonic_s >= self.detached_reopen_sec:
+                self._restart_spatial("device has not attached")
+            return
+
+        if now_monotonic_s <= (
+            self.publish_not_before_monotonic_s + self.sample_timeout_sec
+        ):
+            return
+        if self.last_sample_monotonic_s is None:
+            self._restart_spatial("attached device produced no samples")
+            return
+        sample_age = now_monotonic_s - self.last_sample_monotonic_s
+        if sample_age >= self.sample_timeout_sec:
+            self._restart_spatial(
+                f"no samples for {sample_age:.1f} seconds"
+            )
 
     def _configure_attached_imu(self) -> None:
         if self.attached:
@@ -381,6 +517,11 @@ class PhidgetSpatialImuNode(Node):
 
     def _on_detach(self, _device: Spatial) -> None:
         self.attached = False
+        self.last_attach_monotonic_s = None
+        self.last_sample_monotonic_s = None
+        self.get_logger().warning(
+            "PhidgetSpatial detached; channel remains open for reconnection"
+        )
         with self.clock_lock:
             self.clock_mapper.reset()
         with self.batch_lock:
@@ -610,6 +751,10 @@ class PhidgetSpatialImuNode(Node):
                 key="clock_reset_count",
                 value=str(clock_reset_count),
             ),
+            KeyValue(key="attached", value=str(self.attached)),
+            KeyValue(key="channel_open", value=str(self.channel_open)),
+            KeyValue(key="reconnect_count", value=str(self.reconnect_count)),
+            KeyValue(key="usb_reset_count", value=str(self.usb_reset_count)),
             KeyValue(
                 key="calibrated_time_offset_sec",
                 value=f"{self.calibrated_time_offset_sec:.9f}",
@@ -645,6 +790,7 @@ class PhidgetSpatialImuNode(Node):
         try:
             self.spatial.setOnSpatialDataHandler(None)
             self.spatial.close()
+            self.channel_open = False
         except (AttributeError, PhidgetException):
             pass
         return super().destroy_node()

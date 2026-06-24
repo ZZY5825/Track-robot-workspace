@@ -1,6 +1,7 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -15,37 +16,20 @@ def generate_launch_description():
     host_ip = LaunchConfiguration('host_ip')
     host_cidr = LaunchConfiguration('host_cidr')
 
-    network_setup = ExecuteProcess(
-        cmd=[
-            'bash',
-            '-lc',
-            [
-                'sudo -n ip link set ',
-                network_interface,
-                ' up && sudo -n ip addr replace ',
-                host_ip,
-                '/',
-                host_cidr,
-                ' dev ',
-                network_interface,
-            ],
-        ],
-        output='screen',
-        condition=IfCondition(configure_network),
-    )
-
-    rslidar_node = Node(
-        namespace='rslidar_sdk',
-        package='rslidar_sdk',
-        executable='rslidar_sdk_node',
-        output='screen',
-        parameters=[{'config_path': rslidar_config_file}],
+    rslidar_bringup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(PathJoinSubstitution([
+            FindPackageShare('track_robot_bringup'),
+            'launch',
+            'rslidar_with_tf.launch.py',
+        ])),
+        launch_arguments={
+            'configure_network': configure_network,
+            'network_interface': network_interface,
+            'host_ip': host_ip,
+            'host_cidr': host_cidr,
+            'config_path': rslidar_config_file,
+        }.items(),
         condition=IfCondition(LaunchConfiguration('start_lidar')),
-    )
-
-    delayed_lidar_start = TimerAction(
-        period=1.0,
-        actions=[rslidar_node],
     )
 
     imu_node = Node(
@@ -102,6 +86,23 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('start_point_lio')),
     )
 
+    body_to_base_link_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='point_lio_body_to_base_link_tf',
+        arguments=[
+            LaunchConfiguration('body_to_base_x'),
+            LaunchConfiguration('body_to_base_y'),
+            LaunchConfiguration('body_to_base_z'),
+            '0.0',
+            '0.0',
+            '0.0',
+            LaunchConfiguration('point_lio_body_frame'),
+            LaunchConfiguration('base_frame'),
+        ],
+        condition=IfCondition(LaunchConfiguration('publish_body_to_base_link_tf')),
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             'config_file',
@@ -126,7 +127,16 @@ def generate_launch_description():
         DeclareLaunchArgument('start_point_lio', default_value='true'),
         DeclareLaunchArgument('start_imu', default_value='false'),
         DeclareLaunchArgument('start_lidar', default_value='false'),
-        DeclareLaunchArgument('configure_network', default_value='false'),
+        DeclareLaunchArgument('publish_body_to_base_link_tf', default_value='true'),
+        DeclareLaunchArgument('point_lio_body_frame', default_value='body'),
+        DeclareLaunchArgument('base_frame', default_value='base_link'),
+        # Point-LIO's body frame is the LiDAR/IMU body. The bringup static TF
+        # places rslidar 0.7 m above base_link, so this inverse bridge connects
+        # camera_init -> body -> base_link -> rslidar for RViz.
+        DeclareLaunchArgument('body_to_base_x', default_value='0.0'),
+        DeclareLaunchArgument('body_to_base_y', default_value='0.0'),
+        DeclareLaunchArgument('body_to_base_z', default_value='-0.7'),
+        DeclareLaunchArgument('configure_network', default_value='true'),
         DeclareLaunchArgument('network_interface', default_value='eth0'),
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
         DeclareLaunchArgument('host_cidr', default_value='24'),
@@ -147,10 +157,10 @@ def generate_launch_description():
             ]),
         ),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
-        network_setup,
-        delayed_lidar_start,
+        rslidar_bringup,
         imu_node,
         adapter_node,
         imu_lio_adapter_node,
         point_lio_node,
+        body_to_base_link_tf,
     ])

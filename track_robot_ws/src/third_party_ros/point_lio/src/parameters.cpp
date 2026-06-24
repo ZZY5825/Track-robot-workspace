@@ -29,6 +29,7 @@ double imu_meas_acc_cov, imu_meas_omg_cov;
 int    lidar_type, pcd_save_interval;
 std::vector<double> gravity_init, gravity;
 bool   runtime_pos_log, pcd_save_en, path_en, extrinsic_est_en = true;
+bool   lio_update_debug_log_en = false;
 bool   scan_pub_en, scan_body_pub_en;
 shared_ptr<Preprocess> p_pre;
 shared_ptr<ImuProcess> p_imu;
@@ -42,7 +43,7 @@ bool cut_frame_init = false; // true;
 
 MeasureGroup Measures;
 
-ofstream fout_out, fout_imu_pbp;
+ofstream fout_out, fout_imu_pbp, fout_lio_update;
 
 void readParameters(ros::NodeHandle &nh)
 {
@@ -98,6 +99,7 @@ void readParameters(ros::NodeHandle &nh)
   nh.param<bool>("publish/scan_publish_en",scan_pub_en,1);
   nh.param<bool>("publish/scan_bodyframe_pub_en",scan_body_pub_en,1);
   nh.param<bool>("runtime_pos_log_enable", runtime_pos_log, 0);
+  nh.param<bool>("mapping/lio_update_debug_log_en", lio_update_debug_log_en, false);
   nh.param<bool>("pcd_save/pcd_save_en", pcd_save_en, false);
   nh.param<int>("pcd_save/interval", pcd_save_interval, -1);
 
@@ -147,6 +149,24 @@ void open_file()
 
     fout_out.open(DEBUG_FILE_DIR("mat_out.txt"),ios::out);
     fout_imu_pbp.open(DEBUG_FILE_DIR("imu_pbp.txt"),ios::out);
+    if (lio_update_debug_log_en)
+    {
+        fout_lio_update.open(DEBUG_FILE_DIR("lio_update_debug.csv"), ios::out);
+        if (fout_lio_update)
+        {
+            fout_lio_update
+                << "time,scan_time,point_time,update_ok,k,segment_points,feats_down,"
+                << "effect_points,residual_mean,residual_max,nn_max_mean,nn_max_max,"
+                << "imu_acc_norm,imu_gyr_norm,acc_roll_deg,acc_pitch_deg,"
+                << "before_roll_deg,before_pitch_deg,before_yaw_deg,"
+                << "after_roll_deg,after_pitch_deg,after_yaw_deg,"
+                << "droll_deg,dpitch_deg,dyaw_deg,"
+                << "before_px,before_py,before_pz,after_px,after_py,after_pz,"
+                << "dpos_norm,before_speed,after_speed,dvel_norm,"
+                << "after_vx,after_vy,after_vz"
+                << std::endl;
+        }
+    }
     if (fout_out && fout_imu_pbp)
         cout << "~~~~"<<ROOT_DIR<<" file opened" << endl;
     else

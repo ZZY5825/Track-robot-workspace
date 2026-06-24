@@ -1,5 +1,53 @@
 # Releases
 
+## V1.2.1 - 2026-06-24
+
+This release records the current Point-LIO calibration/debugging state for the
+RoboSense Helios-32 and Phidget IMU setup. It improves the IMU frame handling
+and adds instrumentation for the remaining near-90-degree fly-away issue; it
+does not add reset, clipping, or fallback logic.
+
+### Point-LIO IMU Frame Handling
+
+- Updated `imu_lio_adapter.yaml` to use the selected right-handed Candidate B
+  mapping from raw IMU into the LiDAR frame:
+  `lidar_x = -imu_y`, `lidar_y = imu_x`, `lidar_z = imu_z`.
+- Documented the Plan A convention that `/imu/data_lio` is already expressed in
+  the `rslidar` frame, so Point-LIO keeps identity extrinsics with
+  `extrinsic_est_en: false`.
+- Initialized Point-LIO EKF gyro bias from the stationary IMU mean collected
+  during startup.
+
+### Fly-Away Diagnosis
+
+- Added optional `Log/lio_update_debug.csv` output with LiDAR update success,
+  effective point counts, residuals, nearest-neighbor distances, IMU norms,
+  before/after attitude, position, and velocity.
+- Added live IMU/LIO debug tooling for comparing `/imu/data_raw`,
+  `/imu/data_lio`, and `/aft_mapped_to_init` while reproducing runaway motion.
+- Kept the remaining suspected root cause visible: near 90 degrees, LiDAR update
+  degeneracy or failed updates may allow output-state gravity compensation error
+  to integrate into velocity and position.
+
+### Launch And IMU Robustness
+
+- Reused the shared RoboSense bringup launch from the Point-LIO launch path and
+  added the body-to-base static transform bridge used for RViz.
+- Improved Phidget IMU reconnect diagnostics and optional USB reset recovery.
+
+### Validation Status
+
+- The current workspace build succeeded with:
+
+  ```bash
+  colcon build --symlink-install --packages-select point_lio track_robot_perception
+  ```
+
+- The known remaining issue is still open: with the LiDAR+IMU assembly tilted
+  close to 90 degrees, Point-LIO can still fly away. The next step is to inspect
+  `Log/lio_update_debug.csv` from a failing run and decide whether prediction,
+  LiDAR correction, or failed-update propagation is the first divergence.
+
 ## V1.2.0 - 2026-06-20
 
 This release adds a ROS 2 Foxy Point-LIO path for the RoboSense RS-Helios-32

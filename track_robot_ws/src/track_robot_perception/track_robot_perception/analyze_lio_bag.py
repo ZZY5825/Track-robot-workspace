@@ -113,7 +113,11 @@ def iter_bag_messages(bag_dir: Path, wanted_topics: Iterable[str]):
     wanted = set(wanted_topics)
 
     for db_file in db_files:
-        conn = sqlite3.connect(str(db_file))
+        # Immutable read-only mode avoids SQLite trying to create journal files
+        # beside a completed rosbag when the directory is not writable.
+        conn = sqlite3.connect(
+            f"file:{db_file}?mode=ro&immutable=1", uri=True
+        )
         try:
             topics = {
                 row[0]: (row[1], row[2])

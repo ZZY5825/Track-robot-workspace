@@ -55,10 +55,17 @@ ros2 launch track_robot_perception point_lio_rshelios.launch.py
 To start LiDAR and IMU from the same launch file:
 
 ```bash
+sudo -v
 ros2 launch track_robot_perception point_lio_rshelios.launch.py \
   start_lidar:=true \
   start_imu:=true
 ```
+
+With `start_lidar:=true`, this launch includes
+`track_robot_bringup/rslidar_with_tf.launch.py`. Network setup defaults to true
+and performs the proven sequence `ip addr flush`, `ip addr add
+192.168.1.102/24`, then `ip link set eth0 up` before starting the SDK. Pass
+`configure_network:=false` only when the interface has already been prepared.
 
 The launch starts `imu_lio_adapter_node` by default. It rotates `/imu/data_raw`
 into the LiDAR/body frame, publishes `/imu/data_lio`, and applies the convention:
