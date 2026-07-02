@@ -1,0 +1,9 @@
+int32 cluster_id
+geometry_msgs/Point centroid
+geometry_msgs/Point minimum
+geometry_msgs/Point maximum
+geometry_msgs/Vector3 size
+uint32 point_count
+float32 distance
+float32 confidence
+bool human_candidate

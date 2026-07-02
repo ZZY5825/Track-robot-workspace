@@ -1,0 +1,14 @@
+target_fusion_node:
+  ros__parameters:
+    camera_target_topic: /human_tracking/camera_target
+    lidar_candidates_topic: /human_tracking/lidar_human_candidates
+    camera_info_topic: /zed/zed_node/left/camera_info
+    output_topic: /human_tracking/target_state
+    marker_topic: /human_tracking/target_marker
+    camera_frame: zed_left_camera_optical_frame
+    base_frame: base_link
+    map_frame: map
+    min_bbox_iou: 0.01
+    max_lidar_recovery_distance: 1.5
+    max_target_age_sec: 2.0
+    publish_rate: 15.0

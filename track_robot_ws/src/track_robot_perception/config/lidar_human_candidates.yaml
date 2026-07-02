@@ -1,0 +1,90 @@
+lidar_human_cluster_node:
+  ros__parameters:
+    lidar_topic: /rslidar_points
+    camera_target_topic: /human_tracking/camera_target
+    camera_info_topic: /zed/zed_node/left/camera_info
+    output_topic: /human_tracking/fused_target_state
+    compat_output_topic: /human_tracking/target_state
+    target_points_topic: /human_tracking/target_lidar_points
+    search_gate_marker_topic: /human_tracking/target_search_gate_marker
+    fused_marker_topic: /human_tracking/fused_target_marker
+    debug_topic: /human_tracking/lidar_target_debug
+    human_clusters_topic: /human_tracking/lidar_clusters
+    human_candidates_topic: /human_tracking/lidar_human_candidates
+
+    fixed_frame: rslidar
+    lidar_qos_reliability: reliable
+    camera_frame: zed_left_camera_optical_frame
+    base_frame: base_link
+    map_frame: map
+    use_base_lidar_extrinsic_fallback: true
+    base_lidar_extrinsic_parent_frame: base_link
+    base_lidar_extrinsic_child_frame: rslidar
+    base_lidar_extrinsic_x: 0.0
+    base_lidar_extrinsic_y: 0.0
+    base_lidar_extrinsic_z: 0.70
+    base_lidar_extrinsic_yaw: 0.0
+    base_lidar_extrinsic_pitch: 0.0
+    base_lidar_extrinsic_roll: 0.0
+    use_camera_lidar_extrinsic_fallback: true
+    prefer_camera_lidar_extrinsic: true
+    camera_lidar_extrinsic_parent_frame: zed_camera_link
+    camera_lidar_extrinsic_child_frame: rslidar
+    camera_lidar_extrinsic_x: -0.27
+    camera_lidar_extrinsic_y: 0.0
+    camera_lidar_extrinsic_z: 0.08
+    camera_lidar_extrinsic_yaw: 0.0
+    camera_lidar_extrinsic_pitch: 0.0
+    camera_lidar_extrinsic_roll: 0.0
+
+    min_range: 0.25
+    max_range: 20.0
+    min_z_base: -0.35
+    max_z_base: 2.4
+    bbox_padding_px: 40.0
+    min_projected_points: 5
+    camera_roi_depth_filter: true
+    camera_roi_depth_percentile: 20.0
+    camera_roi_depth_window_m: 1.0
+    camera_roi_cluster: true
+    camera_roi_cluster_tolerance: 0.45
+    target_point_percentile_low: 10.0
+    target_point_percentile_high: 90.0
+    process_every_n_clouds: 1
+
+    alpha_position: 0.55
+    beta_velocity: 0.25
+    lidar_only_alpha_position: 0.35
+    lidar_only_beta_velocity: 0.08
+    max_target_speed_mps: 2.0
+    publish_rate: 15.0
+    max_prediction_only_sec: 1.5
+    max_lidar_only_sec: 3.0
+    camera_target_timeout_sec: 1.0
+
+    near_range_m: 2.0
+    far_range_m: 6.0
+    near_search_radius: 0.75
+    mid_search_radius: 1.1
+    far_search_radius: 1.8
+    near_min_points: 3
+    mid_min_points: 8
+    far_min_points: 3
+    local_cluster_tolerance_near: 0.28
+    local_cluster_tolerance_mid: 0.38
+    local_cluster_tolerance_far: 0.60
+
+    max_cluster_width: 1.6
+    max_cluster_depth: 1.6
+    max_cluster_height: 2.4
+    lidar_only_min_score: 0.32
+    lidar_only_max_jump_m: 0.85
+    lidar_only_z_margin: 0.45
+    lidar_only_keep_last_points: true
+    confidence_camera_lidar: 0.9
+    confidence_lidar_only_decay_per_sec: 0.25
+    confidence_prediction_decay_per_sec: 0.55
+
+    enable_static_background_filter: false
+    background_voxel_size: 0.15
+    background_min_observations: 20

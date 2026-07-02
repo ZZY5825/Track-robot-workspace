@@ -14,19 +14,21 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
-# 先留空：后面你加 msg/srv/action 文件后，在这里登记
-# 示例：
-# set(msg_files
-#   "msg/RobotState.msg"
-# )
-# set(srv_files
-#   "srv/SetMode.srv"
-# )
-# rosidl_generate_interfaces(${PROJECT_NAME}
-#   ${msg_files}
-#   ${srv_files}
-#   DEPENDENCIES builtin_interfaces
-# )
+set(msg_files
+  "msg/GestureState.msg"
+  "msg/HumanDetection2D.msg"
+  "msg/HumanDetection2DArray.msg"
+  "msg/LidarCluster.msg"
+  "msg/LidarClusterArray.msg"
+  "msg/TargetState.msg"
+)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  ${msg_files}
+  DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
+)
 
 ament_package()

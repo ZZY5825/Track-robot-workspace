@@ -1,0 +1,50 @@
+human_image_tracker_node:
+  ros__parameters:
+    image_topic: /zed/zed_node/left/image_rect_color
+    detections_topic: /human_tracking/detections
+    annotated_image_topic: /human_tracking/annotated_image
+    debug_topic: /human_tracking/tracker_debug
+    model_path: /home/track-robot/track_robot_ws/models/human_tracking/yolov8n-pose.pt
+    tracker_backend: bytetrack
+    conf_threshold: 0.35
+    iou_threshold: 0.5
+    person_class_id: 0
+    device: auto
+    resize_width: 960
+    run_every_n_frames: 1
+    publish_annotated_image: true
+
+gesture_trigger_node:
+  ros__parameters:
+    detections_topic: /human_tracking/detections
+    image_topic: /zed/zed_node/left/image_rect_color
+    output_topic: /human_tracking/gesture_state
+    overlay_topic: /human_tracking/gesture_overlay
+    min_keypoint_confidence: 0.35
+    trigger_hold_frames: 5
+    trigger_cooldown_sec: 2.0
+    stop_hold_frames: 15
+    start_requires_wrist_above_head: false
+    start_window_frames: 12
+    start_min_both_high_frames: 6
+    start_min_cross_frames: 1
+    start_min_order_changes: 1
+    start_min_lateral_motion_shoulder_width: 0.35
+    start_max_one_hand_high_frames: 3
+    stop_visualization_hold_sec: 1.0
+    publish_overlay: true
+
+camera_target_lock_node:
+  ros__parameters:
+    detections_topic: /human_tracking/detections
+    gesture_topic: /human_tracking/gesture_state
+    image_topic: /zed/zed_node/left/image_rect_color
+    output_topic: /human_tracking/camera_target
+    overlay_topic: /human_tracking/target_overlay
+    max_camera_dropout_sec: 2.0
+    target_memory_sec: 8.0
+    min_lock_confidence: 0.35
+    track_id_reacquire_iou: 0.2
+    reacquire_max_center_distance_px: 160.0
+    reacquire_min_score: 0.35
+    publish_overlay: true

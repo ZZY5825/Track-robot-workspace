@@ -1,0 +1,35 @@
+uint8 LOCK_NO_TARGET=0
+uint8 LOCK_CANDIDATE_VISIBLE=1
+uint8 LOCK_TARGET_LOCKED=2
+uint8 LOCK_TARGET_LOST=3
+
+uint8 SOURCE_NONE=0
+uint8 SOURCE_CAMERA_ONLY=1
+uint8 SOURCE_CAMERA_LIDAR=2
+uint8 SOURCE_LIDAR_ONLY=3
+uint8 SOURCE_PREDICTION_ONLY=4
+
+uint8 TRACK_NO_TARGET=0
+uint8 TRACK_CAMERA_LOCKED=1
+uint8 TRACK_CAMERA_LIDAR_TRACKED=2
+uint8 TRACK_LIDAR_ONLY_TRACKING=3
+uint8 TRACK_PREDICTION_ONLY=4
+uint8 TRACK_TARGET_LOST=5
+
+std_msgs/Header header
+int32 target_id
+uint8 lock_state
+uint8 source_state
+uint8 track_state
+float32[4] bbox
+float32 confidence
+bool camera_visible
+bool lidar_visible
+geometry_msgs/Point position_base
+bool position_map_valid
+geometry_msgs/Point position_map
+float32 distance
+float32 bearing
+geometry_msgs/Vector3 velocity
+float32 time_since_camera_seen
+float32 time_since_lidar_seen

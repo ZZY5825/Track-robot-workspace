@@ -8,7 +8,11 @@ setup(
     packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
-        ('share/' + package_name, ['package.xml', 'README.md']),
+        ('share/' + package_name, [
+            'package.xml',
+            'README.md',
+            'requirements-human-tracking.txt',
+        ]),
         ('share/' + package_name + '/docs', [
             'docs/fast_lio_rshelios.md',
             'docs/phidget_imu_time_sync.md',
@@ -16,18 +20,28 @@ setup(
             'docs/point_lio_rshelios.md',
             'docs/point_lio_ros2_port_assessment.md',
             'docs/pretrained_lidar_feasibility.md',
+            'docs/human_tracking_dependencies.md',
+            'docs/human_tracking_progress.md',
+            'docs/lidar_phase4_methods.md',
         ]),
         ('share/' + package_name + '/config', [
             'config/fast_lio_rshelios.yaml',
+            'config/human_tracking.yaml',
             'config/imu_lio_adapter.yaml',
             'config/imu_lio_debug.yaml',
+            'config/lidar_human_candidates.yaml',
             'config/phidget_imu.yaml',
             'config/point_lio_rshelios_lidar_only.yaml',
             'config/point_lio_rshelios.yaml',
+            'config/target_fusion.yaml',
         ]),
         ('share/' + package_name + '/launch', [
             'launch/fast_lio_rshelios.launch.py',
             'launch/fast_lio_rshelios_mapping.launch.py',
+            'launch/human_camera_tracking.launch.py',
+            'launch/human_lidar_tracking.launch.py',
+            'launch/human_target_fusion.launch.py',
+            'launch/human_tracking_validation.launch.py',
             'launch/lidar_camera_colorizer.launch.py',
             'launch/lidar_cluster_baseline.launch.py',
             'launch/lidar_ground_segment.launch.py',
@@ -42,6 +56,7 @@ setup(
             'launch/zed_rfdetr_small.launch.py',
         ]),
         ('share/' + package_name + '/rviz', [
+            'rviz/human_tracking.rviz',
             'rviz/point_lio.rviz',
         ]),
         ('share/' + package_name + '/scripts', [
@@ -88,6 +103,16 @@ setup(
             'track_robot_perception.rslidar_point_lio_adapter_node:main',
             'imu_static_check = track_robot_perception.imu_static_check:main',
             'zed_mask_rcnn_node = track_robot_perception.zed_mask_rcnn_node:main',
+            'human_image_tracker_node = '
+            'track_robot_perception.human_image_tracker_node:main',
+            'gesture_trigger_node = '
+            'track_robot_perception.gesture_trigger_node:main',
+            'camera_target_lock_node = '
+            'track_robot_perception.camera_target_lock_node:main',
+            'lidar_human_cluster_node = '
+            'track_robot_perception.lidar_human_cluster_node:main',
+            'target_fusion_node = '
+            'track_robot_perception.target_fusion_node:main',
             'zed_dinov3_feature_node = '
             'track_robot_perception.zed_dinov3_feature_node:main',
             'zed_rfdetr_small_node = '

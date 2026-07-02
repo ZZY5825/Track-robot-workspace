@@ -1,0 +1,5 @@
+# Human tracking runtime dependencies for Jetson AGX / ROS2 Foxy / Python 3.8.
+# Keep Torch/TorchVision on the NVIDIA JetPack build; do not install PyPI torch wheels.
+ultralytics==8.0.239
+lap==0.5.13
+filterpy==1.4.5
