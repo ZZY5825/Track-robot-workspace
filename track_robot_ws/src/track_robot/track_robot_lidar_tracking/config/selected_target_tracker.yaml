@@ -1,0 +1,90 @@
+selected_human_target_tracker_node:
+  ros__parameters:
+    camera_target_topic: /human_tracking/camera_target
+    detections_topic: /human_tracking/detections
+    lidar_tracklets_topic: /human_tracking/lidar_tracklets
+    lidar_topic: /rslidar_points
+    candidate_clusters_topic: /human_tracking/lidar_candidate_clusters
+    camera_info_topic: /zed/zed_node/left/camera_info
+
+    selected_tracklet_topic: /human_tracking/selected_lidar_tracklet
+    fused_target_topic: /human_tracking/fused_target_state
+    compat_target_topic: /human_tracking/target_state
+    selected_tracklet_marker_topic: /human_tracking/selected_tracklet_marker
+    selected_target_marker_topic: /human_tracking/selected_target_marker
+    prediction_gate_marker_topic: /human_tracking/target_prediction_gate_marker
+    fused_marker_topic: /human_tracking/fused_target_marker
+    camera_guided_points_topic: /human_tracking/camera_guided_target_points
+    debug_topic: /human_tracking/target_tracker_debug
+
+    base_frame: base_link
+    lidar_frame: rslidar
+    camera_frame: zed_left_camera_optical_frame
+    map_frame: map
+
+    # Direct rslidar -> zed_left_camera_optical_frame fallback used when rosbag
+    # TF does not contain the full camera/LiDAR optical transform.
+    direct_camera_lidar_optical_parent_frame: zed_left_camera_optical_frame
+    direct_camera_lidar_optical_child_frame: rslidar
+    direct_camera_lidar_optical_x: 0.06
+    direct_camera_lidar_optical_y: -0.065
+    direct_camera_lidar_optical_z: -0.26
+    direct_camera_lidar_optical_qx: 0.5
+    direct_camera_lidar_optical_qy: -0.5
+    direct_camera_lidar_optical_qz: 0.5
+    direct_camera_lidar_optical_qw: 0.5
+
+    camera_visible_min_confidence: 0.35
+    min_association_score: 0.55
+    association_confirm_frames: 2
+    max_projection_center_error_px: 220.0
+    camera_target_timeout_sec: 1.0
+    input_timeout_sec: 1.0
+    publish_rate: 10.0
+    debug_rate: 2.0
+
+    min_range: 0.5
+    max_range: 10.0
+    min_z: -0.25
+    max_z: 2.2
+    max_cloud_points_for_projection: 15000
+    debug_cloud_max_points: 3000
+
+    camera_guided_min_points: 3
+    camera_guided_roi_center_width_fraction: 0.50
+    camera_guided_roi_y_min_fraction: 0.20
+    camera_guided_roi_y_max_fraction: 0.70
+    camera_guided_depth_percentile_low: 20.0
+    camera_guided_depth_percentile_high: 55.0
+    min_keypoint_confidence: 0.35
+    camera_guided_max_depth_spread: 1.25
+    camera_guided_prediction_gate_m: 1.5
+
+    # Linear CV Kalman filter in base_link, state [x y z vx vy vz].
+    process_noise_accel_std: 1.2
+    initial_position_variance: 0.35
+    initial_velocity_variance: 1.0
+    camera_anchor_xy_variance: 0.08
+    tracklet_xy_variance: 0.18
+    z_variance: 0.35
+    max_camera_anchor_nis_xy: 25.0
+    max_tracklet_nis_xy: 9.21
+    prediction_gate_radius_m: 1.2
+    max_prediction_gate_radius_m: 2.0
+
+    # Camera-invisible continuation accepts the exact selected ID first. A
+    # replacement ID must remain locally compatible for three updates.
+    selected_exact_id_grace_sec: 0.5
+    selected_relink_confirm_frames: 3
+    selected_relink_timeout_sec: 1.5
+    selected_relink_absolute_gate_m: 1.2
+    selected_relink_min_score: 0.55
+
+    # Prediction is a short bridge, not a substitute for LiDAR evidence.
+    prediction_velocity_damping_delay_sec: 0.4
+    prediction_velocity_damping_rate: 0.8
+    prediction_only_timeout_sec: 2.0
+    max_target_speed_mps: 2.2
+
+    # Full-cloud camera projection runs only on fresh cloud callbacks.
+    camera_projection_max_rate_hz: 10.0

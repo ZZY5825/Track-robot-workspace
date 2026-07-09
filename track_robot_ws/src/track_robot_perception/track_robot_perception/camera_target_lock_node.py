@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import math
+import json
 from typing import List, Optional
 
 import cv2
@@ -8,6 +9,7 @@ import rclpy
 from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from track_robot_interfaces.msg import GestureState, HumanDetection2D, HumanDetection2DArray, TargetState
 
 
@@ -33,6 +35,8 @@ class CameraTargetLockNode(Node):
             'output_topic', '/human_tracking/camera_target').value
         self.overlay_topic = self.declare_parameter(
             'overlay_topic', '/human_tracking/target_overlay').value
+        self.debug_topic = self.declare_parameter(
+            'debug_topic', '/human_tracking/camera_target_debug').value
         self.max_camera_dropout_sec = float(
             self.declare_parameter('max_camera_dropout_sec', 2.0).value)
         self.target_memory_sec = float(
@@ -63,6 +67,7 @@ class CameraTargetLockNode(Node):
         self.locked = False
 
         self.target_pub = self.create_publisher(TargetState, self.output_topic, 5)
+        self.debug_pub = self.create_publisher(String, self.debug_topic, 5)
         self.overlay_pub = None
         if self.publish_overlay:
             self.overlay_pub = self.create_publisher(Image, self.overlay_topic, 5)
@@ -138,9 +143,12 @@ class CameraTargetLockNode(Node):
             if dropout > self.target_memory_sec:
                 state.confidence = 0.0
                 state.source_state = TargetState.SOURCE_NONE
+                self.locked = False
+                self.active_track_id = -1
 
         self.latest_state = state
         self.target_pub.publish(state)
+        self.publish_debug(state, detection, msg.detections)
 
     def clear_target(self):
         self.logical_target_id = -1
@@ -230,6 +238,29 @@ class CameraTargetLockNode(Node):
         self.last_seen_time = now
         self.last_update_time = now
         self.active_track_id = int(detection.track_id)
+
+    def publish_debug(
+            self,
+            state: TargetState,
+            matched_detection: Optional[HumanDetection2D],
+            detections: List[HumanDetection2D]):
+        now = self.get_clock().now()
+        dropout = (now - self.last_seen_time).nanoseconds * 1e-9
+        payload = {
+            'locked': bool(self.locked),
+            'logical_target_id': int(self.logical_target_id),
+            'active_track_id': int(self.active_track_id),
+            'latest_detection_count': len(detections),
+            'latest_detection_track_ids': [int(d.track_id) for d in detections],
+            'matched_track_id': int(matched_detection.track_id) if matched_detection else -1,
+            'lock_state': int(state.lock_state),
+            'camera_visible': bool(state.camera_visible),
+            'confidence': round(float(state.confidence), 3),
+            'dropout_sec': round(float(dropout), 3),
+            'last_bbox': [round(float(v), 1) for v in self.last_bbox],
+            'predicted_bbox': [round(float(v), 1) for v in self.predicted_bbox],
+        }
+        self.debug_pub.publish(String(data=json.dumps(payload)))
 
     @staticmethod
     def iou(a, b) -> float:

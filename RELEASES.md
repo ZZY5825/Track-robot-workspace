@@ -1,5 +1,71 @@
 # Releases
 
+## V1.3.0 - 2026-07-09
+
+This release adds the first persistent camera-initialized LiDAR tracking
+architecture for gesture-selected human following. The camera and gesture FSM
+own target identity. LiDAR supplies 3D geometry and short camera-out-of-view
+continuation. Robot motion control remains disabled.
+
+### Camera And Target Identity
+
+- Retains YOLO pose tracking, ByteTrack IDs, and the gesture FSM for selecting
+  one person.
+- Adds camera target-lock diagnostics for bbox prediction, active tracker ID,
+  visibility, confidence, and dropout timing.
+- Preserves the logical camera target ID separately from the current LiDAR
+  tracklet ID.
+
+### Persistent LiDAR Tracklets
+
+- Adds the C++ `track_robot_lidar_tracking` package.
+- Crops, downsamples, and clusters RS-Helios point clouds into weak candidate
+  clusters and filtered persistent tracklets.
+- Uses range-adaptive point and height limits for close, mid-range, and sparse
+  far-range observations.
+- Tracks generic clusters with a four-state XY constant-velocity Kalman filter.
+- Uses NIS and distance gating plus Hungarian global assignment to reduce ID
+  switches.
+- Adds maneuver process noise, stationary detection, velocity decay, confidence
+  lifecycle management, and retained predicted tracklets.
+
+### Camera-LiDAR Target Fusion
+
+- Projects tracklet boxes and raw LiDAR points into the ZED2i image.
+- Selects torso, upper-body, or central-bbox ROIs from YOLO pose observations.
+- Uses foreground depth percentiles and robust medians to reduce desk and wall
+  contamination.
+- Maintains the selected target with a six-state XYZ constant-velocity Kalman
+  filter and NIS measurement rejection.
+- Continues the exact selected LiDAR tracklet when the camera loses visibility.
+- Allows replacement IDs only after three compatible local matches inside the
+  prediction gate.
+- Dampens unsupported velocity and enters `TARGET_LOST` after the configured
+  prediction timeout instead of globally switching to clutter.
+
+### Performance And Diagnostics
+
+- Moves full-cloud camera projection to fresh cloud callbacks and caps it at
+  10 Hz.
+- Keeps tracklet callbacks lightweight and uses the timer only for prediction
+  and publication.
+- Adds selected-tracklet, selected-target, prediction-gate, fused-target, and
+  camera-guided point-cloud visualization topics.
+- Adds structured timing and state diagnostics through
+  `/human_tracking/target_tracker_debug`.
+
+### Validation Status
+
+- `track_robot_lidar_tracking` and `track_robot_perception` build successfully
+  on ROS2 Foxy.
+- Both new C++ nodes pass standalone startup tests with their active YAML files.
+- The generic LiDAR tracklet markers and camera-visible selected tracklet were
+  observed working in recorded tests.
+- Stop/turn relinking, circular camera-out-of-view tracking, and the 10 Hz
+  camera-visible acceptance target still require complete four-bag validation.
+- The system remains perception-only and does not publish robot control
+  commands.
+
 ## V1.2.1 - 2026-06-24
 
 This release records the current Point-LIO calibration/debugging state for the

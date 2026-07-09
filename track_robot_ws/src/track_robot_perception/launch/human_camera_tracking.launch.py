@@ -52,6 +52,7 @@ def generate_launch_description():
             'gesture_topic': '/human_tracking/gesture_state',
             'output_topic': '/human_tracking/camera_target',
             'overlay_topic': '/human_tracking/target_overlay',
+            'debug_topic': '/human_tracking/camera_target_debug',
         }],
     )
 

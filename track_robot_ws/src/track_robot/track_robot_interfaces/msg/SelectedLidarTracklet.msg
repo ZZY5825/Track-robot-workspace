@@ -1,0 +1,8 @@
+std_msgs/Header header
+int32 camera_target_id
+int32 selected_tracklet_id
+bool selected
+bool confirmed
+float32 association_score
+float32 time_since_selected_seen
+track_robot_interfaces/LidarTracklet tracklet

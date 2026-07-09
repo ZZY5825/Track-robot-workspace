@@ -2,6 +2,11 @@
 
 Last updated: 2026-07-02
 
+> Historical status: the LiDAR association sections below describe the earlier
+> Python implementation. The active C++ fusion architecture, exact algorithms,
+> parameters, and current limitations are recorded in
+> [`human_tracking_fusion_refactor_log_2026-07-09.md`](human_tracking_fusion_refactor_log_2026-07-09.md).
+
 ## Current Goal
 
 Build a gesture-triggered single-person tracking pipeline for the Bunker Pro

@@ -41,7 +41,9 @@ setup(
             'launch/human_camera_tracking.launch.py',
             'launch/human_lidar_tracking.launch.py',
             'launch/human_target_fusion.launch.py',
+            'launch/human_tracking_simplified.launch.py',
             'launch/human_tracking_validation.launch.py',
+            'launch/camera_lidar_tracklet_tracking.launch.py',
             'launch/lidar_camera_colorizer.launch.py',
             'launch/lidar_cluster_baseline.launch.py',
             'launch/lidar_ground_segment.launch.py',
@@ -113,6 +115,8 @@ setup(
             'track_robot_perception.lidar_human_cluster_node:main',
             'target_fusion_node = '
             'track_robot_perception.target_fusion_node:main',
+            'human_tracking_pipeline_diagnostic = '
+            'track_robot_perception.human_tracking_pipeline_diagnostic:main',
             'zed_dinov3_feature_node = '
             'track_robot_perception.zed_dinov3_feature_node:main',
             'zed_rfdetr_small_node = '

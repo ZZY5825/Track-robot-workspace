@@ -7,3 +7,8 @@ uint32 point_count
 float32 distance
 float32 confidence
 bool human_candidate
+bool oversized
+bool too_sparse
+bool too_large
+bool near_static
+float32 dynamic_score

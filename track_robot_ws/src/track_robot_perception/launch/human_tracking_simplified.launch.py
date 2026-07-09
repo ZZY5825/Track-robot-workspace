@@ -19,6 +19,8 @@ def generate_launch_description():
     camera_info_topic = LaunchConfiguration('camera_info_topic')
     camera_frame = LaunchConfiguration('camera_frame')
     lidar_topic = LaunchConfiguration('lidar_topic')
+    base_frame = LaunchConfiguration('base_frame')
+    map_frame = LaunchConfiguration('map_frame')
 
     camera = include('track_robot_perception', 'human_camera_tracking.launch.py', {
         'image_topic': image_topic,
@@ -27,15 +29,16 @@ def generate_launch_description():
         'resize_width': LaunchConfiguration('resize_width'),
         'camera_config_file': LaunchConfiguration('camera_config_file'),
     })
-    lidar = include('track_robot_perception', 'camera_lidar_tracklet_tracking.launch.py', {
+
+    lidar_fusion = include('track_robot_perception', 'camera_lidar_tracklet_tracking.launch.py', {
         'lidar_topic': lidar_topic,
         'lidar_qos_reliability': LaunchConfiguration('lidar_qos_reliability'),
         'camera_target_topic': '/human_tracking/camera_target',
         'detections_topic': '/human_tracking/detections',
         'camera_info_topic': camera_info_topic,
         'camera_frame': camera_frame,
-        'base_frame': LaunchConfiguration('base_frame'),
-        'map_frame': LaunchConfiguration('map_frame'),
+        'base_frame': base_frame,
+        'map_frame': map_frame,
         'tracklet_config_file': LaunchConfiguration('tracklet_config_file'),
         'association_config_file': LaunchConfiguration('association_config_file'),
     })
@@ -46,28 +49,8 @@ def generate_launch_description():
         DeclareLaunchArgument('camera_frame', default_value='zed_left_camera_optical_frame'),
         DeclareLaunchArgument('lidar_topic', default_value='/rslidar_points'),
         DeclareLaunchArgument('lidar_qos_reliability', default_value='reliable'),
-        DeclareLaunchArgument('lidar_frame', default_value='rslidar'),
         DeclareLaunchArgument('base_frame', default_value='base_link'),
         DeclareLaunchArgument('map_frame', default_value='map'),
-        DeclareLaunchArgument('use_base_lidar_extrinsic_fallback', default_value='true'),
-        DeclareLaunchArgument('base_lidar_extrinsic_parent_frame', default_value='base_link'),
-        DeclareLaunchArgument('base_lidar_extrinsic_child_frame', default_value='rslidar'),
-        DeclareLaunchArgument('base_lidar_extrinsic_x', default_value='0.0'),
-        DeclareLaunchArgument('base_lidar_extrinsic_y', default_value='0.0'),
-        DeclareLaunchArgument('base_lidar_extrinsic_z', default_value='0.70'),
-        DeclareLaunchArgument('base_lidar_extrinsic_yaw', default_value='0.0'),
-        DeclareLaunchArgument('base_lidar_extrinsic_pitch', default_value='0.0'),
-        DeclareLaunchArgument('base_lidar_extrinsic_roll', default_value='0.0'),
-        DeclareLaunchArgument('use_camera_lidar_extrinsic_fallback', default_value='true'),
-        DeclareLaunchArgument('prefer_camera_lidar_extrinsic', default_value='true'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_parent_frame', default_value='zed_camera_link'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_child_frame', default_value='rslidar'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_x', default_value='-0.27'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_y', default_value='0.0'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_z', default_value='0.08'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_yaw', default_value='0.0'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_pitch', default_value='0.0'),
-        DeclareLaunchArgument('camera_lidar_extrinsic_roll', default_value='0.0'),
         DeclareLaunchArgument('tracker_backend', default_value='bytetrack'),
         DeclareLaunchArgument(
             'camera_config_file',
@@ -95,5 +78,5 @@ def generate_launch_description():
             default_value='/home/track-robot/track_robot_ws/models/human_tracking/yolov8n-pose.pt'),
         DeclareLaunchArgument('resize_width', default_value='960'),
         camera,
-        lidar,
+        lidar_fusion,
     ])

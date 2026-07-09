@@ -47,6 +47,9 @@ not part of the source release.
   masks and publishes semantic point clouds.
 - Learning-free range-image MOS-style filter for static/dynamic LiDAR point
   separation.
+- Gesture-triggered single-person tracking using YOLO pose for identity,
+  camera-guided LiDAR association, persistent C++ LiDAR tracklets, and
+  Kalman-filtered camera/LiDAR target state.
 
 ## Build
 
@@ -80,6 +83,7 @@ ros2 launch track_robot_perception zed_mask_rcnn.launch.py
 ros2 launch track_robot_perception zed_pose_rcnn.launch.py
 ros2 launch track_robot_perception zed_dinov3_feature.launch.py
 ros2 launch lidar_mos_filter range_image_mos_filter.launch.py
+ros2 launch track_robot_perception human_tracking_simplified.launch.py
 ```
 
 ## Model And Data Notes
@@ -103,4 +107,5 @@ to be shared.
 - `track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md`
 - `track_robot_ws/src/track_robot_perception/docs/point_lio_ros2_port_assessment.md`
 - `track_robot_ws/src/track_robot_perception/docs/pretrained_lidar_feasibility.md`
+- `track_robot_ws/src/track_robot_perception/docs/human_tracking_fusion_refactor_log_2026-07-09.md`
 - `RELEASES.md`

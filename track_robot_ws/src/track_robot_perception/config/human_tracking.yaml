@@ -41,6 +41,7 @@ camera_target_lock_node:
     image_topic: /zed/zed_node/left/image_rect_color
     output_topic: /human_tracking/camera_target
     overlay_topic: /human_tracking/target_overlay
+    debug_topic: /human_tracking/camera_target_debug
     max_camera_dropout_sec: 2.0
     target_memory_sec: 8.0
     min_lock_confidence: 0.35

@@ -23,6 +23,9 @@ set(msg_files
   "msg/HumanDetection2DArray.msg"
   "msg/LidarCluster.msg"
   "msg/LidarClusterArray.msg"
+  "msg/LidarTracklet.msg"
+  "msg/LidarTrackletArray.msg"
+  "msg/SelectedLidarTracklet.msg"
   "msg/TargetState.msg"
 )
 
