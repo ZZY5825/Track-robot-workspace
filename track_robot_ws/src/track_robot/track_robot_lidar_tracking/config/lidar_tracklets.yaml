@@ -2,13 +2,16 @@ lidar_tracklet_manager_node:
   ros__parameters:
     lidar_topic: /rslidar_points
     output_topic: /human_tracking/lidar_tracklets
+    semantic_output_topic: ''
+    source_epoch_seed: 0
     marker_topic: /human_tracking/lidar_tracklet_markers
     candidate_clusters_topic: /human_tracking/lidar_candidate_clusters
     candidate_marker_topic: /human_tracking/lidar_candidate_cluster_markers
     debug_topic: /human_tracking/lidar_tracklet_debug
 
     lidar_qos_reliability: reliable
-    tracking_frame: base_link
+    tracking_frame: track_robot_center
+    base_frame: base_link
     map_frame: map
 
     min_range: 0.5
@@ -19,7 +22,7 @@ lidar_tracklet_manager_node:
     ground_z_threshold: -0.15
     voxel_leaf_size: 0.10
     max_points_before_clustering: 12000
-    process_every_n_clouds: 2
+    process_every_n_clouds: 1
 
     cluster_tolerance: 0.38
     min_cluster_points: 5
@@ -66,5 +69,6 @@ lidar_tracklet_manager_node:
     confidence_miss_decay: 0.06
     min_publish_confidence: 0.10
 
-    marker_publish_rate: 10.0
+    marker_publish_rate: 15.0
+    candidate_marker_publish_rate: 5.0
     debug_publish_rate: 2.0

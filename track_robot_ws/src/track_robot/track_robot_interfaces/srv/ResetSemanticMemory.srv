@@ -1,0 +1,7 @@
+uint64 expected_memory_epoch_id
+bool require_epoch_match
+string<=256 reason
+---
+bool reset
+uint64 new_memory_epoch_id
+string<=256 result_reason

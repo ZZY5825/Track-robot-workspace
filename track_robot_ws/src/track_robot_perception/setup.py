@@ -22,6 +22,7 @@ setup(
             'docs/pretrained_lidar_feasibility.md',
             'docs/human_tracking_dependencies.md',
             'docs/human_tracking_progress.md',
+            'docs/human_tracking_reinforcement.md',
             'docs/lidar_phase4_methods.md',
         ]),
         ('share/' + package_name + '/config', [
@@ -29,19 +30,16 @@ setup(
             'config/human_tracking.yaml',
             'config/imu_lio_adapter.yaml',
             'config/imu_lio_debug.yaml',
-            'config/lidar_human_candidates.yaml',
             'config/phidget_imu.yaml',
             'config/point_lio_rshelios_lidar_only.yaml',
             'config/point_lio_rshelios.yaml',
-            'config/target_fusion.yaml',
         ]),
         ('share/' + package_name + '/launch', [
             'launch/fast_lio_rshelios.launch.py',
             'launch/fast_lio_rshelios_mapping.launch.py',
             'launch/human_camera_tracking.launch.py',
-            'launch/human_lidar_tracking.launch.py',
-            'launch/human_target_fusion.launch.py',
             'launch/human_tracking_simplified.launch.py',
+            'launch/human_tracking_rosbag_replay.launch.py',
             'launch/human_tracking_validation.launch.py',
             'launch/camera_lidar_tracklet_tracking.launch.py',
             'launch/lidar_camera_colorizer.launch.py',
@@ -74,7 +72,7 @@ setup(
     maintainer_email='track-robot@example.com',
     description='LiDAR-camera colorization tools for the Track Robot.',
     license='MIT',
-    tests_require=['pytest'],
+    extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
             'lidar_camera_colorizer = track_robot_perception.lidar_camera_colorizer:main',
@@ -111,12 +109,12 @@ setup(
             'track_robot_perception.gesture_trigger_node:main',
             'camera_target_lock_node = '
             'track_robot_perception.camera_target_lock_node:main',
-            'lidar_human_cluster_node = '
-            'track_robot_perception.lidar_human_cluster_node:main',
-            'target_fusion_node = '
-            'track_robot_perception.target_fusion_node:main',
             'human_tracking_pipeline_diagnostic = '
             'track_robot_perception.human_tracking_pipeline_diagnostic:main',
+            'human_tracking_regression_monitor = '
+            'track_robot_perception.human_tracking_regression_monitor:main',
+            'human_tracking_compare_runs = '
+            'track_robot_perception.human_tracking_compare_runs:main',
             'zed_dinov3_feature_node = '
             'track_robot_perception.zed_dinov3_feature_node:main',
             'zed_rfdetr_small_node = '

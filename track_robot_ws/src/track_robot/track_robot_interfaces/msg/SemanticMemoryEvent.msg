@@ -1,0 +1,24 @@
+uint8 EVENT_OBJECT_CREATED=0
+uint8 EVENT_OBJECT_CONFIRMED=1
+uint8 EVENT_LIFECYCLE_CHANGED=2
+uint8 EVENT_ASSOCIATION_ATTACHED=3
+uint8 EVENT_ASSOCIATION_DETACHED=4
+uint8 EVENT_REIDENTIFIED=5
+uint8 EVENT_OBJECT_ARCHIVED=6
+uint8 EVENT_MEMORY_RESET=7
+uint8 EVENT_DOMAIN_CHANGED=8
+uint8 EVENT_OBSERVATION_REJECTED=9
+uint8 EVENT_INSPECTION_CHANGED=10
+
+std_msgs/Header header
+uint64 sequence
+uint64 memory_epoch_id
+uint64 global_object_id
+uint8 event_type
+uint8 previous_lifecycle_state
+uint8 current_lifecycle_state
+uint64 observation_producer_epoch_id
+uint64 observation_id
+uint64 lidar_source_epoch_id
+int64 lidar_tracklet_id
+string<=256 reason

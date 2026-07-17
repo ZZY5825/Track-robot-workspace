@@ -20,7 +20,7 @@ from track_robot_perception.dinov3_runtime import (
     make_feature_heatmap,
     normalize_feature_rows,
     patch_grid,
-    preprocess_bgr,
+    preprocess_bgr_aspect_preserving,
 )
 
 
@@ -107,14 +107,17 @@ class ZedDinov3FeatureNode(Node):
 
         try:
             image_bgr = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-            input_tensor = preprocess_bgr(image_bgr, self.input_size).to(self.device)
+            input_tensor, transform = preprocess_bgr_aspect_preserving(
+                image_bgr, self.input_size)
+            input_tensor = input_tensor.to(self.device)
             start = time.monotonic()
             cls_token, patch_tokens, details = extract_features(
                 self.model, input_tensor, self.backend)
             if self.device.startswith('cuda'):
                 torch.cuda.synchronize()
             elapsed_ms = (time.monotonic() - start) * 1000.0
-            grid = patch_grid(patch_tokens, self.input_size)
+            grid = patch_grid(
+                patch_tokens, transform.grid_height, transform.grid_width)
         except Exception as exc:
             self.get_logger().error('DINOv3 inference failed: {}'.format(exc))
             return
@@ -137,6 +140,17 @@ class ZedDinov3FeatureNode(Node):
             'device': self.device,
             'input_size': self.input_size,
             'original_size': [int(image_bgr.shape[1]), int(image_bgr.shape[0])],
+            'resized_size': [
+                transform.resized_width, transform.resized_height],
+            'preprocessing_scale': transform.scale,
+            'padding': {
+                'left': transform.padding_left,
+                'top': transform.padding_top,
+                'right': transform.padding_right,
+                'bottom': transform.padding_bottom,
+            },
+            'valid_patch_count': int(transform.valid_patch_mask.sum()),
+            'preprocessing_version': 'aspect_pad_v1',
             'cls_token_shape': list(cls_array.shape),
             'patch_tokens_shape': list(patch_array.shape),
             'inference_ms': round(elapsed_ms, 2),
@@ -158,19 +172,22 @@ class ZedDinov3FeatureNode(Node):
             self.debug_image_pub.publish(debug_msg)
 
         if self.save_features and self.saved_count < self.max_saved_frames:
-            self.save_frame(msg, cls_array, patch_array, payload)
+            self.save_frame(
+                msg, cls_array, patch_array, transform.valid_patch_mask, payload)
 
         if self.debug_timing:
             self.get_logger().info(
                 'DINOv3 inference {:.1f} ms; cls={}; patches={}'.format(
                     elapsed_ms, tuple(cls_array.shape), tuple(patch_array.shape)))
 
-    def save_frame(self, msg, cls_token, patch_tokens, metadata):
+    def save_frame(
+            self, msg, cls_token, patch_tokens, valid_patch_mask, metadata):
         stamp = '{}_{:09d}'.format(msg.header.stamp.sec, msg.header.stamp.nanosec)
         frame_dir = os.path.join(self.output_dir, stamp)
         os.makedirs(frame_dir, exist_ok=False)
         np.save(os.path.join(frame_dir, 'cls_token.npy'), cls_token)
         np.save(os.path.join(frame_dir, 'patch_tokens.npy'), patch_tokens)
+        np.save(os.path.join(frame_dir, 'valid_patch_mask.npy'), valid_patch_mask)
         with open(os.path.join(frame_dir, 'metadata.json'), 'w') as stream:
             json.dump(metadata, stream, indent=2)
         self.saved_count += 1

@@ -1,0 +1,5 @@
+builtin_interfaces/Time stamp
+geometry_msgs/Point position
+float32 uncertainty
+uint8 lifecycle_state
+uint8 support_state

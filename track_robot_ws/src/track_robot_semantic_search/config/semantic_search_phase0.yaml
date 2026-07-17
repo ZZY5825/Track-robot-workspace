@@ -1,0 +1,33 @@
+semantic_search_localization_health:
+  ros__parameters:
+    imu_topic: /imu/data_raw
+    local_odometry_topic: /odom
+    world_odometry_topic: /localization/odometry
+    base_frame: base_link
+    local_frame: odom
+    world_frame: map
+    diagnostics_topic: /semantic_search/localization_diagnostics
+    state_topic: /semantic_memory/localization_state
+    publish_rate_hz: 10.0
+    imu_timeout_sec: 0.25
+    local_pose_timeout_sec: 0.30
+    world_pose_timeout_sec: 0.30
+    world_mode_enabled: false
+    world_stable_samples: 3
+    maximum_world_xy_variance_m2: 0.25
+    maximum_world_yaw_variance_rad2: 0.12
+    maximum_world_jump_m: 0.50
+    maximum_world_yaw_jump_rad: 0.26
+
+semantic_search_evaluator:
+  ros__parameters:
+    image_topic: /zed/zed_node/left/image_rect_color
+    lidar_topic: /rslidar_points
+    imu_topic: /imu/data_raw
+    local_odometry_topic: /odom
+    world_odometry_topic: /localization/odometry
+    diagnostics_topic: /semantic_search/localization_diagnostics
+    semantic_regions_topic: /semantic_search/regions
+    observations_topic: /semantic_search/observations
+    tracked_objects_topic: /semantic_search/tracked_objects
+    motion_intent_topic: /semantic_search/motion_intent

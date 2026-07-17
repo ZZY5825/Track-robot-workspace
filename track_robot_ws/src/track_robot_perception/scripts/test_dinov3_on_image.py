@@ -21,7 +21,7 @@ from track_robot_perception.dinov3_runtime import (
     make_feature_heatmap,
     normalize_feature_rows,
     patch_grid,
-    preprocess_bgr,
+    preprocess_bgr_aspect_preserving,
 )
 
 
@@ -50,7 +50,9 @@ def main():
     model, backend = load_model(
         args.model_source, args.model_name, args.device, args.local_repo,
         args.weights_path, args.hf_model_id)
-    tensor = preprocess_bgr(image, args.input_size).to(args.device)
+    tensor, transform = preprocess_bgr_aspect_preserving(
+        image, args.input_size)
+    tensor = tensor.to(args.device)
 
     start = time.monotonic()
     cls_token, patch_tokens, details = extract_features(model, tensor, backend)
@@ -58,7 +60,8 @@ def main():
         torch.cuda.synchronize()
     elapsed_ms = (time.monotonic() - start) * 1000.0
 
-    grid = patch_grid(patch_tokens, args.input_size)
+    grid = patch_grid(
+        patch_tokens, transform.grid_height, transform.grid_width)
     cls_array = normalize_feature_rows(
         cls_token[0].detach().float().cpu().numpy())
     patch_array = normalize_feature_rows(grid)
@@ -67,12 +70,26 @@ def main():
     output_dir = os.path.expanduser(args.output_dir)
     np.save(os.path.join(output_dir, 'cls_token.npy'), cls_array)
     np.save(os.path.join(output_dir, 'patch_tokens.npy'), patch_array)
+    np.save(
+        os.path.join(output_dir, 'valid_patch_mask.npy'),
+        transform.valid_patch_mask)
     cv2.imwrite(os.path.join(output_dir, 'feature_heatmap.jpg'), heatmap)
     metadata = {
         'model': args.model_name,
         'source': backend,
         'device': args.device,
         'input_size': args.input_size,
+        'original_size': [transform.source_width, transform.source_height],
+        'resized_size': [transform.resized_width, transform.resized_height],
+        'preprocessing_scale': transform.scale,
+        'padding': {
+            'left': transform.padding_left,
+            'top': transform.padding_top,
+            'right': transform.padding_right,
+            'bottom': transform.padding_bottom,
+        },
+        'valid_patch_count': int(transform.valid_patch_mask.sum()),
+        'preprocessing_version': 'aspect_pad_v1',
         'cls_token_shape': list(cls_array.shape),
         'patch_tokens_shape': list(patch_array.shape),
         'inference_ms': round(elapsed_ms, 2),

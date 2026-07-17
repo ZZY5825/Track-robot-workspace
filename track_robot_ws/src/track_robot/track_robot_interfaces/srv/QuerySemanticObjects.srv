@@ -1,0 +1,20 @@
+uint8 QUERY_ACTIVE_TASK=0
+uint8 QUERY_DESCRIPTOR=1
+
+uint8 query_mode
+uint64 query_id
+uint64 query_version
+string<=512 query_text
+track_robot_interfaces/VisualDescriptor task_descriptor
+uint32 page_size
+uint64 page_token
+bool include_stale
+bool include_lost
+bool include_archived
+bool include_inspected
+---
+bool accepted
+string<=256 reason
+track_robot_interfaces/SemanticObject[<=64] objects
+uint64 next_page_token
+bool has_more

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Semantic Search Frame Annotation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_id", "trial_id", "stamp_ns", "query_id",
+    "object_id", "visibility", "label_source", "confidence"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "trial_id": {"type": "string", "minLength": 1},
+    "stamp_ns": {"type": "integer", "minimum": 0},
+    "query_id": {"type": "integer", "minimum": 1},
+    "object_id": {"type": "string", "minLength": 1},
+    "bbox_xywh": {
+      "type": ["array", "null"],
+      "items": {"type": "number"},
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "mask_path": {
+      "type": ["string", "null"],
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "position_base_m": {
+      "type": ["array", "null"],
+      "items": {"type": "number"},
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "extent_m": {
+      "type": ["array", "null"],
+      "items": {"type": "number"},
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "visibility": {
+      "enum": ["visible", "partial", "occluded", "out_of_fov"]
+    },
+    "label_source": {
+      "enum": ["human", "teacher", "synthetic", "temporal_pseudo"]
+    },
+    "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "public_object_key": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["memory_epoch_id", "global_object_id"],
+      "properties": {
+        "memory_epoch_id": {"type": "integer", "minimum": 1},
+        "global_object_id": {"type": "integer", "minimum": 1}
+      }
+    },
+    "lidar_source_key": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["source_epoch_id", "tracklet_id"],
+      "properties": {
+        "source_epoch_id": {"type": "integer", "minimum": 1},
+        "tracklet_id": {"type": "integer", "minimum": 0}
+      }
+    },
+    "support_state": {
+      "enum": [
+        "camera_lidar", "camera_only", "lidar_only", "prediction_only", "none"
+      ]
+    },
+    "position_3d": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["frame_id", "xyz_m"],
+      "properties": {
+        "frame_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "xyz_m": {
+          "type": "array", "items": {"type": "number"},
+          "minItems": 3, "maxItems": 3
+        }
+      }
+    },
+    "task_relevant": {"type": ["boolean", "null"]},
+    "reid_trial_id": {"type": ["string", "null"]},
+    "reactivation_trial_id": {"type": ["string", "null"]},
+    "ignore": {"type": "boolean"},
+    "ignore_reason": {"type": "string", "maxLength": 256}
+  }
+}

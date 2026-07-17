@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Phase 2 Task Threshold Calibration Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_id", "split", "samples_sha256",
+    "sample_count", "positive_count", "hard_negative_count", "status",
+    "selected_threshold", "selected_metrics", "gates", "reasons"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "split": {"const": "calibration"},
+    "samples_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sample_count": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "positive_count": {"type": "integer", "minimum": 0},
+    "hard_negative_count": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["calibrated", "insufficient_evidence"]},
+    "selected_threshold": {
+      "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0
+    },
+    "selected_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "true_positive", "false_positive", "false_negative", "true_negative",
+        "precision", "recall", "hard_negative_false_confirmation_rate"
+      ],
+      "properties": {
+        "true_positive": {"type": ["integer", "null"], "minimum": 0},
+        "false_positive": {"type": ["integer", "null"], "minimum": 0},
+        "false_negative": {"type": ["integer", "null"], "minimum": 0},
+        "true_negative": {"type": ["integer", "null"], "minimum": 0},
+        "precision": {"type": ["number", "null"], "minimum": 0.0, "maximum": 1.0},
+        "recall": {"type": ["number", "null"], "minimum": 0.0, "maximum": 1.0},
+        "hard_negative_false_confirmation_rate": {
+          "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_30_positive_samples", "minimum_30_hard_negative_samples",
+        "candidate_recall_at_least_0_90",
+        "hard_negative_false_confirmation_at_most_0_05"
+      ],
+      "properties": {
+        "minimum_30_positive_samples": {"type": "boolean"},
+        "minimum_30_hard_negative_samples": {"type": "boolean"},
+        "candidate_recall_at_least_0_90": {"type": "boolean"},
+        "hard_negative_false_confirmation_at_most_0_05": {"type": "boolean"}
+      }
+    },
+    "reasons": {
+      "type": "array", "uniqueItems": true, "items": {"type": "string"}
+    }
+  }
+}

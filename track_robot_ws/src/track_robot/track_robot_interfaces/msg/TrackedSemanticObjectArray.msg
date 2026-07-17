@@ -1,0 +1,4 @@
+std_msgs/Header header
+uint64 localization_epoch_id
+uint8 memory_mode
+track_robot_interfaces/TrackedSemanticObject[] objects

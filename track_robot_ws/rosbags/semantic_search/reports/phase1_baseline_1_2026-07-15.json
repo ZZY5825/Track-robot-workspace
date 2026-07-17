@@ -1,0 +1,61 @@
+{
+  "artifacts": {
+    "model": {
+      "available": true,
+      "checkpoint_id": "sha256:c6fa93dd1ee4a2c18c900a45c1d864a1c6f7aba75d84f91648a30b7fb641d212",
+      "encoder_id": "ultralytics:yolov8n-pose:person",
+      "licence": "AGPL-3.0 (Ultralytics runtime/model family)",
+      "required": true
+    },
+    "observations": {
+      "path": "phase1_observations_2026-07-15.jsonl",
+      "sample_policy": "32 evenly spaced messages per source topic",
+      "sha256": "78864a386c2a27dc19121fe2867d0ba1e8ffc9d61ddae3abfd864eef8ebf981a"
+    },
+    "software_revision": "b1ad3b1127e95d561983ca6279a90aee2e343e2e"
+  },
+  "baseline_id": "baseline_1_fixed_detector",
+  "dataset": {
+    "capabilities": {
+      "active_motion": false,
+      "annotations": false,
+      "camera": true,
+      "imu": false,
+      "lidar": true,
+      "local_pose": false,
+      "query_events": false,
+      "world_pose": false
+    },
+    "dataset_id": "human_tracking_lidar_20260706_150711",
+    "manifest_sha256": "6f24cb8d122aa989d7f2674d863a70ef5e1be18d2e951f071237e6b54f98d72a"
+  },
+  "gates": {
+    "annotations_available": false,
+    "latency_p95_at_most_150_ms": true,
+    "no_motion_output": true,
+    "precision_at_least_0_85": false,
+    "runtime_available": true,
+    "runtime_contract_passed": true,
+    "semantic_output_at_least_5_hz": true
+  },
+  "metrics": {
+    "labelled_count": 0,
+    "latency_ms": {
+      "maximum": 36.425543992663734,
+      "mean": 34.3967138737753,
+      "p50": 34.543405497970525,
+      "p95": 35.962819850828964
+    },
+    "observation_count": 32,
+    "output_rate_hz": 27.80649582396274,
+    "phrase_region_recall": null,
+    "precision": null
+  },
+  "passed": false,
+  "phase": "phase1",
+  "reasons": [
+    "annotations_unavailable"
+  ],
+  "schema_version": "1.0.0",
+  "status": "not_evaluated"
+}

@@ -1,0 +1,6 @@
+uint64 memory_epoch_id
+uint64 global_object_id
+---
+bool found
+track_robot_interfaces/SemanticObject object
+string<=256 reason

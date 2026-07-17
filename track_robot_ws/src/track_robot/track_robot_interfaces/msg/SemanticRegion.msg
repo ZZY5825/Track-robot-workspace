@@ -1,0 +1,25 @@
+uint8 MASK_NONE=0
+uint8 MASK_PNG=1
+uint8 MASK_COCO_RLE_JSON=2
+
+std_msgs/Header header
+uint32 image_width
+uint32 image_height
+uint64 query_id
+uint64 query_version
+uint64 observation_id
+sensor_msgs/RegionOfInterest roi
+uint8 mask_encoding
+uint8[] compressed_mask
+float32 appearance_score
+float32 language_score
+float32 localization_score
+float32 fused_score
+float32 preprocessing_scale
+uint32 padding_left
+uint32 padding_top
+uint32 model_input_width
+uint32 model_input_height
+string image_encoder_id
+string text_encoder_id
+string checkpoint_id
