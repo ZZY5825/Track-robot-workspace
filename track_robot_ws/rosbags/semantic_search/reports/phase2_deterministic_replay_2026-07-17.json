@@ -1,0 +1,8 @@
+{
+  "deterministic_replay_passed": true,
+  "first_output_sha256": "252082be46a78e9e861443d3e90e53eb08e56f22fb113448c3c16680c4f00563",
+  "input_sha256": "9047ea70fbe7738ee32509570f8e19794c5f84548a84457e82b4c9a93c92aa59",
+  "reason": "",
+  "schema_version": "1.0.0",
+  "second_output_sha256": "252082be46a78e9e861443d3e90e53eb08e56f22fb113448c3c16680c4f00563"
+}

@@ -1,0 +1,2332 @@
+{
+  "calibrated_size_ratio_maximum": 40.0,
+  "decisions": [
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        590,
+        70,
+        710,
+        660
+      ],
+      "projected_box_xyxy": [
+        712.3526880849626,
+        307.4381061077707,
+        1174.4347145300012,
+        507.3811167356882
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.5163161076918121,
+      "visual_candidate_id": 2,
+      "visual_stamp_ns": 1783346275052527448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        590,
+        70,
+        710,
+        660
+      ],
+      "projected_box_xyxy": [
+        894.8113915949193,
+        281.9745848628849,
+        923.6506786428305,
+        330.88224092394506
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 0.7699217787003592,
+      "visual_candidate_id": 2,
+      "visual_stamp_ns": 1783346275052527448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 12,
+      "manual_human_box_xyxy": [
+        590,
+        70,
+        710,
+        660
+      ],
+      "projected_box_xyxy": [
+        729.8194148432226,
+        407.8477847951286,
+        745.8758771590652,
+        438.512902873663
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.23012045440217,
+      "visual_candidate_id": 2,
+      "visual_stamp_ns": 1783346275052527448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        590,
+        70,
+        710,
+        660
+      ],
+      "projected_box_xyxy": [
+        606.2773609579773,
+        329.0190156277496,
+        666.6301777880327,
+        489.4512970858932
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.4322039184616133,
+      "visual_candidate_id": 2,
+      "visual_stamp_ns": 1783346275052527448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        600,
+        40,
+        790,
+        650
+      ],
+      "projected_box_xyxy": [
+        731.4540960528692,
+        305.13496833934346,
+        1201.1430481936377,
+        511.13122614779206
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.019578191880117,
+      "visual_candidate_id": 6,
+      "visual_stamp_ns": 1783346280119435448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        600,
+        40,
+        790,
+        650
+      ],
+      "projected_box_xyxy": [
+        894.2311471344184,
+        288.69097008546413,
+        921.5955167474347,
+        325.0683906387602
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0085888281414024,
+      "visual_candidate_id": 6,
+      "visual_stamp_ns": 1783346280119435448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 11,
+      "manual_human_box_xyxy": [
+        600,
+        40,
+        790,
+        650
+      ],
+      "projected_box_xyxy": [
+        898.2950755012567,
+        251.32117915729137,
+        925.7260204507315,
+        306.2198150724697
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0129932826539303,
+      "visual_candidate_id": 6,
+      "visual_stamp_ns": 1783346280119435448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 17,
+      "manual_human_box_xyxy": [
+        600,
+        40,
+        790,
+        650
+      ],
+      "projected_box_xyxy": [
+        598.1748055523723,
+        311.5217511621049,
+        617.5231672580296,
+        323.673453180609
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 2.410375887743076,
+      "visual_candidate_id": 6,
+      "visual_stamp_ns": 1783346280119435448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 21,
+      "manual_human_box_xyxy": [
+        600,
+        40,
+        790,
+        650
+      ],
+      "projected_box_xyxy": [
+        711.7945816913137,
+        183.42485293653897,
+        815.9346240242525,
+        532.8458540069547
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.6830789794486654,
+      "visual_candidate_id": 6,
+      "visual_stamp_ns": 1783346280119435448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        732.8067658470432,
+        305.2472924782258,
+        1202.7334213991576,
+        511.0034681742359
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.94321756318066,
+      "visual_candidate_id": 7,
+      "visual_stamp_ns": 1783346281386360448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        888.7629945626579,
+        280.5077975763721,
+        927.79364818973,
+        331.88349681702255
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0219871394946323,
+      "visual_candidate_id": 7,
+      "visual_stamp_ns": 1783346281386360448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        607.1636694772092,
+        328.847051015195,
+        667.8052636866482,
+        489.82865473768277
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.9920371403196944,
+      "visual_candidate_id": 7,
+      "visual_stamp_ns": 1783346281386360448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        730,
+        650
+      ],
+      "projected_box_xyxy": [
+        735.6543243830274,
+        304.8533536998821,
+        1209.4532239414063,
+        511.6625345410147
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.9889171645040198,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346285186365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        730,
+        650
+      ],
+      "projected_box_xyxy": [
+        894.0036594093824,
+        288.5740065272287,
+        921.7728317777322,
+        325.1153892459224
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0104718674436868,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346285186365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 11,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        730,
+        650
+      ],
+      "projected_box_xyxy": [
+        895.9210231481381,
+        251.04037373373,
+        928.1037475402709,
+        306.3421807293257
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0183670052933558,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346285186365448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        560,
+        80,
+        730,
+        650
+      ],
+      "projected_box_xyxy": [
+        607.2292065225123,
+        329.45631755075794,
+        667.0533936692948,
+        488.5038636062558
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.973002261345343,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346285186365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        760,
+        0,
+        950,
+        650
+      ],
+      "projected_box_xyxy": [
+        786.4786479287749,
+        308.75872647102926,
+        1263.2481577059289,
+        509.1676268586392
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.3451694269913057,
+      "visual_candidate_id": 11,
+      "visual_stamp_ns": 1783346286453107448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        760,
+        0,
+        950,
+        650
+      ],
+      "projected_box_xyxy": [
+        888.6040128780712,
+        280.4720218621454,
+        928.2752887772931,
+        331.9947324001578
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 2.7499054867442756,
+      "visual_candidate_id": 11,
+      "visual_stamp_ns": 1783346286453107448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        760,
+        0,
+        950,
+        650
+      ],
+      "projected_box_xyxy": [
+        607.3766312371664,
+        329.39841932411764,
+        667.3854209380247,
+        488.576776245166
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.0773449436874765,
+      "visual_candidate_id": 11,
+      "visual_stamp_ns": 1783346286453107448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        760,
+        0,
+        950,
+        650
+      ],
+      "projected_box_xyxy": [
+        784.7354202311482,
+        131.00627755392426,
+        966.3781595582857,
+        539.5172856038688
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 3.9143543993270242,
+      "visual_candidate_id": 11,
+      "visual_stamp_ns": 1783346286453107448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 30,
+      "manual_human_box_xyxy": [
+        760,
+        0,
+        950,
+        650
+      ],
+      "projected_box_xyxy": [
+        733.5821355559406,
+        359.98397524562176,
+        802.1495934713298,
+        501.79534785417
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.054769087672885,
+      "visual_candidate_id": 11,
+      "visual_stamp_ns": 1783346286453107448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        878.9847724168069,
+        284.77811427488257,
+        916.8118661439908,
+        327.6779965548196
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 0.4375128676520404,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        607.0780037315909,
+        328.74894304744475,
+        667.3881510894582,
+        489.7644732772871
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.04495773312531,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        995.1725170286413,
+        73.24053371907013,
+        1345.8650445249518,
+        554.2016446993075
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 3.838611560239777,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 30,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        727.8505146768525,
+        346.36728180605485,
+        1029.984606581435,
+        544.6361857704244
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.4800289122281325,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 35,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        1078.6354336930083,
+        110.21633013003714,
+        1600.8156870660082,
+        379.4011713934817
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.055648815840198,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 36,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        601.911963066738,
+        271.1020562210879,
+        620.2844254298248,
+        286.86680764896505
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 0.27134092416528094,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346287653240448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        894.1204715671795,
+        288.3400330773907,
+        923.2142444017068,
+        325.1379207100341
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0052479871743853,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346288919985448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        607.3499827961687,
+        329.29526920455794,
+        667.2819536731096,
+        488.75482264710183
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.0468466927106301,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346288919985448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        1017.6154815430211,
+        6.345234171897118,
+        1388.2816283847792,
+        619.263861685642
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 3.8113627025308685,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346288919985448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 30,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        741.3951466908904,
+        347.26265016537184,
+        1010.2295808227799,
+        538.9713627362785
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.3882885993040905,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346288919985448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        720,
+        0,
+        930,
+        650
+      ],
+      "projected_box_xyxy": [
+        605.4148897616027,
+        326.6463839144612,
+        668.3963448389102,
+        494.5016085811765
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.077448837302843,
+      "visual_candidate_id": 14,
+      "visual_stamp_ns": 1783346290186609448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        720,
+        0,
+        930,
+        650
+      ],
+      "projected_box_xyxy": [
+        743.2240638121999,
+        112.00556598258868,
+        924.6063627750023,
+        542.561139474358
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 4.098236555656976,
+      "visual_candidate_id": 14,
+      "visual_stamp_ns": 1783346290186609448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 41,
+      "manual_human_box_xyxy": [
+        720,
+        0,
+        930,
+        650
+      ],
+      "projected_box_xyxy": [
+        775.2616323035563,
+        358.5699303102197,
+        1196.6220079586064,
+        549.1202173010479
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.11286231879428,
+      "visual_candidate_id": 14,
+      "visual_stamp_ns": 1783346290186609448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        720,
+        0,
+        930,
+        650
+      ],
+      "projected_box_xyxy": [
+        895.2127124235121,
+        288.762131244295,
+        923.2614306001996,
+        325.38803251404335
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 2.584436697063712,
+      "visual_candidate_id": 14,
+      "visual_stamp_ns": 1783346290186609448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        720,
+        0,
+        930,
+        650
+      ],
+      "projected_box_xyxy": [
+        896.2040248965454,
+        245.9296277702555,
+        928.2756935102209,
+        300.79128313649426
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 2.5188918512822447,
+      "visual_candidate_id": 14,
+      "visual_stamp_ns": 1783346290186609448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        606.2309845297526,
+        328.9045323128245,
+        666.9445717939701,
+        489.9456845316095
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 0.897928386824041,
+      "visual_candidate_id": 16,
+      "visual_stamp_ns": 1783346292720135448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        885.7710816406899,
+        285.68418893730967,
+        924.5507016103288,
+        328.2738323482363
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0080961283633243,
+      "visual_candidate_id": 16,
+      "visual_stamp_ns": 1783346292720135448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 54,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        1011.2903994878181,
+        47.426504749503806,
+        1427.3312843829708,
+        626.3936293960274
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 3.583727757727678,
+      "visual_candidate_id": 16,
+      "visual_stamp_ns": 1783346292720135448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        980,
+        0,
+        1280,
+        680
+      ],
+      "projected_box_xyxy": [
+        716.3877041255747,
+        355.5898503661049,
+        1064.2786928192077,
+        555.6377803758742
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.649077312084016,
+      "visual_candidate_id": 16,
+      "visual_stamp_ns": 1783346292720135448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        607.2794039373791,
+        328.8769586104134,
+        667.5504738559549,
+        489.415201721804
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.0650256160965856,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        893.7958787034631,
+        288.9704405115949,
+        922.5199713095041,
+        325.57814118325166
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0070666867216862,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        895.450631904554,
+        245.14706906148407,
+        927.3974149186328,
+        301.3715709823001
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0120711825466329,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        730.1007805528822,
+        356.71071307989746,
+        1067.8431568409026,
+        549.9140610690058
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.744579395467545,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 56,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        600.0284233930884,
+        271.17208403600193,
+        615.9698526140281,
+        279.40135990465023
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 0.7308816482320861,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 82,
+      "manual_human_box_xyxy": [
+        990,
+        40,
+        1230,
+        660
+      ],
+      "projected_box_xyxy": [
+        1006.7017426087061,
+        133.2849289833084,
+        1210.9383954585967,
+        569.0372204132436
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 4.187913745336854,
+      "visual_candidate_id": 26,
+      "visual_stamp_ns": 1783346305320825448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        740,
+        70,
+        900,
+        650
+      ],
+      "projected_box_xyxy": [
+        605.7039893798346,
+        327.3066880258536,
+        667.9526638484205,
+        492.9503453791251
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.1615751617568868,
+      "visual_candidate_id": 27,
+      "visual_stamp_ns": 1783346306587619448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        740,
+        70,
+        900,
+        650
+      ],
+      "projected_box_xyxy": [
+        888.4161202213088,
+        281.27224471947983,
+        927.3124614606668,
+        332.4431688884812
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.812129018608549,
+      "visual_candidate_id": 27,
+      "visual_stamp_ns": 1783346306587619448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        740,
+        70,
+        900,
+        650
+      ],
+      "projected_box_xyxy": [
+        896.932650851018,
+        245.3700335911362,
+        928.9827742505092,
+        301.1601001664683
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.4810950343391538,
+      "visual_candidate_id": 27,
+      "visual_stamp_ns": 1783346306587619448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 82,
+      "manual_human_box_xyxy": [
+        740,
+        70,
+        900,
+        650
+      ],
+      "projected_box_xyxy": [
+        764.9124573756617,
+        165.24780519540178,
+        884.1156566876924,
+        546.6406521321605
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 3.9494691580749115,
+      "visual_candidate_id": 27,
+      "visual_stamp_ns": 1783346306587619448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 96,
+      "manual_human_box_xyxy": [
+        740,
+        70,
+        900,
+        650
+      ],
+      "projected_box_xyxy": [
+        766.9726707968707,
+        334.30781145345236,
+        1194.1805935690836,
+        535.2147257564644
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.526574769940228,
+      "visual_candidate_id": 27,
+      "visual_stamp_ns": 1783346306587619448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        619.9974962314881,
+        330.42964186236946,
+        647.6009341153606,
+        487.7065918407916
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.8799056774772955,
+      "visual_candidate_id": 28,
+      "visual_stamp_ns": 1783346307787722448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        894.4768425489149,
+        282.8542561705772,
+        922.640488307481,
+        331.2886585862954
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.0206680204873353,
+      "visual_candidate_id": 28,
+      "visual_stamp_ns": 1783346307787722448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        688.2352473834427,
+        398.7567300738686,
+        736.021155225775,
+        446.72275018392554
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.8298433213115102,
+      "visual_candidate_id": 28,
+      "visual_stamp_ns": 1783346307787722448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 96,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        703.2158039647156,
+        335.16932771924945,
+        1162.9142409659833,
+        532.9405826940698
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.725951720760306,
+      "visual_candidate_id": 28,
+      "visual_stamp_ns": 1783346307787722448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        614.6374958086823,
+        334.34045815277636,
+        652.7453866248526,
+        483.72972267173645
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 2.920901428515256,
+      "visual_candidate_id": 29,
+      "visual_stamp_ns": 1783346309054365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        894.1727571714149,
+        289.10492872072416,
+        922.0812322947224,
+        325.4510429213368
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.015369160969647,
+      "visual_candidate_id": 29,
+      "visual_stamp_ns": 1783346309054365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        898.7581222874205,
+        245.34223968868667,
+        926.1391653672489,
+        301.1925618050451
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "primary",
+      "total_score": 1.023170304180156,
+      "visual_candidate_id": 29,
+      "visual_stamp_ns": 1783346309054365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        695.6331860159132,
+        399.4877838591455,
+        745.4546361736758,
+        449.1637345367457
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.6322242573249643,
+      "visual_candidate_id": 29,
+      "visual_stamp_ns": 1783346309054365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 96,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        702.4720530596934,
+        334.48831553015134,
+        1186.155148854522,
+        534.6003200451946
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "primary",
+      "total_score": 1.6818830322085467,
+      "visual_candidate_id": 29,
+      "visual_stamp_ns": 1783346309054365448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        717.2906144777311,
+        306.3786547736117,
+        1173.1022150699641,
+        508.9576549193538
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.8398468735157523,
+      "visual_candidate_id": 3,
+      "visual_stamp_ns": 1783346277719322448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        889.0282983760217,
+        280.2569309348347,
+        928.114901047158,
+        331.9034548514463
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.0263192589266485,
+      "visual_candidate_id": 3,
+      "visual_stamp_ns": 1783346277719322448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 11,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        895.6006934206314,
+        251.1365450731725,
+        927.7664848598477,
+        306.3408338655643
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0231511035182053,
+      "visual_candidate_id": 3,
+      "visual_stamp_ns": 1783346277719322448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 12,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        722.2828118389701,
+        418.3776971471526,
+        737.1895869754283,
+        427.968264695292
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.2727980901676992,
+      "visual_candidate_id": 3,
+      "visual_stamp_ns": 1783346277719322448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        590,
+        60,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        606.6540448856782,
+        327.81562514155297,
+        665.7591333792768,
+        491.7895484972942
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.963039677379488,
+      "visual_candidate_id": 3,
+      "visual_stamp_ns": 1783346277719322448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        560,
+        40,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        725.6656386559431,
+        305.0907772172837,
+        1216.8978371922212,
+        511.3858512865006
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.963106101340685,
+      "visual_candidate_id": 4,
+      "visual_stamp_ns": 1783346279586058448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        560,
+        40,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        888.3104926480851,
+        285.23876367421553,
+        927.0020176216665,
+        327.872607442855
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0169013158903082,
+      "visual_candidate_id": 4,
+      "visual_stamp_ns": 1783346279586058448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 11,
+      "manual_human_box_xyxy": [
+        560,
+        40,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        895.5975725570245,
+        251.15278545626143,
+        927.786273766252,
+        306.33162282278886
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0181981056256528,
+      "visual_candidate_id": 4,
+      "visual_stamp_ns": 1783346279586058448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        560,
+        40,
+        720,
+        650
+      ],
+      "projected_box_xyxy": [
+        607.0548304319225,
+        328.6896307735715,
+        667.5430989577576,
+        489.8786651486093
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.84809170583494,
+      "visual_candidate_id": 4,
+      "visual_stamp_ns": 1783346279586058448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        620,
+        40,
+        760,
+        650
+      ],
+      "projected_box_xyxy": [
+        741.2533992145047,
+        304.8883458092371,
+        1204.9036992197193,
+        511.8157100166691
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.9524135010500052,
+      "visual_candidate_id": 8,
+      "visual_stamp_ns": 1783346285253203448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        620,
+        40,
+        760,
+        650
+      ],
+      "projected_box_xyxy": [
+        893.8720132719839,
+        288.5383975035403,
+        922.3182480723392,
+        325.06506878367605
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0121668181230696,
+      "visual_candidate_id": 8,
+      "visual_stamp_ns": 1783346285253203448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 11,
+      "manual_human_box_xyxy": [
+        620,
+        40,
+        760,
+        650
+      ],
+      "projected_box_xyxy": [
+        895.9371612065135,
+        251.0635494897178,
+        927.9740995464589,
+        306.33057397316094
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.020732860135929,
+      "visual_candidate_id": 8,
+      "visual_stamp_ns": 1783346285253203448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        620,
+        40,
+        760,
+        650
+      ],
+      "projected_box_xyxy": [
+        606.8537396770339,
+        328.6533233060564,
+        667.43246864368,
+        489.94955857409093
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.5686318172645297,
+      "visual_candidate_id": 8,
+      "visual_stamp_ns": 1783346285253203448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 27,
+      "manual_human_box_xyxy": [
+        620,
+        40,
+        760,
+        650
+      ],
+      "projected_box_xyxy": [
+        596.1690213173878,
+        262.9300682250629,
+        618.7145064717424,
+        286.6175246585485
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.4343221700708861,
+      "visual_candidate_id": 8,
+      "visual_stamp_ns": 1783346285253203448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 9,
+      "manual_human_box_xyxy": [
+        850,
+        0,
+        1220,
+        700
+      ],
+      "projected_box_xyxy": [
+        1022.1635466022747,
+        383.1087616165802,
+        1070.597795449551,
+        419.3447086518146
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 2.7511741424676703,
+      "visual_candidate_id": 9,
+      "visual_stamp_ns": 1783346287186483448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        850,
+        0,
+        1220,
+        700
+      ],
+      "projected_box_xyxy": [
+        867.9997430803561,
+        96.99914995108031,
+        1218.8258724907082,
+        549.7351447694753
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 4.086849035642808,
+      "visual_candidate_id": 9,
+      "visual_stamp_ns": 1783346287186483448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 30,
+      "manual_human_box_xyxy": [
+        850,
+        0,
+        1220,
+        700
+      ],
+      "projected_box_xyxy": [
+        742.2022127258449,
+        346.27349173575936,
+        986.4196684997706,
+        542.8133847466174
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.8639965427839154,
+      "visual_candidate_id": 9,
+      "visual_stamp_ns": 1783346287186483448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 34,
+      "manual_human_box_xyxy": [
+        850,
+        0,
+        1220,
+        700
+      ],
+      "projected_box_xyxy": [
+        988.979082069308,
+        376.3888516049521,
+        1137.403978315936,
+        506.53697326107
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.510622340156001,
+      "visual_candidate_id": 9,
+      "visual_stamp_ns": 1783346287186483448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 10,
+      "manual_human_box_xyxy": [
+        970,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        892.0451527261712,
+        285.24617876989896,
+        922.3744803679751,
+        327.8027588524371
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.005782761920421,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346289053259448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        970,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        609.2482045681149,
+        329.08612301168665,
+        665.0722306324448,
+        489.4126537097354
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.0400988908086535,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346289053259448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 28,
+      "manual_human_box_xyxy": [
+        970,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        995.1533322169729,
+        19.919128448944548,
+        1318.0628213175955,
+        612.1018613422159
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 4.15443471926142,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346289053259448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 30,
+      "manual_human_box_xyxy": [
+        970,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        736.0235348103636,
+        347.63227373404777,
+        1000.0117468143897,
+        538.2852408743206
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.3605447645289979,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346289053259448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 41,
+      "manual_human_box_xyxy": [
+        970,
+        0,
+        1280,
+        720
+      ],
+      "projected_box_xyxy": [
+        1021.1101773289146,
+        390.2888207084299,
+        1149.3050101761082,
+        518.7943052015117
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.0847412801997667,
+      "visual_candidate_id": 10,
+      "visual_stamp_ns": 1783346289053259448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        560,
+        0,
+        720,
+        680
+      ],
+      "projected_box_xyxy": [
+        621.9808387672123,
+        329.45966091903887,
+        639.6675599024421,
+        488.60253795466406
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.7035497702056093,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346290919999448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 41,
+      "manual_human_box_xyxy": [
+        560,
+        0,
+        720,
+        680
+      ],
+      "projected_box_xyxy": [
+        710.1878785157522,
+        353.8785316316464,
+        1164.1443672457967,
+        553.4368083921589
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.864168230400482,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346290919999448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        560,
+        0,
+        720,
+        680
+      ],
+      "projected_box_xyxy": [
+        893.9683045156623,
+        282.9880687727059,
+        922.0081208882816,
+        331.3648195223392
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0124676030121662,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346290919999448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        560,
+        0,
+        720,
+        680
+      ],
+      "projected_box_xyxy": [
+        898.6383796992968,
+        245.88008068136037,
+        926.0809839974827,
+        300.8306715232845
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.013860177577449,
+      "visual_candidate_id": 12,
+      "visual_stamp_ns": 1783346290919999448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        891.9408904059096,
+        283.1609746946319,
+        920.1951356542147,
+        331.4279578438384
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0069578937719055,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        895.6275813546087,
+        245.6615838193685,
+        927.7890583087167,
+        301.02265479104494
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 0.6190841663878204,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 54,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        1032.1264368153477,
+        44.78957019337548,
+        1446.6938006040552,
+        630.5011376960341
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 3.3986595619526114,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        711.9743060489577,
+        355.9310849029878,
+        1088.9292929788153,
+        555.9486140546824
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.6907333863410563,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 56,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        597.6440627169573,
+        269.3786331015356,
+        613.6783391230701,
+        277.71695133297004
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 0.5706821300886924,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 60,
+      "manual_human_box_xyxy": [
+        1000,
+        0,
+        1280,
+        700
+      ],
+      "projected_box_xyxy": [
+        1129.4376421670308,
+        178.2443858875557,
+        1552.2494953528812,
+        337.53098557543774
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.2499035007064079,
+      "visual_candidate_id": 13,
+      "visual_stamp_ns": 1783346292786750448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 55,
+      "manual_human_box_xyxy": [
+        850,
+        70,
+        1040,
+        650
+      ],
+      "projected_box_xyxy": [
+        670.1132134517546,
+        356.6307727557278,
+        1108.3699997446706,
+        551.2731467829856
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.8946478931099575,
+      "visual_candidate_id": 21,
+      "visual_stamp_ns": 1783346306054213448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 56,
+      "manual_human_box_xyxy": [
+        850,
+        70,
+        1040,
+        650
+      ],
+      "projected_box_xyxy": [
+        605.3326806272586,
+        275.5555879920972,
+        620.2730885265481,
+        283.59584383677543
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 0.521090041742613,
+      "visual_candidate_id": 21,
+      "visual_stamp_ns": 1783346306054213448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 82,
+      "manual_human_box_xyxy": [
+        850,
+        70,
+        1040,
+        650
+      ],
+      "projected_box_xyxy": [
+        869.3388822375609,
+        145.79741307304613,
+        1020.1252095451816,
+        563.3591864712517
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 4.115555439486542,
+      "visual_candidate_id": 21,
+      "visual_stamp_ns": 1783346306054213448
+    },
+    {
+      "annotation": "positive",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 13,
+      "manual_human_box_xyxy": [
+        560,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        609.8599569260638,
+        330.0803773306908,
+        657.1458407111807,
+        488.5260548899568
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 2.931249276472517,
+      "visual_candidate_id": 22,
+      "visual_stamp_ns": 1783346307921006448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 44,
+      "manual_human_box_xyxy": [
+        560,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        894.4036161634733,
+        288.702964857751,
+        923.0502133642624,
+        325.5442245782235
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.012564008661691,
+      "visual_candidate_id": 22,
+      "visual_stamp_ns": 1783346307921006448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 45,
+      "manual_human_box_xyxy": [
+        560,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        895.9924655270997,
+        245.53794808323178,
+        928.0654407166653,
+        301.0445203617477
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 1.0211935823279366,
+      "visual_candidate_id": 22,
+      "visual_stamp_ns": 1783346307921006448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": true,
+      "lidar_tracklet_id": 96,
+      "manual_human_box_xyxy": [
+        560,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        698.2196733362474,
+        334.2281048891061,
+        1177.3620950354464,
+        534.2146323973868
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": true,
+      "source": "q50",
+      "total_score": 1.8823246889324994,
+      "visual_candidate_id": 22,
+      "visual_stamp_ns": 1783346307921006448
+    },
+    {
+      "annotation": "negative",
+      "hard_gates_passed": false,
+      "lidar_tracklet_id": 100,
+      "manual_human_box_xyxy": [
+        560,
+        60,
+        700,
+        660
+      ],
+      "projected_box_xyxy": [
+        603.6863585072649,
+        278.18764470934946,
+        608.3438798139382,
+        332.180610974312
+      ],
+      "review_basis": "human-visible image ROI and source-time LiDAR projection",
+      "size_ratio_gate_passed": false,
+      "source": "q50",
+      "total_score": 2.0668196990935312,
+      "visual_candidate_id": 22,
+      "visual_stamp_ns": 1783346307921006448
+    }
+  ],
+  "negative_pair_count": 79,
+  "positive_source_frame_count": 22,
+  "review_method": "manual_image_bbox_and_source_time_lidar_projection",
+  "schema_version": "1.0.0"
+}

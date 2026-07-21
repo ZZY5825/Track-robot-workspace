@@ -1,0 +1,152 @@
+{
+  "covered_scenarios": [],
+  "dataset_id": "human_tracking_lidar_20260706_150711",
+  "evidence": {
+    "annotation_count": 0,
+    "annotations_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "evaluated_annotation_count": 0,
+    "matched_prediction_count": 0,
+    "prediction_count": 0,
+    "predictions_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "task_threshold_calibration_dataset_id": null,
+    "task_threshold_calibration_samples_sha256": null
+  },
+  "gates": {
+    "all_twelve_scenarios_covered": false,
+    "association_precision_at_least_0_95": false,
+    "association_recall_at_least_0_80": false,
+    "core_latency_p95_at_most_50_ms": false,
+    "cuda_reserved_memory_p95_at_most_1536_mib": false,
+    "deterministic_replay": true,
+    "human_tracking_regression": false,
+    "no_drops_or_unbounded_growth": false,
+    "position_consistency_reported": false,
+    "reidentification_evaluated_and_successful": false,
+    "resource_profile_available": false,
+    "semantic_path_latency_p95_at_most_150_ms": false,
+    "stable_for_at_least_30_minutes": false,
+    "stale_reactivation_evaluated_and_accurate": false,
+    "task_candidate_recall_at_least_0_90": false,
+    "task_hard_negative_false_confirmation_at_most_0_05": false,
+    "task_threshold_calibrated_and_frozen": false,
+    "update_rate_at_least_5_hz": false,
+    "zero_identity_corruption": false
+  },
+  "manifest_sha256": "6f24cb8d122aa989d7f2674d863a70ef5e1be18d2e951f071237e6b54f98d72a",
+  "metrics": {
+    "association": {
+      "available": false,
+      "false_negative": null,
+      "false_positive": null,
+      "precision": null,
+      "reason": "association_labels_unavailable",
+      "recall": null,
+      "true_positive": null
+    },
+    "identity": {
+      "available": false,
+      "continuity_ratio": null,
+      "duplicate_objects": null,
+      "fragmentation_count": null,
+      "id_switches": null,
+      "incorrect_merges": null,
+      "reason": "matched_identity_samples_unavailable"
+    },
+    "memory_lifetime": {
+      "available": false,
+      "object_count": 0,
+      "p50_sec": null,
+      "p95_sec": null,
+      "reason": "object_lifetime_samples_unavailable"
+    },
+    "position": {
+      "available": false,
+      "p50_error_m": null,
+      "p95_error_m": null,
+      "reason": "paired_3d_annotations_unavailable",
+      "sample_count": 0
+    },
+    "reidentification": {
+      "available": false,
+      "rate": null,
+      "reason": "reidentification_expected_unavailable",
+      "success_count": 0,
+      "trial_count": 0
+    },
+    "resources": {
+      "available": false,
+      "cpu_p95_percent": null,
+      "cuda_reserved_memory_p95_mib": null,
+      "gpu_p95_percent": null,
+      "reason": "resource_profile_unavailable",
+      "resident_memory_p95_mb": null
+    },
+    "runtime": {
+      "available": false,
+      "bounded_growth_pass": null,
+      "core_latency_p50_ms": null,
+      "core_latency_p95_ms": null,
+      "drops": null,
+      "duration_sec": null,
+      "long_duration_pass": null,
+      "reason": "runtime_profile_unavailable",
+      "semantic_path_latency_p50_ms": null,
+      "semantic_path_latency_p95_ms": null,
+      "source_span_sec": null,
+      "update_rate_hz": null
+    },
+    "stale_reactivation": {
+      "accuracy": null,
+      "available": false,
+      "reason": "stale_reactivation_expected_unavailable",
+      "success_count": 0,
+      "trial_count": 0
+    },
+    "task_ranking": {
+      "available": false,
+      "candidate_recall": null,
+      "confirmed_precision": null,
+      "false_negative": null,
+      "false_positive": null,
+      "frozen_threshold": null,
+      "hard_negative_count": 0,
+      "hard_negative_false_confirmation_rate": null,
+      "mean_reciprocal_rank": null,
+      "positive_count": 0,
+      "query_count": 0,
+      "reason": "task_relevance_annotations_unavailable",
+      "threshold_calibrated": false,
+      "top1_accuracy": null,
+      "true_negative": null,
+      "true_positive": null
+    }
+  },
+  "missing_scenarios": [
+    "both_sensors_exit_reentry",
+    "camera_false_positive",
+    "camera_fov_exit_lidar_visible",
+    "camera_occlusion",
+    "lidar_cluster_merge",
+    "lidar_cluster_split",
+    "lidar_false_cluster",
+    "moving_human_crossing",
+    "robot_rotation_translation",
+    "similar_static_objects",
+    "static_multi_view",
+    "task_change_without_memory_clear"
+  ],
+  "passed": false,
+  "reasons": [
+    "annotations_unavailable",
+    "matched_predictions_unavailable",
+    "runtime_profile_unavailable",
+    "resource_profile_unavailable",
+    "task_evaluation_evidence_unavailable",
+    "task_threshold_calibration_unavailable",
+    "scenario_evidence_incomplete",
+    "human_tracking_regression_not_proven"
+  ],
+  "schema_version": "2.0.0",
+  "software_revision": "07c24b4",
+  "status": "unavailable"
+}

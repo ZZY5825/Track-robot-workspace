@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://track-robot.local/schemas/phase1_baseline_report.schema.json",
+  "title": "Semantic Search Phase 1 Baseline Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "phase", "baseline_id", "status", "dataset",
+    "artifacts", "metrics", "gates", "reasons", "passed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "phase": {"const": "phase1"},
+    "baseline_id": {
+      "enum": [
+        "baseline_1_fixed_detector",
+        "baseline_2_lidar_geometry",
+        "baseline_3_language_camera"
+      ]
+    },
+    "status": {
+      "enum": ["passed", "failed", "unavailable", "not_evaluated"]
+    },
+    "dataset": {"type": "object"},
+    "artifacts": {"type": "object"},
+    "metrics": {"type": "object"},
+    "gates": {"type": "object"},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "passed": {"type": "boolean"}
+  }
+}

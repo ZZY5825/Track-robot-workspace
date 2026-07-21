@@ -1,0 +1,72 @@
+uint8 MEMORY_OBSERVATION_ONLY=0
+uint8 MEMORY_LOCAL_SESSION=1
+uint8 MEMORY_WORLD=2
+
+uint8 ASSOCIATION_TENTATIVE=0
+uint8 ASSOCIATION_CONFIRMED=1
+uint8 ASSOCIATION_AMBIGUOUS=2
+uint8 ASSOCIATION_PREDICTION=3
+uint8 ASSOCIATION_LOST=4
+
+uint8 VISIBILITY_VISIBLE=0
+uint8 VISIBILITY_OCCLUDED=1
+uint8 VISIBILITY_OUT_OF_FOV=2
+uint8 VISIBILITY_STALE=3
+
+uint8 REID_NOT_REQUIRED=0
+uint8 REID_PENDING=1
+uint8 REID_CONFIRMED=2
+uint8 REID_REJECTED=3
+
+uint8 INSPECTION_NOT_INSPECTED=0
+uint8 INSPECTION_REQUESTED=1
+uint8 INSPECTION_COMPLETE=2
+
+uint8 SUPPORT_NONE=0
+uint8 SUPPORT_SENSOR=1
+uint8 SUPPORT_PREDICTION_ONLY=2
+
+std_msgs/Header header
+uint64 global_object_id
+uint64[] active_query_ids
+float32[] query_relevance
+uint64[] raw_observation_ids
+bool camera_track_id_valid
+int64 camera_track_id
+bool lidar_tracklet_id_valid
+int64 lidar_tracklet_id
+uint8 memory_mode
+uint64 localization_epoch_id
+string position_frame_id
+bool position_valid
+geometry_msgs/Point position
+geometry_msgs/Vector3 velocity
+bool extent_valid
+geometry_msgs/Vector3 extent
+float32[9] position_covariance
+string appearance_summary_id
+string geometry_summary_id
+string semantic_summary_id
+string[] semantic_labels
+float32[] semantic_label_scores
+string[] semantic_label_provenance
+builtin_interfaces/Time first_seen
+builtin_interfaces/Time last_seen
+builtin_interfaces/Time last_camera_seen
+builtin_interfaces/Time last_lidar_seen
+uint32 observation_count
+builtin_interfaces/Time[] history_stamps
+geometry_msgs/Point[] position_history
+float32[] uncertainty_history
+uint8 association_state
+uint8 visibility_state
+uint8 reidentification_state
+uint8 inspection_state
+uint8 support_state
+float32 association_confidence
+float32 duplicate_score
+float32 uncertainty
+float32 task_relevance
+float32 inspection_priority
+bool anomaly_score_valid
+float32 anomaly_score

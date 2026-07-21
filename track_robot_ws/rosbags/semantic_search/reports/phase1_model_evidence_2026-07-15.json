@@ -1,0 +1,14 @@
+{
+  "baseline_1_fixed_detector": {
+    "available": true,
+    "checkpoint_id": "sha256:c6fa93dd1ee4a2c18c900a45c1d864a1c6f7aba75d84f91648a30b7fb641d212",
+    "encoder_id": "ultralytics:yolov8n-pose:person",
+    "licence": "AGPL-3.0 (Ultralytics runtime/model family)"
+  },
+  "baseline_3_language_camera": {
+    "available": true,
+    "checkpoint_id": "sha256:40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
+    "encoder_id": "openai_clip:ViT-B/32",
+    "licence": "MIT (OpenAI CLIP code and released model weights)"
+  }
+}

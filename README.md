@@ -50,6 +50,12 @@ not part of the source release.
 - Gesture-triggered single-person tracking using YOLO pose for identity,
   camera-guided LiDAR association, persistent C++ LiDAR tracklets, and
   Kalman-filtered camera/LiDAR target state.
+- Language-conditioned semantic search with passive OpenAI CLIP perception,
+  generalized multi-object 3D semantic memory, deterministic replay, bounded
+  task services, and a ROS CLI text-query portal.
+- Phase 1 multiscale semantic windows using one bounded six-view GPU batch,
+  deterministic duplicate suppression, and whole-frame fallback when no local
+  candidate passes.
 
 ## Build
 
@@ -84,6 +90,9 @@ ros2 launch track_robot_perception zed_pose_rcnn.launch.py
 ros2 launch track_robot_perception zed_dinov3_feature.launch.py
 ros2 launch lidar_mos_filter range_image_mos_filter.launch.py
 ros2 launch track_robot_perception human_tracking_simplified.launch.py
+ros2 launch track_robot_semantic_search semantic_search_phase1.launch.py \
+  start_perception:=true
+ros2 run track_robot_semantic_search semantic_search_query "a red backpack"
 ```
 
 ## Model And Data Notes
@@ -108,4 +117,6 @@ to be shared.
 - `track_robot_ws/src/track_robot_perception/docs/point_lio_ros2_port_assessment.md`
 - `track_robot_ws/src/track_robot_perception/docs/pretrained_lidar_feasibility.md`
 - `track_robot_ws/src/track_robot_perception/docs/human_tracking_fusion_refactor_log_2026-07-09.md`
+- `track_robot_ws/src/track_robot_semantic_search/README.md`
+- `track_robot_ws/rosbags/semantic_search/phase2_recording_guide.md`
 - `RELEASES.md`

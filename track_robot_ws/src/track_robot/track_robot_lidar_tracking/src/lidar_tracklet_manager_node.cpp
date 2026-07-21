@@ -6,12 +6,14 @@
 #include <limits>
 #include <memory>
 #include <queue>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
@@ -26,8 +28,11 @@
 #include <track_robot_interfaces/msg/lidar_cluster_array.hpp>
 #include <track_robot_interfaces/msg/lidar_tracklet.hpp>
 #include <track_robot_interfaces/msg/lidar_tracklet_array.hpp>
+#include <track_robot_interfaces/msg/semantic_lidar_tracklet_array.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+
+#include "track_robot_lidar_tracking/source_epoch.hpp"
 
 using namespace std::chrono_literals;
 
@@ -48,6 +53,8 @@ struct ClusterDetection {
   double distance{0.0};
   double bearing{0.0};
   double dynamic_score{0.0};
+  double observation_quality{0.0};
+  double measurement_variance{0.25};
   bool oversized{false};
   bool too_sparse{false};
   bool too_large{false};
@@ -67,6 +74,7 @@ struct Tracklet {
   size_t point_count{0};
   double confidence{0.0};
   double dynamic_score{0.0};
+  double observation_quality{0.0};
   uint32_t age_frames{0};
   uint32_t hit_count{0};
   uint32_t miss_count{0};
@@ -128,26 +136,6 @@ geometry_msgs::msg::Vector3 toVector(const PointXYZI &point) {
   return msg;
 }
 
-PointXYZI add(const PointXYZI &a, const PointXYZI &b) {
-  return PointXYZI{a.x + b.x, a.y + b.y, a.z + b.z, 0.0F};
-}
-
-PointXYZI subtract(const PointXYZI &a, const PointXYZI &b) {
-  return PointXYZI{a.x - b.x, a.y - b.y, a.z - b.z, 0.0F};
-}
-
-PointXYZI scale(const PointXYZI &a, const double value) {
-  return PointXYZI{
-    static_cast<float>(a.x * value),
-    static_cast<float>(a.y * value),
-    static_cast<float>(a.z * value),
-    0.0F};
-}
-
-double normXY(const PointXYZI &a) {
-  return std::hypot(static_cast<double>(a.x), static_cast<double>(a.y));
-}
-
 double distanceXY(const PointXYZI &a, const PointXYZI &b) {
   return std::hypot(static_cast<double>(a.x - b.x), static_cast<double>(a.y - b.y));
 }
@@ -163,6 +151,14 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     lidar_topic_ = declare_parameter<std::string>("lidar_topic", "/rslidar_points");
     output_topic_ = declare_parameter<std::string>(
       "output_topic", "/human_tracking/lidar_tracklets");
+    semantic_output_topic_ = declare_parameter<std::string>(
+      "semantic_output_topic", "");
+    const int64_t source_epoch_seed = declare_parameter<int64_t>("source_epoch_seed", 0);
+    if (source_epoch_seed < 0) {
+      throw std::invalid_argument("source_epoch_seed must be non-negative");
+    }
+    source_epoch_ = std::make_unique<track_robot_lidar_tracking::SourceEpoch>(
+      static_cast<uint64_t>(source_epoch_seed));
     marker_topic_ = declare_parameter<std::string>(
       "marker_topic", "/human_tracking/lidar_tracklet_markers");
     candidate_clusters_topic_ = declare_parameter<std::string>(
@@ -173,6 +169,12 @@ class LidarTrackletManagerNode : public rclcpp::Node {
       "debug_topic", "/human_tracking/lidar_tracklet_debug");
     lidar_qos_reliability_ = declare_parameter<std::string>("lidar_qos_reliability", "reliable");
     tracking_frame_ = declare_parameter<std::string>("tracking_frame", "base_link");
+    const auto tracking_frame_override = declare_parameter<std::string>(
+      "tracking_frame_override", "");
+    if (!tracking_frame_override.empty()) {
+      tracking_frame_ = tracking_frame_override;
+    }
+    base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
     map_frame_ = declare_parameter<std::string>("map_frame", "map");
 
     min_range_ = declare_parameter<double>("min_range", 0.5);
@@ -238,9 +240,11 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     min_publish_confidence_ = declare_parameter<double>("min_publish_confidence", 0.10);
 
     marker_publish_rate_ = declare_parameter<double>("marker_publish_rate", 10.0);
+    candidate_marker_publish_rate_ = declare_parameter<double>("candidate_marker_publish_rate", 5.0);
     debug_publish_rate_ = declare_parameter<double>("debug_publish_rate", 2.0);
 
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(5));
+    // A depth-one subscription makes overload behavior deterministic: process the newest scan.
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
     if (lidar_qos_reliability_ == "best_effort" || lidar_qos_reliability_ == "sensor_data") {
       qos.best_effort();
     } else {
@@ -252,6 +256,11 @@ class LidarTrackletManagerNode : public rclcpp::Node {
       std::bind(&LidarTrackletManagerNode::cloudCallback, this, std::placeholders::_1));
     tracklet_pub_ = create_publisher<track_robot_interfaces::msg::LidarTrackletArray>(
       output_topic_, 5);
+    if (!semantic_output_topic_.empty()) {
+      semantic_tracklet_pub_ = create_publisher<
+        track_robot_interfaces::msg::SemanticLidarTrackletArray>(
+        semantic_output_topic_, 5);
+    }
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>(marker_topic_, 5);
     clusters_pub_ = create_publisher<track_robot_interfaces::msg::LidarClusterArray>(
       candidate_clusters_topic_, 5);
@@ -279,40 +288,171 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     }
 
     const auto start = std::chrono::steady_clock::now();
-    const rclcpp::Time now = get_clock()->now();
-
-    std::vector<PointXYZI> raw_points;
-    std::string parse_status;
-    if (!readCloud(*msg, raw_points, parse_status)) {
-      publishDebug(now, parse_status, 0, 0, 0, 0.0);
-      return;
+    rclcpp::Time measurement_time(msg->header.stamp);
+    if (!measurement_time.nanoseconds()) {
+      measurement_time = get_clock()->now();
     }
+    if (last_measurement_stamp_.nanoseconds() &&
+      (measurement_time - last_measurement_stamp_).seconds() < -0.10) {
+      tracklets_.clear();
+      tf_buffer_.clear();
+      next_tracklet_id_ = 0;
+      source_epoch_->advance();
+      last_candidate_marker_stamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+      RCLCPP_INFO(get_logger(), "LiDAR timestamp reset detected; cleared generic tracklets");
+    }
+    last_measurement_stamp_ = measurement_time;
 
-    std::vector<PointXYZI> frame_points;
+    std::vector<PointXYZI> downsampled;
+    size_t raw_point_count = 0;
+    size_t cropped_point_count = 0;
     std::string tf_status;
-    if (!transformToTrackingFrame(raw_points, msg->header.frame_id, frame_points, tf_status)) {
-      publishDebug(now, tf_status, raw_points.size(), 0, 0, 0.0);
+    if (!preprocessCloud(
+        *msg, measurement_time, downsampled, raw_point_count,
+        cropped_point_count, tf_status)) {
+      publishDebug(measurement_time, tf_status, raw_point_count, 0, 0, 0.0);
       return;
     }
-
-    auto cropped = cropPoints(frame_points);
-    auto downsampled = voxelDownsample(cropped);
     if (static_cast<int>(downsampled.size()) > max_points_before_clustering_) {
       downsampled.resize(static_cast<size_t>(max_points_before_clustering_));
     }
 
     auto detections = clusterDetections(downsampled);
-    updateTracklets(detections, now);
+    updateTracklets(detections, measurement_time);
 
-    publishTracklets(now);
-    publishCandidateClusters(detections, now);
+    publishTracklets(measurement_time);
+    publishCandidateClusters(detections, measurement_time);
 
     const auto end = std::chrono::steady_clock::now();
     const double processing_ms =
       std::chrono::duration<double, std::milli>(end - start).count();
     publishDebug(
-      now, tf_status, raw_points.size(), cropped.size(), downsampled.size(),
+      measurement_time, tf_status, raw_point_count, cropped_point_count, downsampled.size(),
       detections.size(), processing_ms);
+  }
+
+  bool preprocessCloud(
+    const sensor_msgs::msg::PointCloud2 &cloud,
+    const rclcpp::Time &stamp,
+    std::vector<PointXYZI> &output,
+    size_t &raw_count,
+    size_t &cropped_count,
+    std::string &status) {
+    int x_offset = -1;
+    int y_offset = -1;
+    int z_offset = -1;
+    int intensity_offset = -1;
+    for (const auto &field : cloud.fields) {
+      if (field.name == "x" && field.datatype == sensor_msgs::msg::PointField::FLOAT32) {
+        x_offset = static_cast<int>(field.offset);
+      } else if (field.name == "y" && field.datatype == sensor_msgs::msg::PointField::FLOAT32) {
+        y_offset = static_cast<int>(field.offset);
+      } else if (field.name == "z" && field.datatype == sensor_msgs::msg::PointField::FLOAT32) {
+        z_offset = static_cast<int>(field.offset);
+      } else if (field.name == "intensity" &&
+        field.datatype == sensor_msgs::msg::PointField::FLOAT32) {
+        intensity_offset = static_cast<int>(field.offset);
+      }
+    }
+    if (x_offset < 0 || y_offset < 0 || z_offset < 0 || cloud.is_bigendian) {
+      status = x_offset < 0 || y_offset < 0 || z_offset < 0 ?
+        "missing_xyz_fields" : "bigendian_not_supported";
+      return false;
+    }
+
+    const std::string source_frame = cloud.header.frame_id.empty() ? tracking_frame_ :
+      cloud.header.frame_id;
+    Eigen::Matrix3d rotation = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d translation = Eigen::Vector3d::Zero();
+    if (source_frame != tracking_frame_) {
+      try {
+        const auto transform = tf_buffer_.lookupTransform(
+          tracking_frame_, source_frame, stamp, 30ms);
+        const auto &q = transform.transform.rotation;
+        Eigen::Quaterniond quaternion(q.w, q.x, q.y, q.z);
+        quaternion.normalize();
+        rotation = quaternion.toRotationMatrix();
+        const auto &t = transform.transform.translation;
+        translation = Eigen::Vector3d(t.x, t.y, t.z);
+        status = "tf";
+      } catch (const std::exception &ex) {
+        status = std::string("missing_tf_") + source_frame + "_to_" + tracking_frame_ +
+          ":" + ex.what();
+        return false;
+      }
+    } else {
+      status = "already_tracking_frame";
+    }
+    updateRobotOrigin(stamp);
+
+    std::unordered_map<VoxelKey, std::pair<PointXYZI, int>, VoxelKeyHash> voxels;
+    const size_t point_count = static_cast<size_t>(cloud.width) * cloud.height;
+    voxels.reserve(std::min<size_t>(point_count, static_cast<size_t>(max_points_before_clustering_ * 2)));
+    if (voxel_leaf_size_ <= 0.0) {
+      output.reserve(std::min<size_t>(point_count, static_cast<size_t>(max_points_before_clustering_)));
+    }
+    for (uint32_t row = 0; row < cloud.height; ++row) {
+      for (uint32_t col = 0; col < cloud.width; ++col) {
+        const size_t offset = static_cast<size_t>(row) * cloud.row_step +
+          static_cast<size_t>(col) * cloud.point_step;
+        if (offset + cloud.point_step > cloud.data.size()) {
+          continue;
+        }
+        PointXYZI raw;
+        std::memcpy(&raw.x, cloud.data.data() + offset + x_offset, sizeof(float));
+        std::memcpy(&raw.y, cloud.data.data() + offset + y_offset, sizeof(float));
+        std::memcpy(&raw.z, cloud.data.data() + offset + z_offset, sizeof(float));
+        if (intensity_offset >= 0) {
+          std::memcpy(&raw.intensity, cloud.data.data() + offset + intensity_offset, sizeof(float));
+        }
+        if (!std::isfinite(raw.x) || !std::isfinite(raw.y) || !std::isfinite(raw.z)) {
+          continue;
+        }
+        ++raw_count;
+        const Eigen::Vector3d transformed =
+          rotation * Eigen::Vector3d(raw.x, raw.y, raw.z) + translation;
+        PointXYZI point{
+          static_cast<float>(transformed.x()), static_cast<float>(transformed.y()),
+          static_cast<float>(transformed.z()), raw.intensity};
+        const double range = std::hypot(
+          static_cast<double>(point.x - current_robot_origin_.x),
+          static_cast<double>(point.y - current_robot_origin_.y));
+        if (range < min_range_ || range > max_range_ || point.z < min_z_ ||
+          point.z > max_z_ || (remove_ground_ && point.z < ground_z_threshold_)) {
+          continue;
+        }
+        ++cropped_count;
+        if (voxel_leaf_size_ <= 0.0) {
+          if (output.size() < static_cast<size_t>(max_points_before_clustering_)) {
+            output.emplace_back(point);
+          }
+          continue;
+        }
+        const VoxelKey key{
+          static_cast<int>(std::floor(point.x / voxel_leaf_size_)),
+          static_cast<int>(std::floor(point.y / voxel_leaf_size_)),
+          static_cast<int>(std::floor(point.z / voxel_leaf_size_))};
+        auto &entry = voxels[key];
+        entry.first.x += point.x;
+        entry.first.y += point.y;
+        entry.first.z += point.z;
+        entry.first.intensity += point.intensity;
+        ++entry.second;
+      }
+    }
+    if (voxel_leaf_size_ > 0.0) {
+      output.reserve(std::min<size_t>(voxels.size(), static_cast<size_t>(max_points_before_clustering_)));
+      for (const auto &item : voxels) {
+        if (output.size() >= static_cast<size_t>(max_points_before_clustering_)) {
+          break;
+        }
+        const float count = static_cast<float>(std::max(1, item.second.second));
+        const auto &sum = item.second.first;
+        output.emplace_back(PointXYZI{
+          sum.x / count, sum.y / count, sum.z / count, sum.intensity / count});
+      }
+    }
+    return true;
   }
 
   bool readCloud(
@@ -375,11 +515,13 @@ class LidarTrackletManagerNode : public rclcpp::Node {
   bool transformToTrackingFrame(
     const std::vector<PointXYZI> &input,
     const std::string &source_frame,
+    const rclcpp::Time &stamp,
     std::vector<PointXYZI> &output,
     std::string &status) {
     const auto normalized_source = source_frame.empty() ? tracking_frame_ : source_frame;
     if (normalized_source == tracking_frame_) {
       output = input;
+      updateRobotOrigin(stamp);
       status = "already_tracking_frame";
       return true;
     }
@@ -387,7 +529,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     geometry_msgs::msg::TransformStamped transform;
     try {
       transform = tf_buffer_.lookupTransform(
-        tracking_frame_, normalized_source, tf2::TimePointZero, 30ms);
+        tracking_frame_, normalized_source, stamp, 30ms);
     } catch (const std::exception &ex) {
       status = std::string("missing_tf_") + normalized_source + "_to_" + tracking_frame_ +
         ":" + ex.what();
@@ -424,14 +566,34 @@ class LidarTrackletManagerNode : public rclcpp::Node {
       output.emplace_back(transformed);
     }
     status = "tf";
+    updateRobotOrigin(stamp);
     return true;
+  }
+
+  void updateRobotOrigin(const rclcpp::Time &stamp) {
+    current_robot_origin_ = PointXYZI{};
+    if (tracking_frame_ == base_frame_) {
+      return;
+    }
+    try {
+      const auto transform = tf_buffer_.lookupTransform(
+        tracking_frame_, base_frame_, stamp, 30ms);
+      current_robot_origin_.x = static_cast<float>(transform.transform.translation.x);
+      current_robot_origin_.y = static_cast<float>(transform.transform.translation.y);
+      current_robot_origin_.z = static_cast<float>(transform.transform.translation.z);
+    } catch (const std::exception &) {
+      // Cloud transformation may still be valid through a different chain. Debug output
+      // continues to expose the TF status; origin zero is the stationary fallback.
+    }
   }
 
   std::vector<PointXYZI> cropPoints(const std::vector<PointXYZI> &points) const {
     std::vector<PointXYZI> output;
     output.reserve(points.size());
     for (const auto &point : points) {
-      const double range = normXY(point);
+      const double range = std::hypot(
+        static_cast<double>(point.x - current_robot_origin_.x),
+        static_cast<double>(point.y - current_robot_origin_.y));
       if (range < min_range_ || range > max_range_) {
         continue;
       }
@@ -499,7 +661,10 @@ class LidarTrackletManagerNode : public rclcpp::Node {
       labels[seed] = cluster_id;
       std::queue<int> queue;
       for (const auto index : neighbors) {
-        queue.push(index);
+        if (labels[static_cast<size_t>(index)] == -1) {
+          labels[static_cast<size_t>(index)] = -2;
+          queue.push(index);
+        }
       }
 
       while (!queue.empty()) {
@@ -512,7 +677,10 @@ class LidarTrackletManagerNode : public rclcpp::Node {
         auto more = radiusNeighbors(points, grid, static_cast<size_t>(index), tolerance2);
         if (more.size() >= static_cast<size_t>(cluster_core_min_points_)) {
           for (const auto next : more) {
-            queue.push(next);
+            if (labels[static_cast<size_t>(next)] == -1) {
+              labels[static_cast<size_t>(next)] = -2;
+              queue.push(next);
+            }
           }
         }
       }
@@ -597,8 +765,10 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     }
     const float count = static_cast<float>(std::max<size_t>(detection.indices.size(), 1));
     detection.centroid = PointXYZI{sum.x / count, sum.y / count, sum.z / count, 0.0F};
-    detection.distance = normXY(detection.centroid);
-    detection.bearing = std::atan2(detection.centroid.y, detection.centroid.x);
+    detection.distance = distanceXY(detection.centroid, current_robot_origin_);
+    detection.bearing = std::atan2(
+      detection.centroid.y - current_robot_origin_.y,
+      detection.centroid.x - current_robot_origin_.x);
     detection.dynamic_score = 0.0;
   }
 
@@ -623,6 +793,15 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     detection.tracklet_eligible =
       !impossible_size &&
       !detection.too_sparse && !detection.too_large && !detection.oversized && !too_small;
+    const double point_reference = std::max(3.0, 30.0 / std::max(1.0, detection.distance));
+    const double point_score = std::min(1.0, detection.indices.size() / point_reference);
+    const double height_score = std::min(1.0, height / std::max(0.15, adaptive_min_height));
+    const double geometry_score = detection.oversized ? 0.2 : (too_small ? 0.4 : 1.0);
+    detection.observation_quality =
+      std::max(0.05, std::min(1.0, 0.45 * point_score + 0.35 * height_score +
+      0.20 * geometry_score));
+    detection.measurement_variance =
+      tracklet_measurement_variance_ / std::max(0.15, detection.observation_quality);
   }
 
   int minClusterPointsForRange(const double range) const {
@@ -706,7 +885,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     const Eigen::Vector2d measurement(detection.centroid.x, detection.centroid.y);
     const Eigen::Vector2d residual = measurement - track.state.head<2>();
     Eigen::Matrix2d innovation = track.covariance.block<2, 2>(0, 0);
-    innovation.diagonal().array() += tracklet_measurement_variance_;
+    innovation.diagonal().array() += detection.measurement_variance;
     const double nis = residual.transpose() * innovation.inverse() * residual;
     const double distance = residual.norm();
     if (distance > tracklet_gating_distance_ || nis > tracklet_nis_gate_) {
@@ -851,7 +1030,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     observation(0, 0) = 1.0;
     observation(1, 1) = 1.0;
     const Eigen::Matrix2d measurement_covariance =
-      Eigen::Matrix2d::Identity() * tracklet_measurement_variance_;
+      Eigen::Matrix2d::Identity() * detection.measurement_variance;
     const Eigen::Matrix2d innovation_covariance =
       observation * track.covariance * observation.transpose() + measurement_covariance;
     const Eigen::Matrix<double, 4, 2> gain =
@@ -884,6 +1063,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     track.point_count = detection.indices.size();
     track.confidence = std::min(1.0, track.confidence + confidence_hit_increment_);
     track.dynamic_score = detection.dynamic_score;
+    track.observation_quality = detection.observation_quality;
     track.hit_count += 1;
     track.miss_count = 0;
     track.confirmed = track.hit_count >= static_cast<uint32_t>(tracklet_confirm_hits_);
@@ -911,6 +1091,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     track.point_count = detection.indices.size();
     track.confidence = std::min(1.0, confidence_hit_increment_);
     track.dynamic_score = detection.dynamic_score;
+    track.observation_quality = detection.observation_quality;
     track.age_frames = 1;
     track.hit_count = 1;
     track.miss_count = 0;
@@ -972,11 +1153,26 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     }
     latest_tracklet_msg_ = msg;
     tracklet_pub_->publish(msg);
+
+    if (semantic_tracklet_pub_) {
+      track_robot_interfaces::msg::SemanticLidarTrackletArray semantic_msg;
+      semantic_msg.header = msg.header;
+      semantic_msg.source_epoch_id = source_epoch_->value();
+      const size_t keep_count = std::min<size_t>(msg.tracklets.size(), 256U);
+      semantic_msg.dropped_tracklet_count = static_cast<uint32_t>(
+        msg.tracklets.size() - keep_count);
+      for (size_t index = 0; index < keep_count; ++index) {
+        semantic_msg.tracklets.emplace_back(msg.tracklets[index]);
+      }
+      latest_semantic_drop_count_ = semantic_msg.dropped_tracklet_count;
+      semantic_tracklet_pub_->publish(semantic_msg);
+    }
   }
 
   track_robot_interfaces::msg::LidarTracklet toTrackletMsg(const Tracklet &track) const {
     track_robot_interfaces::msg::LidarTracklet msg;
     msg.tracklet_id = track.id;
+    msg.position = toPoint(track.position);
     msg.position_base = toPoint(track.position);
     msg.position_map_valid = false;
     msg.velocity = toVector(track.velocity);
@@ -986,8 +1182,10 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     msg.size.y = std::abs(track.maximum.y - track.minimum.y);
     msg.size.z = std::abs(track.maximum.z - track.minimum.z);
     msg.point_count = static_cast<uint32_t>(track.point_count);
-    msg.distance = static_cast<float>(normXY(track.position));
-    msg.bearing = static_cast<float>(std::atan2(track.position.y, track.position.x));
+    msg.distance = static_cast<float>(distanceXY(track.position, current_robot_origin_));
+    msg.bearing = static_cast<float>(std::atan2(
+      track.position.y - current_robot_origin_.y,
+      track.position.x - current_robot_origin_.x));
     msg.confidence = static_cast<float>(track.confidence);
     msg.dynamic_score = static_cast<float>(track.dynamic_score);
     msg.age_frames = track.age_frames;
@@ -995,6 +1193,15 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     msg.miss_count = track.miss_count;
     msg.confirmed = track.confirmed;
     msg.active = track.miss_count == 0;
+    msg.observation_quality = static_cast<float>(track.observation_quality);
+    msg.position_covariance_xy = {
+      static_cast<float>(track.covariance(0, 0)),
+      static_cast<float>(track.covariance(0, 1)),
+      static_cast<float>(track.covariance(1, 0)),
+      static_cast<float>(track.covariance(1, 1))};
+    const int64_t stamp_ns = track.last_seen.nanoseconds();
+    msg.last_measurement_stamp.sec = static_cast<int32_t>(stamp_ns / 1000000000LL);
+    msg.last_measurement_stamp.nanosec = static_cast<uint32_t>(stamp_ns % 1000000000LL);
     return msg;
   }
 
@@ -1028,7 +1235,12 @@ class LidarTrackletManagerNode : public rclcpp::Node {
     latest_cluster_count_ = detections.size();
     updateLatestClusterStats(detections);
     clusters_pub_->publish(msg);
-    publishCandidateMarkers(detections, now);
+    if (!last_candidate_marker_stamp_.nanoseconds() ||
+      (now - last_candidate_marker_stamp_).seconds() >=
+      1.0 / std::max(0.1, candidate_marker_publish_rate_)) {
+      last_candidate_marker_stamp_ = now;
+      publishCandidateMarkers(detections, now);
+    }
   }
 
   void updateLatestClusterStats(const std::vector<ClusterDetection> &detections) {
@@ -1238,6 +1450,9 @@ class LidarTrackletManagerNode : public rclcpp::Node {
         std::to_string(latest_hidden_impossible_cluster_count_) +
       ",\"tracklet_count\":" + std::to_string(tracklets_.size()) +
       ",\"confirmed_tracklet_count\":" + std::to_string(confirmed_count) +
+      ",\"source_epoch_id\":" + std::to_string(source_epoch_->value()) +
+      ",\"semantic_tracklet_drop_count\":" +
+        std::to_string(latest_semantic_drop_count_) +
       ",\"processing_ms\":" + shortFloat(processing_ms) +
       "}";
     debug_pub_->publish(msg);
@@ -1245,12 +1460,14 @@ class LidarTrackletManagerNode : public rclcpp::Node {
 
   std::string lidar_topic_;
   std::string output_topic_;
+  std::string semantic_output_topic_;
   std::string marker_topic_;
   std::string candidate_clusters_topic_;
   std::string candidate_marker_topic_;
   std::string debug_topic_;
   std::string lidar_qos_reliability_;
   std::string tracking_frame_;
+  std::string base_frame_;
   std::string map_frame_;
 
   double min_range_{0.5};
@@ -1307,6 +1524,7 @@ class LidarTrackletManagerNode : public rclcpp::Node {
   double confidence_miss_decay_{0.06};
   double min_publish_confidence_{0.10};
   double marker_publish_rate_{10.0};
+  double candidate_marker_publish_rate_{5.0};
   double debug_publish_rate_{2.0};
 
   uint64_t cloud_count_{0};
@@ -1316,15 +1534,22 @@ class LidarTrackletManagerNode : public rclcpp::Node {
   size_t latest_weak_sparse_cluster_count_{0};
   size_t latest_oversized_cluster_count_{0};
   size_t latest_hidden_impossible_cluster_count_{0};
+  uint32_t latest_semantic_drop_count_{0};
   rclcpp::Time last_debug_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_candidate_marker_stamp_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_measurement_stamp_{0, 0, RCL_ROS_TIME};
+  PointXYZI current_robot_origin_;
 
   std::vector<Tracklet> tracklets_;
   track_robot_interfaces::msg::LidarTrackletArray latest_tracklet_msg_;
+  std::unique_ptr<track_robot_lidar_tracking::SourceEpoch> source_epoch_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<track_robot_interfaces::msg::LidarTrackletArray>::SharedPtr tracklet_pub_;
+  rclcpp::Publisher<track_robot_interfaces::msg::SemanticLidarTrackletArray>::SharedPtr
+    semantic_tracklet_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr candidate_marker_pub_;
   rclcpp::Publisher<track_robot_interfaces::msg::LidarClusterArray>::SharedPtr clusters_pub_;

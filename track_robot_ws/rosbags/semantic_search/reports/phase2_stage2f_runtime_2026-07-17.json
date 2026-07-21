@@ -1,0 +1,83 @@
+{
+  "stage": "2F",
+  "status": "software_complete_threshold_and_physical_pilot_unverified",
+  "date": "2026-07-17",
+  "code_revision": "ce4486daa82058003ea8b697fe79dcb9bf517765",
+  "runtime_task_transport_integrated": true,
+  "runtime_memory_services_integrated": true,
+  "best_candidate_zero_or_one_contract_integrated": true,
+  "best_candidate_threshold_calibrated": false,
+  "physical_task_ranking_pilot_executed": false,
+  "synthetic_dds_service_test_executed": true,
+  "synthetic_dds_service_test_passed": true,
+  "ros_processes_remaining_after_test": 0,
+  "bounds": {
+    "objects": 256,
+    "query_page_size": 64,
+    "service_event_history": 64,
+    "best_candidate_objects": 1,
+    "task_queue_depth": 1
+  },
+  "safety_defaults": {
+    "publish_best_candidate": true,
+    "best_candidate_threshold_calibrated": false,
+    "best_candidate_minimum_relevance": 1.0,
+    "uncalibrated_output_object_count": 0
+  },
+  "verification": [
+    {
+      "name": "source_and_configuration_contracts",
+      "command": "git diff --check; pytest test_launch_contract.py; parse checked YAML/JSON",
+      "result": "passed",
+      "details": "Launch/config contract 9/9; all checked profiles retain the uncalibrated fail-closed default"
+    },
+    {
+      "name": "explicit_synthetic_dds_runtime",
+      "command": "RUN_ROS_RUNTIME_TESTS=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 colcon test --build-base build-stage2f-final --install-base install-stage2f-final --packages-select track_robot_semantic_memory --ctest-args -R test_ros_runtime --output-on-failure --return-code-on-test-failure",
+      "result": "passed",
+      "details": "3 tests, 0 errors, 0 failures, 0 skipped; includes Stage 2F pending task, appearance-backed winner, get/query/inspection/reset, unhealthy localization, pending rollback and domain isolation"
+    },
+    {
+      "name": "fresh_workspace_four_package_regression",
+      "command": "colcon build/test track_robot_interfaces track_robot_lidar_tracking track_robot_semantic_memory track_robot_semantic_search using build-stage2f-final/install-stage2f-final",
+      "result": "passed",
+      "details": "580 tests, 0 errors, 0 failures, 3 expected opt-in DDS skips in the default run"
+    },
+    {
+      "name": "clean_git_archive_four_package_regression",
+      "command": "git archive ce4486d; fresh colcon build/test in /tmp/semantic-search-stage2f-final-clean-UUmgOS",
+      "result": "passed",
+      "details": "580 tests, 0 errors, 0 failures, 3 expected opt-in DDS skips; no untracked workspace artifact required"
+    },
+    {
+      "name": "independent_core_review",
+      "result": "approved",
+      "details": "Three Important findings and the bounded-event observation were fixed with RED/GREEN regressions; final review found no Critical or Important issues"
+    },
+    {
+      "name": "independent_node_runtime_review",
+      "result": "approved",
+      "details": "Four Important timing/domain findings were fixed with DDS RED/GREEN regressions; final review found no Critical or Important issues"
+    },
+    {
+      "name": "post_test_process_check",
+      "command": "ps -eo pid,ppid,stat,cmd",
+      "result": "passed",
+      "details": "No semantic_memory_node, semantic_memory_visualizer_node, ros2 bag play or test_ros_runtime process remained"
+    }
+  ],
+  "commits": [
+    "8509d00",
+    "c70d68c",
+    "60b61d7",
+    "e9a42c7",
+    "0a56010",
+    "c2c5bd9",
+    "ce4486d"
+  ],
+  "limitations": [
+    "The DDS fixture uses synthetic messages and calibrated test-only thresholds, not a physical robot task-ranking trial.",
+    "No production best-candidate threshold has been calibrated; every checked production profile remains fail-closed.",
+    "Stage 2G evaluation, profiling, field calibration and physical pilot were not entered, so Phase 2 is not complete."
+  ]
+}

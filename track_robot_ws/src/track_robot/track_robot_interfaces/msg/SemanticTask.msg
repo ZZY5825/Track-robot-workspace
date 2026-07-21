@@ -1,0 +1,6 @@
+std_msgs/Header header
+uint64 producer_epoch_id
+uint64 query_id
+uint64 query_version
+string<=512 query_text
+track_robot_interfaces/VisualDescriptor task_descriptor

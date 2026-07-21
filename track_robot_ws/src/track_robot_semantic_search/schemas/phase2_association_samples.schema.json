@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Phase 2 Camera-LiDAR Association Shadow Sample",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "pair_id",
+    "annotation",
+    "visual_stamp_ns",
+    "lidar_stamp_ns",
+    "memory_epoch_id",
+    "observation_producer_epoch_id",
+    "visual_candidate_id",
+    "lidar_source_epoch_id",
+    "lidar_tracklet_id",
+    "decision",
+    "total_score",
+    "terms"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "pair_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "annotation": {
+      "enum": ["positive", "negative", "unlabelled"]
+    },
+    "visual_stamp_ns": {"type": "integer", "minimum": 0},
+    "lidar_stamp_ns": {"type": "integer", "minimum": 0},
+    "memory_epoch_id": {"type": "integer", "minimum": 0},
+    "observation_producer_epoch_id": {"type": "integer", "minimum": 0},
+    "visual_candidate_id": {"type": "integer", "minimum": 0},
+    "lidar_source_epoch_id": {"type": "integer", "minimum": 0},
+    "lidar_tracklet_id": {"type": "integer"},
+    "decision": {
+      "enum": ["rejected_gate", "unmatched", "tentative", "matched", "ambiguous"]
+    },
+    "total_score": {"type": "number"},
+    "terms": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "valid",
+          "hard_gate",
+          "gate_passed",
+          "raw_value",
+          "normalized_value",
+          "weight",
+          "contribution"
+        ],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 128},
+          "valid": {"type": "boolean"},
+          "hard_gate": {"type": "boolean"},
+          "gate_passed": {"type": "boolean"},
+          "raw_value": {"type": ["number", "null"]},
+          "normalized_value": {"type": ["number", "null"]},
+          "weight": {"type": "number", "minimum": 0},
+          "contribution": {"type": ["number", "null"]}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "phase1-multiscale-window-profile-2026-07-20",
+  "accuracy_status": "not_evaluated",
+  "accuracy_reason": "Synthetic zero image has no semantic annotation; this report is a runtime gate only.",
+  "checkpoint": {
+    "id": "ViT-B-32.pt",
+    "sha256": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af"
+  },
+  "runtime": {
+    "implementation": "openai_clip",
+    "model_name": "ViT-B/32",
+    "runtime_revision": "d05afc436d78f1c48dc0dbf8e5980a9d471f35f6",
+    "device": "cuda",
+    "software_revision": "workspace-no-git"
+  },
+  "input": {
+    "kind": "synthetic_zero_bgr",
+    "width": 1280,
+    "height": 720,
+    "query_text": "blue chair"
+  },
+  "profile": {
+    "grid_size": 2,
+    "center_window_scale": 0.6,
+    "threshold": 0.25,
+    "threshold_mode": "absolute",
+    "duplicate_iou_threshold": 0.5,
+    "duplicate_containment_threshold": 0.8,
+    "warmups": 5,
+    "iterations": 30,
+    "measured_path": "PassivePerceptionCore.process including preprocessing, image encoding, scoring, fallback, and duplicate suppression; excluding ROS image conversion and transport"
+  },
+  "strategies": {
+    "grid_only": {
+      "batch_windows": 4,
+      "mean_ms": 88.59052643335114,
+      "p95_ms": 94.63295404566452,
+      "min_ms": 78.42799404170364,
+      "max_ms": 95.99883703049272,
+      "capacity_hz_at_p95": 10.567143444739731,
+      "latency_gate_p95_at_most_150_ms": true,
+      "rate_gate_at_least_5_hz": true,
+      "samples_ms": [86.36397600639611, 86.26285707578063, 95.99883703049272, 94.02380103711039, 88.39968603570014, 92.33577304985374, 84.58638098090887, 85.23482806049287, 78.42799404170364, 95.13135196175426, 85.49684309400618, 86.91559301223606, 85.06225293967873, 91.90655895508826, 91.99961507692933, 93.1961890310049, 90.57149000000209, 89.25626100972295, 90.15459497459233, 88.0656389053911, 93.52438000496477, 88.97274197079241, 89.38771695829928, 86.07738697901368, 84.50881601311266, 89.54944601282477, 93.97599590010941, 82.94107601977885, 82.95435493346304, 86.43335592932999]
+    },
+    "multiscale_v1": {
+      "batch_windows": 6,
+      "mean_ms": 117.4851836093391,
+      "p95_ms": 129.54061693744734,
+      "min_ms": 107.956140069291,
+      "max_ms": 132.46149301994592,
+      "capacity_hz_at_p95": 7.719586517662493,
+      "latency_gate_p95_at_most_150_ms": true,
+      "rate_gate_at_least_5_hz": true,
+      "samples_ms": [117.20843601506203, 132.46149301994592, 113.66012296639383, 116.65112501941621, 115.9450151026249, 109.04256394132972, 130.92888903338462, 109.12903002463281, 112.37110302317888, 110.93981005251408, 114.23017201013863, 117.4107410479337, 127.84383993130177, 123.10074595734477, 118.29461099114269, 124.6020250255242, 121.12084799446166, 115.71253789588809, 117.80725396238267, 108.54736901819706, 122.57681298069656, 115.15052302274853, 118.27749409712851, 113.28809603583068, 119.58341300487518, 107.956140069291, 114.5644459174946, 125.8218321017921, 113.71408100239933, 116.61493801511824]
+    }
+  }
+}

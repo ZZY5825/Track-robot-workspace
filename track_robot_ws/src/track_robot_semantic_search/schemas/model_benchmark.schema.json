@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://track-robot.local/schemas/model_benchmark.schema.json",
+  "title": "Semantic Search Phase 1 Model Benchmark",
+  "type": "object",
+  "required": ["schema_version", "run_id", "platform", "candidates"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "platform": {
+      "type": "object",
+      "required": ["python", "pytorch", "device"],
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "pytorch": {"type": "string", "minLength": 1},
+        "device": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "candidate_id", "available", "python_compatible",
+          "licence_approved", "memory_pass", "latency_pass",
+          "phrase_region_recall", "p95_latency_ms"
+        ],
+        "properties": {
+          "candidate_id": {"type": "string", "minLength": 1},
+          "available": {"type": "boolean"},
+          "python_compatible": {"type": "boolean"},
+          "licence_approved": {"type": "boolean"},
+          "memory_pass": {"type": "boolean"},
+          "latency_pass": {"type": "boolean"},
+          "phrase_region_recall": {
+            "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0
+          },
+          "p95_latency_ms": {"type": "number", "minimum": 0.0}
+        },
+        "additionalProperties": true
+      }
+    },
+    "selection": {
+      "type": "object",
+      "required": ["status", "selected_candidate_id", "rejected"]
+    }
+  },
+  "additionalProperties": true
+}

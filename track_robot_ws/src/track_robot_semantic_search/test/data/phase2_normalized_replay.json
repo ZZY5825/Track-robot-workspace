@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "initial_memory_epoch_id": 7,
+  "frames": [
+    {
+      "domain": {
+        "mode": "LOCAL_SESSION",
+        "localization_epoch_id": 11,
+        "frame_id": "odom"
+      },
+      "batch_stamp_ns": 100,
+      "lidar_observations": [
+        {
+          "source_epoch_id": 3,
+          "tracklet_id": 20,
+          "source_stamp_ns": 100,
+          "position": [2.0, 0.0, 0.0],
+          "velocity": [0.0, 0.0, 0.0],
+          "extent": [1.0, 1.0, 1.0],
+          "position_covariance": [
+            0.1, 0.0, 0.0,
+            0.0, 0.1, 0.0,
+            0.0, 0.0, 0.1
+          ],
+          "confidence": 0.9
+        },
+        {
+          "source_epoch_id": 3,
+          "tracklet_id": 10,
+          "source_stamp_ns": 100,
+          "position": [1.0, 0.0, 0.0],
+          "velocity": [0.0, 0.0, 0.0],
+          "extent": [1.0, 1.0, 1.0],
+          "position_covariance": [
+            0.1, 0.0, 0.0,
+            0.0, 0.1, 0.0,
+            0.0, 0.0, 0.1
+          ],
+          "confidence": 0.9
+        }
+      ],
+      "association": {
+        "row_ids": [20, 10],
+        "column_ids": [200, 100],
+        "costs": [[0.1, 0.1], [0.1, 0.1]],
+        "unmatched_cost": 0.5
+      },
+      "task": {
+        "query_id": 9,
+        "query_version": 2,
+        "descriptor": {
+          "encoder_id": "openclip",
+          "checkpoint_id": "checkpoint-a",
+          "version": 1,
+          "dimension": 2,
+          "l2_normalized": true,
+          "values": [1.0, 0.0]
+        },
+        "objects": [
+          {
+            "source_epoch_id": 3,
+            "tracklet_id": 10,
+            "prototypes": [
+              {
+                "encoder_id": "openclip",
+                "checkpoint_id": "checkpoint-a",
+                "version": 1,
+                "dimension": 2,
+                "l2_normalized": true,
+                "values": [1.0, 0.0]
+              }
+            ],
+            "permanent_semantics": [
+              {
+                "label": "crate",
+                "confidence": 1.0,
+                "task_similarity": 1.0,
+                "permanent": true
+              }
+            ]
+          }
+        ]
+      },
+      "expected_event_types": [
+        "domain_changed",
+        "object_created",
+        "object_created"
+      ]
+    }
+  ]
+}

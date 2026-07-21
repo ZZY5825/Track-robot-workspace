@@ -1,0 +1,334 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Semantic Search Evaluation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "manifest_sha256",
+    "manifest_capabilities",
+    "run",
+    "artifacts",
+    "coverage",
+    "topic_metrics",
+    "synchronization",
+    "latency_metrics",
+    "localization",
+    "semantic_counts",
+    "resources",
+    "safety",
+    "gates",
+    "passed"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.1.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "manifest_capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "camera",
+        "lidar",
+        "imu",
+        "local_pose",
+        "world_pose",
+        "query_events",
+        "annotations",
+        "active_motion"
+      ],
+      "properties": {
+        "camera": {"type": "boolean"},
+        "lidar": {"type": "boolean"},
+        "imu": {"type": "boolean"},
+        "local_pose": {"type": "boolean"},
+        "world_pose": {"type": "boolean"},
+        "query_events": {"type": "boolean"},
+        "annotations": {"type": "boolean"},
+        "active_motion": {"type": "boolean"}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "phase",
+        "replay_rate",
+        "timing_policy",
+        "wall_duration_sec",
+        "target_source_duration_sec",
+        "minimum_source_coverage_ratio",
+        "freshness_time_base"
+      ],
+      "properties": {
+        "run_id": {"type": "string", "minLength": 1},
+        "phase": {"const": "phase0"},
+        "replay_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1e308
+        },
+        "timing_policy": {
+          "enum": ["online_source_time", "foxy_wall_time_scaled"]
+        },
+        "wall_duration_sec": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1e308
+        },
+        "target_source_duration_sec": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1e308
+        },
+        "minimum_source_coverage_ratio": {"const": 0.9},
+        "freshness_time_base": {
+          "enum": ["source_clock", "arrival_monotonic"]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["software_revision", "config_sha256", "model_exports"],
+      "properties": {
+        "software_revision": {"type": "string", "minLength": 1},
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "model_exports": {"type": "array", "maxItems": 0}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accuracy", "identity", "active_search"],
+      "properties": {
+        "accuracy": {"const": "not_applicable_phase0_no_model"},
+        "identity": {"const": "not_applicable_phase0_no_tracker"},
+        "active_search": {"const": "not_applicable_phase0_passive_only"}
+      }
+    },
+    "topic_metrics": {
+      "type": "object",
+      "patternProperties": {
+        "^.+$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "count",
+            "source_start_ns",
+            "source_end_ns",
+            "source_span_sec",
+            "receive_span_sec",
+            "source_rate_hz",
+            "receive_rate_hz",
+            "source_sequence_sha256"
+          ],
+          "properties": {
+            "count": {"type": "integer", "minimum": 0},
+            "source_start_ns": {"type": "integer", "minimum": 0},
+            "source_end_ns": {"type": "integer", "minimum": 0},
+            "source_span_sec": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1e308
+            },
+            "receive_span_sec": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1e308
+            },
+            "source_rate_hz": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1e308
+            },
+            "receive_rate_hz": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1e308
+            },
+            "source_sequence_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "synchronization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pair_count", "p50_sec", "p95_sec", "maximum_sec"],
+      "properties": {
+        "pair_count": {"type": "integer", "minimum": 0},
+        "p50_sec": {"$ref": "#/definitions/nonnegativeNumberOrNull"},
+        "p95_sec": {"$ref": "#/definitions/nonnegativeNumberOrNull"},
+        "maximum_sec": {"$ref": "#/definitions/nonnegativeNumberOrNull"}
+      }
+    },
+    "latency_metrics": {
+      "type": "object",
+      "patternProperties": {
+        "^.+$": {"$ref": "#/definitions/latencySeries"}
+      },
+      "additionalProperties": false
+    },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode_counts",
+        "mode_sequence",
+        "epoch_ids",
+        "epoch_id_sequence",
+        "epochs_valid"
+      ],
+      "properties": {
+        "mode_counts": {
+          "type": "object",
+          "patternProperties": {
+            "^(OBSERVATION_ONLY|LOCAL_SESSION|WORLD|UNKNOWN)$": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        },
+        "mode_sequence": {
+          "type": "array",
+          "items": {
+            "enum": ["OBSERVATION_ONLY", "LOCAL_SESSION", "WORLD", "UNKNOWN"]
+          }
+        },
+        "epoch_ids": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "epoch_id_sequence": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "epochs_valid": {"type": "boolean"}
+      }
+    },
+    "semantic_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regions", "observations", "tracked_objects"],
+      "properties": {
+        "regions": {"type": "integer", "minimum": 0},
+        "observations": {"type": "integer", "minimum": 0},
+        "tracked_objects": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluator_cpu_percent",
+        "evaluator_rss_mb",
+        "system_cpu_percent",
+        "system_ram_used_mb",
+        "tegrastats"
+      ],
+      "properties": {
+        "evaluator_cpu_percent": {"$ref": "#/definitions/resourceSeriesOrEmpty"},
+        "evaluator_rss_mb": {"$ref": "#/definitions/resourceSeriesOrEmpty"},
+        "system_cpu_percent": {"$ref": "#/definitions/resourceSeriesOrEmpty"},
+        "system_ram_used_mb": {"$ref": "#/definitions/resourceSeriesOrEmpty"},
+        "tegrastats": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ram_used_mb": {"$ref": "#/definitions/resourceSeries"},
+            "gpu_utilization_percent": {"$ref": "#/definitions/resourceSeries"},
+            "cpu_temperature_c": {"$ref": "#/definitions/resourceSeries"},
+            "gpu_temperature_c": {"$ref": "#/definitions/resourceSeries"},
+            "input_power_mw": {"$ref": "#/definitions/resourceSeries"}
+          }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["motion_intent_count", "forward_permission_violations"],
+      "properties": {
+        "motion_intent_count": {"type": "integer", "minimum": 0},
+        "forward_permission_violations": {"type": "integer", "minimum": 0}
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required_topic_window_complete",
+        "sync_p95_at_most_80_ms",
+        "manifest_localization_mode_respected",
+        "replay_rate_consistent",
+        "no_forward_permission"
+      ],
+      "properties": {
+        "required_topic_window_complete": {"type": "boolean"},
+        "sync_p95_at_most_80_ms": {"type": "boolean"},
+        "manifest_localization_mode_respected": {"type": "boolean"},
+        "replay_rate_consistent": {"type": "boolean"},
+        "no_forward_permission": {"type": "boolean"}
+      }
+    },
+    "passed": {"type": "boolean"}
+  },
+  "definitions": {
+    "nonnegativeNumber": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1e308
+    },
+    "nonnegativeNumberOrNull": {
+      "anyOf": [
+        {"$ref": "#/definitions/nonnegativeNumber"},
+        {"type": "null"}
+      ]
+    },
+    "latencySeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "mean_sec", "p95_sec", "maximum_sec"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 1},
+        "mean_sec": {"$ref": "#/definitions/nonnegativeNumber"},
+        "p95_sec": {"$ref": "#/definitions/nonnegativeNumber"},
+        "maximum_sec": {"$ref": "#/definitions/nonnegativeNumber"}
+      }
+    },
+    "resourceSeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mean", "p95", "maximum"],
+      "properties": {
+        "mean": {"$ref": "#/definitions/nonnegativeNumber"},
+        "p95": {"$ref": "#/definitions/nonnegativeNumber"},
+        "maximum": {"$ref": "#/definitions/nonnegativeNumber"}
+      }
+    },
+    "resourceSeriesOrEmpty": {
+      "oneOf": [
+        {"$ref": "#/definitions/resourceSeries"},
+        {
+          "type": "object",
+          "maxProperties": 0,
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+uint8 DECISION_REJECTED_GATE=0
+uint8 DECISION_UNMATCHED=1
+uint8 DECISION_TENTATIVE=2
+uint8 DECISION_MATCHED=3
+uint8 DECISION_AMBIGUOUS=4
+
+std_msgs/Header header
+uint64 memory_epoch_id
+uint64 observation_producer_epoch_id
+uint64 visual_candidate_id
+uint64 lidar_source_epoch_id
+int64 lidar_tracklet_id
+bool global_object_id_valid
+uint64 global_object_id
+track_robot_interfaces/AssociationTerm[<=24] terms
+float32 total_score
+float32 assignment_cost
+float32 top_two_margin
+uint8 decision
+string<=256 reason

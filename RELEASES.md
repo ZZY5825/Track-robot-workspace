@@ -1,5 +1,71 @@
 # Releases
 
+## V1.4.0 - 2026-07-21
+
+V1.4.0 promotes the Phase 2 semantic-search software preview into an official
+source release and retains the alpha architecture, contracts, replay tools,
+evaluation gates, and operator documentation. This is a stable source
+checkpoint; it does not claim that the outstanding synchronized physical-robot
+evaluation has passed.
+
+### Semantic Search And Memory
+
+- Adds language-conditioned passive perception with aligned OpenAI CLIP image
+  and text embeddings.
+- Adds generalized multi-object 3D semantic memory with camera/LiDAR
+  association, appearance history, re-identification, lifecycle management,
+  task relevance, and bounded query/inspection/reset services.
+- Adds deterministic replay, threshold calibration, quality/resource gates,
+  and the Phase 2 recording and evaluation workflow.
+- Keeps perception and memory paths fail-closed; semantic search does not
+  publish `cmd_vel` or silently enable robot motion.
+
+### Text Query Portal
+
+- Adds the `semantic_search_query` ROS CLI so operators can submit plain text
+  without constructing JSON manually.
+- Supports one-shot and interactive queries, explicit query IDs and versions,
+  acknowledgement diagnostics, bounded subscriber/timeout waits, and clear
+  exit codes.
+- Preserves the future RViz panel contract without coupling the CLI to RViz.
+
+### Phase 1 Multiscale Improvement
+
+- Replaces grid-only default inference with `multiscale_v1`: the unchanged
+  four 2x2 crops, one letterboxed whole frame, and one centered 60% crop are
+  encoded in a single bounded GPU batch.
+- Treats the center window as a local candidate and the whole frame only as a
+  fallback when no local candidate passes.
+- Adds deterministic IoU/containment duplicate suppression and one shared
+  absolute or quantile cutoff across grid and extra windows.
+- Fixes ROS 2 Foxy launch parameter precedence by merging YAML parameters and
+  CLI overrides before creating the perception node.
+- Keeps ROS messages/topics and the Phase 2 external-proposal pooling contract
+  unchanged.
+
+### Verification
+
+- `track_robot_semantic_search`: 482 Python tests passed.
+- ROS package result: 484 tests, 0 failures, 0 errors, 0 skipped.
+- Real OpenAI CLIP ViT-B/32 checkpoint load passed with the pinned SHA-256
+  `40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af`.
+- On the Jetson CUDA core path, `multiscale_v1` measured 129.54 ms P95 and
+  7.72 Hz capacity across 30 measured iterations, satisfying the 150 ms and
+  5 Hz runtime gates.
+- The alpha Phase 2 clean-archive checkpoint remains recorded as 599 tests,
+  0 failures, 0 errors, with 3 expected DDS skips; explicit DDS validation was
+  3/3.
+
+### Remaining Physical Gate
+
+The included
+`track_robot_ws/rosbags/semantic_search/reports/phase2_evaluation_2026-07-17.json`
+remains `unavailable` because a complete synchronized physical recording has
+not yet been collected. Production selection remains fail-closed until the
+documented field quality, latency, resource, and regression gates pass. Model
+weights, rosbag payloads, build/install products, and generated test caches are
+not included in the source release.
+
 ## V1.3.0 - 2026-07-09
 
 This release adds the first persistent camera-initialized LiDAR tracking

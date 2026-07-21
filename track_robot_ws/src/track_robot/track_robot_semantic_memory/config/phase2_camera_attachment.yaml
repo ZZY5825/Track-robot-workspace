@@ -1,0 +1,50 @@
+semantic_memory:
+  ros__parameters:
+    tasks_topic: /semantic_memory/tasks
+    task_queue_depth: 1
+    best_candidate_topic: /semantic_memory/best_candidate
+    publish_best_candidate: true
+    task_appearance_weight: 0.75
+    task_semantic_weight: 0.25
+    best_candidate_threshold_calibrated: false
+    best_candidate_minimum_relevance: 1.0
+    association_shadow_mode: false
+    camera_attachment_enabled: true
+    appearance_memory_enabled: true
+    reidentification_shadow_mode: true
+    reidentification_mutation_enabled: false
+    reidentification_calibration_status: uncalibrated
+    reidentification_calibration_report: ""
+    association_calibration_status: calibrated
+    association_calibration_report: reports/phase2_association_calibration_2026-07-16.json
+    camera_calibration_id: zed_left_rectified_v1
+
+    association_max_source_time_delta_sec: 0.10
+    association_max_evidence_age_sec: 0.50
+    association_max_position_nis: 9.21
+    association_minimum_size_ratio: 0.25
+    association_maximum_size_ratio: 40.0
+    association_max_relative_speed_mps: 3.0
+    association_position_distance_max_m: 3.0
+    association_center_distance_max_px: 200.0
+    association_descriptor_normalization_tolerance: 0.0001
+
+    association_weight_position_consistency: 0.0
+    association_weight_projected_centroid: 0.30158573654673776
+    association_weight_inside_fraction: 0.4029907984248159
+    association_weight_projected_iou: 0.14277659906937346
+    association_weight_visual_cosine: 0.0
+    association_weight_extent_consistency: 0.15264686595907273
+    association_weight_point_count_consistency: 0.0
+    association_weight_motion_continuity: 0.0
+    association_weight_previous_association: 0.0
+    association_weight_detector_confidence: 0.0
+    association_weight_geometry_confidence: 0.0
+    association_weight_sensor_confidence: 0.0
+
+    association_match_threshold: 0.6303095604656801
+    association_ambiguity_margin: 0.058443876599150624
+    association_previous_hysteresis: 0.02
+    association_confirmation_frames: 3
+    association_detach_after_misses: 2
+    association_cooldown_frames: 2

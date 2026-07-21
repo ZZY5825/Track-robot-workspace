@@ -1,0 +1,62 @@
+{
+  "stage": "2G",
+  "status": "software_complete_field_evidence_unavailable",
+  "date": "2026-07-17",
+  "code_revision": "07c24b4568bbbecb1a0d225a2f17317bfbab1530",
+  "evaluation_report_schema": "2.0.0",
+  "task_threshold_calibration_tooling_complete": true,
+  "task_threshold_field_calibrated": false,
+  "production_threshold_enabled": false,
+  "physical_phase2_pilot_available": false,
+  "physical_phase2_completion_passed": false,
+  "deterministic_replay_passed": true,
+  "deterministic_replay_output_sha256": "252082be46a78e9e861443d3e90e53eb08e56f22fb113448c3c16680c4f00563",
+  "default_regression": {
+    "packages": 4,
+    "tests": 599,
+    "errors": 0,
+    "failures": 0,
+    "expected_opt_in_dds_skips": 3
+  },
+  "explicit_dds_regression": {
+    "tests": 3,
+    "errors": 0,
+    "failures": 0,
+    "skips": 0,
+    "sandbox_note": "Executed outside the network-restricted sandbox because local DDS requires getifaddrs access."
+  },
+  "strict_build": {
+    "packages": [
+      "track_robot_interfaces",
+      "track_robot_lidar_tracking",
+      "track_robot_semantic_memory",
+      "track_robot_semantic_search"
+    ],
+    "compiler_flags": "-Wall -Wextra -Wpedantic -Werror",
+    "passed": true
+  },
+  "clean_archive_regression": {
+    "revision": "07c24b4568bbbecb1a0d225a2f17317bfbab1530",
+    "packages": 4,
+    "tests": 599,
+    "errors": 0,
+    "failures": 0,
+    "expected_opt_in_dds_skips": 3,
+    "passed": true
+  },
+  "ros_processes_remaining_after_test": 0,
+  "field_evidence_missing": [
+    "connected-TF Phase 2 pilot rosbag",
+    "checked final Phase 2 annotation and matched-prediction JSONL",
+    "independent 30-positive/30-hard-negative task-threshold calibration JSONL",
+    "all twelve physical scenario classes",
+    "30-minute Jetson runtime and resource profile",
+    "separately completed human-tracking regression evidence"
+  ],
+  "limitations": [
+    "Synthetic normalized replay proves deterministic mechanics only.",
+    "Synthetic DDS tests prove runtime transport and services, not field accuracy or Jetson performance.",
+    "The existing human-tracking bags lack the Phase 2 evidence contract and cannot substitute for the pilot.",
+    "Every checked production profile remains fail-closed for best-candidate publication without field calibration."
+  ]
+}

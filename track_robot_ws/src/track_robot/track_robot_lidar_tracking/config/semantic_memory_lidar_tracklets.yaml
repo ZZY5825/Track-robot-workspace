@@ -1,0 +1,58 @@
+semantic_memory_lidar_tracklet_manager:
+  ros__parameters:
+    lidar_topic: /rslidar_points
+    output_topic: /semantic_memory/lidar_tracklets_legacy
+    semantic_output_topic: /semantic_memory/lidar_tracklets
+    source_epoch_seed: 0
+    marker_topic: /semantic_memory/lidar_tracklet_markers
+    candidate_clusters_topic: /semantic_memory/lidar_candidate_clusters
+    candidate_marker_topic: /semantic_memory/lidar_candidate_cluster_markers
+    debug_topic: /semantic_memory/lidar_tracklet_debug
+    lidar_qos_reliability: reliable
+    tracking_frame: base_link
+    base_frame: base_link
+    map_frame: map
+
+    min_range: 0.5
+    max_range: 15.0
+    min_z: -0.35
+    max_z: 3.5
+    remove_ground: true
+    ground_z_threshold: -0.15
+    voxel_leaf_size: 0.10
+    process_every_n_clouds: 1
+
+    cluster_tolerance: 0.38
+    cluster_core_min_points: 3
+    generic_tracklet_min_points: 4
+    max_cluster_points: 5000
+    impossible_candidate_width: 6.0
+    impossible_candidate_depth: 6.0
+    impossible_candidate_height: 4.0
+    min_bbox_height: 0.05
+    max_bbox_height: 3.5
+    min_bbox_width: 0.03
+    max_bbox_width: 4.5
+    max_bbox_depth: 4.5
+
+    tracklet_gating_distance: 1.5
+    tracklet_confirm_hits: 3
+    max_tracklet_missed_frames: 15
+    max_tracklet_age_sec: 2.0
+    max_tracklet_speed_mps: 8.0
+    tracklet_process_noise_accel_std: 1.5
+    tracklet_maneuver_noise_accel_std: 4.0
+    tracklet_measurement_variance: 0.12
+    tracklet_nis_gate: 9.21
+    stationary_displacement_m: 0.10
+    stationary_confirm_frames: 3
+    stationary_velocity_decay: 0.5
+    stationary_speed_threshold_mps: 0.08
+    stationary_measurement_speed_mps: 0.25
+    confidence_hit_increment: 0.15
+    confidence_miss_decay: 0.06
+    min_publish_confidence: 0.10
+
+    marker_publish_rate: 10.0
+    candidate_marker_publish_rate: 5.0
+    debug_publish_rate: 2.0

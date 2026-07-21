@@ -1,0 +1,39 @@
+# Goal
+string query_text
+builtin_interfaces/Duration timeout
+bool allow_rotation
+float32 maximum_rotation_angle
+string client_request_id
+---
+# Result
+uint8 CONFIRMED=0
+uint8 NOT_FOUND=1
+uint8 UNCERTAIN=2
+uint8 CANCELLED=3
+uint8 SAFETY_REJECTED=4
+uint8 SENSOR_UNAVAILABLE=5
+uint8 MODEL_UNAVAILABLE=6
+uint8 TIMEOUT=7
+
+uint8 status
+uint64 query_id
+bool selected_object_valid
+uint64 selected_global_object_id
+bool selected_observation_valid
+track_robot_interfaces/ObjectObservation3D selected_observation
+string evidence_summary
+---
+# Feedback
+uint8 INITIALISING=0
+uint8 PASSIVE_OBSERVATION=1
+uint8 ROTATION_VERIFICATION=2
+uint8 FINALISING=3
+uint8 TERMINAL=4
+
+uint64 query_id
+uint8 phase
+builtin_interfaces/Duration elapsed
+float32 searched_angle
+uint32 candidate_count
+float32 best_candidate_score
+string current_reason

@@ -1,0 +1,73 @@
+uint8 PROPOSAL_CAMERA_DETECTOR=0
+uint8 PROPOSAL_OPEN_VOCABULARY=1
+uint8 PROPOSAL_LANGUAGE_PATCH=2
+uint8 PROPOSAL_PATCH_GROUP=3
+uint8 PROPOSAL_MANUAL_ROI=4
+uint8 PROPOSAL_LIDAR_PROJECTED=5
+uint8 PROPOSAL_EXTERNAL_DETECTOR=6
+
+uint8 MASK_NONE=0
+uint8 MASK_PNG=1
+uint8 MASK_COCO_RLE_JSON=2
+
+uint8 MEMORY_OBSERVATION_ONLY=0
+uint8 MEMORY_LOCAL_SESSION=1
+uint8 MEMORY_WORLD=2
+
+uint32 EVIDENCE_CAMERA=1
+uint32 EVIDENCE_LIDAR=2
+uint32 EVIDENCE_STEREO_DEPTH=4
+uint32 EVIDENCE_PREDICTION=8
+uint32 EVIDENCE_STATIC_FALLBACK_TF=16
+
+std_msgs/Header header
+uint64 producer_epoch_id
+uint64 observation_id
+uint64 visual_candidate_id
+bool upstream_proposal_id_valid
+uint64 upstream_producer_epoch_id
+uint64 upstream_proposal_id
+bool camera_track_id_valid
+int64 camera_track_id
+bool lidar_tracklet_id_valid
+uint64 lidar_source_epoch_id
+int64 lidar_tracklet_id
+uint64 query_id
+uint64 query_version
+
+bool camera_stamp_valid
+builtin_interfaces/Time camera_stamp
+bool lidar_stamp_valid
+builtin_interfaces/Time lidar_stamp
+bool pose_stamp_valid
+builtin_interfaces/Time pose_stamp
+bool tf_stamp_valid
+builtin_interfaces/Time tf_stamp
+
+uint32 image_width
+uint32 image_height
+sensor_msgs/RegionOfInterest roi
+uint8 mask_encoding
+uint8[<=65536] compressed_mask
+uint8 proposal_source
+float32 detector_confidence
+float32 appearance_confidence
+float32 language_relevance
+float32 geometry_confidence
+float32 overall_confidence
+
+bool position_valid
+string<=128 position_frame_id
+geometry_msgs/Point position
+bool velocity_valid
+geometry_msgs/Vector3 velocity
+bool extent_valid
+geometry_msgs/Vector3 extent
+bool extent_is_partial
+float32[9] position_covariance
+uint8 memory_mode
+uint64 localization_epoch_id
+string<=128 calibration_id
+uint32 evidence_flags
+track_robot_interfaces/VisualDescriptor appearance_descriptor
+track_robot_interfaces/SemanticLabelEvidence[<=16] semantic_labels

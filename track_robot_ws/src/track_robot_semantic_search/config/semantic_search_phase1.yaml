@@ -1,0 +1,29 @@
+semantic_search_perception:
+  ros__parameters:
+    image_topic: /zed/zed_node/left/image_rect_color
+    query_topic: /semantic_search/query
+    regions_topic: /semantic_search/regions
+    observations_topic: /semantic_memory/observations
+    task_topic: /semantic_memory/tasks
+    proposal_topic: /semantic_memory/visual_proposals
+    diagnostics_topic: /semantic_search/perception_diagnostics
+    target_rate_hz: 5.0
+    adapter_implementation: openai_clip
+    model_name: ViT-B/32
+    runtime_path: ''
+    checkpoint_path: ''
+    device: auto
+    grid_size: 2
+    window_strategy: multiscale_v1
+    center_window_scale: 0.60
+    threshold: 0.25
+    threshold_mode: absolute
+    quantile: 0.90
+    min_area: 1
+    max_regions: 10
+    duplicate_iou_threshold: 0.50
+    duplicate_containment_threshold: 0.80
+    max_visual_candidates: 64
+    producer_epoch_seed: 0
+    descriptor_version: 1
+    calibration_id: zed_left_rectified_v1

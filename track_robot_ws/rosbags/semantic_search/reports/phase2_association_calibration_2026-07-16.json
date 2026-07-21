@@ -1,0 +1,408 @@
+{
+  "camera_attachment_allowed": true,
+  "counts": {
+    "negative": 79,
+    "positive": 22,
+    "total": 101,
+    "unlabelled": 0
+  },
+  "dataset_id": "phase2c-human-tracking-145752-manual-roi-v1",
+  "hard_gate_pass_counts": {
+    "negative": 38,
+    "positive": 22
+  },
+  "minimum_labeled_per_class": 20,
+  "reasons": [],
+  "runtime_contract": {
+    "camera_calibration_id": "zed_left_rectified_v1",
+    "confirmation": {
+      "confirmation_frames": 3,
+      "cooldown_frames": 2,
+      "detach_after_misses": 2,
+      "previous_association_hysteresis": 0.02
+    },
+    "hard_gates": {
+      "center_distance_max_px": 200.0,
+      "descriptor_normalization_tolerance": 0.0001,
+      "max_evidence_age_s": 0.5,
+      "max_position_nis": 9.21,
+      "max_relative_speed_mps": 3.0,
+      "max_source_time_delta_s": 0.1,
+      "maximum_size_ratio": 40.0,
+      "minimum_size_ratio": 0.25,
+      "position_distance_max_m": 3.0,
+      "require_descriptors": false,
+      "require_motion_gate": false,
+      "require_position_nis": false,
+      "require_size_ratio": false
+    },
+    "scoring_contract_version": "stage2d_association_v1",
+    "soft_weights": {
+      "detector_confidence": 0.0,
+      "extent_consistency": 0.15264686595907273,
+      "geometry_confidence": 0.0,
+      "inside_fraction": 0.4029907984248159,
+      "motion_continuity": 0.0,
+      "point_count_consistency": 0.0,
+      "position_consistency": 0.0,
+      "previous_association": 0.0,
+      "projected_centroid": 0.30158573654673776,
+      "projected_iou": 0.14277659906937346,
+      "sensor_confidence": 0.0,
+      "visual_cosine": 0.0
+    }
+  },
+  "schema_version": "1.0.0",
+  "selected_parameters": {
+    "ambiguity_margin": 0.058443876599150624,
+    "association_metric_gates": {
+      "minimum_precision": 0.95,
+      "minimum_recall": 0.8
+    },
+    "association_metrics": {
+      "false_negative": 4,
+      "false_positive": 0,
+      "precision": 1.0,
+      "recall": 0.8181818181818182,
+      "threshold": 0.6303095604656801,
+      "true_positive": 18
+    },
+    "calibrated_score_summary": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.627448813607925,
+        "median": 0.08328573038709508,
+        "minimum": 0.00010412611203074132
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.878771721335843,
+        "median": 0.6677244963786013,
+        "minimum": 0.5215525889713761
+      }
+    },
+    "match_threshold": 0.6303095604656801,
+    "selection_method": "annotated_normalized_soft_precision_recall_gate_v3",
+    "term_weights_from_median_separation": {
+      "detector_confidence": 0.0,
+      "extent_consistency": 0.15264686595907273,
+      "geometry_confidence": 0.0,
+      "inside_fraction": 0.4029907984248159,
+      "previous_association": 0.0,
+      "projected_centroid": 0.30158573654673776,
+      "projected_iou": 0.14277659906937346,
+      "sensor_confidence": 0.0
+    }
+  },
+  "status": "calibrated",
+  "term_distributions": {
+    "calibration_available": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      }
+    },
+    "descriptor_compatibility": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "detector_confidence": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      }
+    },
+    "evidence_age_s": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.021588964387774467,
+        "median": 0.013045075349509716,
+        "minimum": 0.0025029880926012993
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.021588964387774467,
+        "median": 0.013022023253142834,
+        "minimum": 0.0025029880926012993
+      }
+    },
+    "extent_consistency": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.9889171645040198,
+        "median": 0.0231511035182052,
+        "minimum": 0.0006821372412497439
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.8979340149787656,
+        "median": 0.4019360945297341,
+        "minimum": 0.025870548591794818
+      }
+    },
+    "field_of_view": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      }
+    },
+    "geometry_confidence": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      }
+    },
+    "inside_fraction": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 0.0,
+        "minimum": 0.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 0.5979090127099006
+      }
+    },
+    "motion_continuity": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "point_count_consistency": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "position_consistency": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "position_nis": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "previous_association": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.0,
+        "median": 0.0,
+        "minimum": 0.0
+      }
+    },
+    "projected_centroid": {
+      "negative": {
+        "count": 79,
+        "maximum": 539.7804111646683,
+        "median": 258.2473692173206,
+        "minimum": 52.47569023375741
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 100.17489196913846,
+        "median": 50.326241827080715,
+        "minimum": 1.6553946781130735
+      }
+    },
+    "projected_iou": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.2332939064922347,
+        "median": 0.0,
+        "minimum": 0.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.6864213326077374,
+        "median": 0.3542924543871704,
+        "minimum": 0.025870548591794818
+      }
+    },
+    "relative_speed_mps": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    },
+    "sensor_confidence": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 0.27000001072883606
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 0.38999998569488525
+      }
+    },
+    "size_ratio": {
+      "negative": {
+        "count": 79,
+        "maximum": 1465.9806553999304,
+        "median": 43.194485274260714,
+        "minimum": 0.6818830322085467
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 38.65399283868155,
+        "median": 2.6131311788527056,
+        "minimum": 0.8071925784920388
+      }
+    },
+    "source_time_delta_s": {
+      "negative": {
+        "count": 79,
+        "maximum": 0.021588964387774467,
+        "median": 0.013045075349509716,
+        "minimum": 0.0025029880926012993
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 0.021588964387774467,
+        "median": 0.013022023253142834,
+        "minimum": 0.0025029880926012993
+      }
+    },
+    "spatial_domain": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      }
+    },
+    "transform_available": {
+      "negative": {
+        "count": 79,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      },
+      "positive": {
+        "count": 22,
+        "maximum": 1.0,
+        "median": 1.0,
+        "minimum": 1.0
+      }
+    },
+    "visual_cosine": {
+      "negative": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      },
+      "positive": {
+        "count": 0,
+        "maximum": null,
+        "median": null,
+        "minimum": null
+      }
+    }
+  }
+}

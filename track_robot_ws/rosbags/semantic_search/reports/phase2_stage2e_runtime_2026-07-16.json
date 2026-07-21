@@ -1,0 +1,78 @@
+{
+  "stage": "2E",
+  "status": "software_complete_physical_pilot_unverified",
+  "date": "2026-07-16",
+  "appearance_memory_runtime_integrated": true,
+  "reidentification_runtime_integrated": true,
+  "atomic_identity_transfer_integrated": true,
+  "current_frame_descriptor_required": true,
+  "reidentification_mutation_default_enabled": false,
+  "reidentification_thresholds_field_calibrated": false,
+  "physical_reentry_pilot_executed": false,
+  "synthetic_dds_reentry_test_executed": true,
+  "synthetic_dds_reentry_test_passed": true,
+  "ros_processes_remaining_after_test": 0,
+  "bounds": {
+    "appearance_prototypes_per_object": 4,
+    "candidates": 64,
+    "lost_targets": 256,
+    "pairs": 1024,
+    "confirmation_frames": 3
+  },
+  "verification": [
+    {
+      "name": "targeted_core_regression",
+      "command": "colcon test --build-base build-stage2e --install-base install-stage2e --packages-select track_robot_semantic_memory --ctest-args -R 'test_(memory_core|reidentification)$' --return-code-on-test-failure",
+      "result": "passed",
+      "details": "MemoryCore 23/23; re-identification 16/16"
+    },
+    {
+      "name": "explicit_synthetic_dds_runtime",
+      "command": "RUN_ROS_RUNTIME_TESTS=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 colcon test --build-base build-stage2e --install-base install-stage2e --packages-select track_robot_semantic_memory --ctest-args -R test_ros_runtime --output-on-failure --return-code-on-test-failure",
+      "result": "passed",
+      "details": "2 passed, 0 skipped; includes Stage 2E leave/re-entry identity preservation"
+    },
+    {
+      "name": "fresh_workspace_build_and_regression",
+      "command": "colcon build/test four selected packages with build-stage2e-final and install-stage2e-final",
+      "result": "passed",
+      "details": "560 tests, 0 errors, 0 failures, 2 expected DDS opt-in skips"
+    },
+    {
+      "name": "clean_git_archive_build_and_regression",
+      "command": "git archive HEAD 695af26; fresh colcon build/test in /tmp/semantic-search-stage2e-695af26",
+      "result": "passed",
+      "details": "560 tests, 0 errors, 0 failures, 2 expected DDS opt-in skips"
+    },
+    {
+      "name": "independent_core_review",
+      "result": "approved",
+      "details": "No Critical or Important findings"
+    },
+    {
+      "name": "independent_node_runtime_review",
+      "result": "approved",
+      "details": "No Critical or Important findings"
+    },
+    {
+      "name": "post_test_process_check",
+      "command": "ps -eo pid,ppid,stat,cmd",
+      "result": "passed",
+      "details": "No semantic memory node, visualizer, rosbag play, or test_ros_runtime process remained"
+    }
+  ],
+  "commits": [
+    "a5fa518",
+    "0004f8e",
+    "f0a6276",
+    "5fd8823",
+    "730f4d4",
+    "1546e93",
+    "695af26"
+  ],
+  "limitations": [
+    "The DDS fixture uses synthetic messages, not a physical robot or recorded field re-entry.",
+    "Production re-identification mutation remains safe-off until a field calibration report satisfies the startup contract.",
+    "Stage 2F live task/service integration and Stage 2G physical evaluation were not entered."
+  ]
+}

@@ -1,0 +1,275 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Semantic Search Dataset Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "split",
+    "bag",
+    "capabilities",
+    "calibration",
+    "environment",
+    "queries",
+    "annotation_files",
+    "objects",
+    "trials",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "split": {
+      "enum": [
+        "train",
+        "validation",
+        "test",
+        "extension",
+        "legacy_replay_only"
+      ]
+    },
+    "bag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relative_path",
+        "sha256",
+        "storage_id",
+        "start_time_ns",
+        "duration_ns",
+        "topics"
+      ],
+      "properties": {
+        "relative_path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "storage_id": {"type": "string", "minLength": 1},
+        "start_time_ns": {"type": "integer", "minimum": 0},
+        "duration_ns": {"type": "integer", "minimum": 0},
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type", "count"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "type": {"type": "string", "minLength": 1},
+              "count": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "camera",
+        "lidar",
+        "imu",
+        "local_pose",
+        "world_pose",
+        "query_events",
+        "annotations",
+        "active_motion"
+      ],
+      "properties": {
+        "camera": {"type": "boolean"},
+        "lidar": {"type": "boolean"},
+        "imu": {"type": "boolean"},
+        "local_pose": {"type": "boolean"},
+        "world_pose": {"type": "boolean"},
+        "query_events": {"type": "boolean"},
+        "annotations": {"type": "boolean"},
+        "active_motion": {"type": "boolean"}
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "camera_intrinsics_id",
+        "camera_lidar_extrinsics_id",
+        "lidar_imu_extrinsics_id",
+        "localization_config_id"
+      ],
+      "properties": {
+        "camera_intrinsics_id": {"type": "string"},
+        "camera_lidar_extrinsics_id": {"type": "string"},
+        "lidar_imu_extrinsics_id": {"type": "string"},
+        "localization_config_id": {"type": "string"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "session_id",
+        "lighting",
+        "surface",
+        "weather"
+      ],
+      "properties": {
+        "site_id": {"type": "string"},
+        "session_id": {"type": "string"},
+        "lighting": {"type": "string"},
+        "surface": {"type": "string"},
+        "weather": {"type": "string"}
+      }
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query_id",
+          "stamp_ns",
+          "text",
+          "language",
+          "client_request_id"
+        ],
+        "properties": {
+          "query_id": {"type": "integer", "minimum": 1},
+          "stamp_ns": {"type": "integer", "minimum": 0},
+          "text": {"type": "string", "minLength": 1},
+          "language": {"type": "string", "minLength": 1},
+          "client_request_id": {"type": "string"}
+        }
+      }
+    },
+    "annotation_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["relative_path", "sha256", "format", "schema_version"],
+        "properties": {
+          "relative_path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "format": {"const": "jsonl"},
+          "schema_version": {"const": "1.0.0"}
+        }
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object_id",
+          "physical_object_id",
+          "labels",
+          "site_id",
+          "acquisition_date",
+          "source",
+          "provenance"
+        ],
+        "properties": {
+          "object_id": {"type": "string", "minLength": 1},
+          "physical_object_id": {"type": "string", "minLength": 1},
+          "labels": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "site_id": {"type": "string", "minLength": 1},
+          "acquisition_date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "source": {"enum": ["robot", "public", "synthetic"]},
+          "provenance": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "trials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "trial_id",
+          "query_id",
+          "target_object_id",
+          "is_positive",
+          "start_stamp_ns",
+          "end_stamp_ns",
+          "nominal_distance_m",
+          "observation_stage",
+          "site_id",
+          "session_id"
+        ],
+        "properties": {
+          "trial_id": {"type": "string", "minLength": 1},
+          "query_id": {"type": "integer", "minimum": 1},
+          "target_object_id": {"type": "string"},
+          "is_positive": {"type": "boolean"},
+          "start_stamp_ns": {"type": "integer", "minimum": 0},
+          "end_stamp_ns": {"type": "integer", "minimum": 0},
+          "nominal_distance_m": {"type": "number", "minimum": 0.0},
+          "observation_stage": {
+            "enum": ["passive", "pre_rotation", "post_rotation"]
+          },
+          "site_id": {"type": "string", "minLength": 1},
+          "session_id": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "phase2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memory_frame", "scenario_ids", "tf_preflight_passed",
+        "resource_profile_available", "human_regression_evidence"
+      ],
+      "properties": {
+        "memory_frame": {"enum": ["base_link", "odom", "map"]},
+        "scenario_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "static_multi_view", "similar_static_objects",
+              "moving_human_crossing", "camera_occlusion",
+              "camera_fov_exit_lidar_visible", "both_sensors_exit_reentry",
+              "lidar_cluster_split", "lidar_cluster_merge",
+              "camera_false_positive", "lidar_false_cluster",
+              "robot_rotation_translation", "task_change_without_memory_clear"
+            ]
+          }
+        },
+        "tf_preflight_passed": {"type": "boolean"},
+        "resource_profile_available": {"type": "boolean"},
+        "human_regression_evidence": {"type": "boolean"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["created_at", "created_by", "notes"],
+      "properties": {
+        "created_at": {"type": "string", "minLength": 1},
+        "created_by": {"type": "string", "minLength": 1},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}
