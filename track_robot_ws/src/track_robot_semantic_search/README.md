@@ -33,10 +33,19 @@ enabled:
 The checkpoint SHA-256 is
 `40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af`;
 the pinned OpenAI CLIP source revision is
-`d05afc436d78f1c48dc0dbf8e5980a9d471f35f6`. The default 2x2 crop grid is the
-measured Jetson configuration: on 32 evenly spaced real rosbag frames its
-complete-path P95 was 103.76 ms. The 4x4 configuration measured 173.75 ms and
-is therefore not the Phase 1 runtime default.
+`d05afc436d78f1c48dc0dbf8e5980a9d471f35f6`. The earlier `grid_only` 2x2
+configuration measured a complete-path P95 of 103.76 ms on 32 evenly spaced
+real rosbag frames. The 4x4 configuration measured 173.75 ms and is not a
+replacement for context at different target scales.
+
+The checked `multiscale_v1` profile addresses large targets and objects split
+by a grid boundary with one bounded six-window GPU batch: the unchanged four
+2x2 crops, one letterboxed whole image, and one centered crop covering 60% of
+the source width and height. The center crop participates as a local region;
+overlapping local results are merged deterministically. A passing whole image
+is published only as a whole-frame fallback when no local result passes. It is
+evidence that the queried concept may be present, not an object-accurate box.
+Use `window_strategy: grid_only` for direct legacy comparisons.
 
 No dependency installer or implicit model download runs inside the node. A
 missing runtime, checkpoint, unsupported model, or failed warm-up leaves the
@@ -51,6 +60,43 @@ Send a Phase 1 replay query with a monotonically managed version:
 The worker keeps the latest image only, schedules by image source timestamp at
 5 Hz by default, caches text encoding until the normalised query or version
 changes, and transports no image or language feature tensor through DDS.
+
+## Text Query CLI Portal
+
+After sourcing the built workspace, submit a one-shot query without writing
+JSON by hand:
+
+    ros2 run track_robot_semantic_search semantic_search_query \
+      "a red backpack"
+
+The command allocates a positive query ID, publishes to
+`/semantic_search/query`, waits for a correlated response on
+`/semantic_search/perception_diagnostics`, and reports acceptance, rejection,
+a missing subscriber, or an acknowledgement timeout. Deterministic tests and
+replays may set the key explicitly:
+
+    ros2 run track_robot_semantic_search semantic_search_query \
+      "a red backpack" --query-id 10 --query-version 1 --timeout 5
+
+Omit the query text to enter the interactive portal:
+
+    ros2 run track_robot_semantic_search semantic_search_query
+
+Plain text starts a new query. The interactive commands are `:new TEXT`,
+`:revise TEXT`, `:status`, `:help`, and `:quit`. `:revise` retains the current
+query ID and increments its version; a new query receives a new ID and version
+one. Topic names can be changed with `--query-topic` and
+`--diagnostics-topic` when the robot uses an explicit namespace.
+
+One-shot exit codes are zero for accepted, two for local/rejected input, three
+for no query subscriber, four for acknowledgement timeout, and 130 for an
+operator interrupt. All subscriber and acknowledgement waits are bounded.
+
+The current official OpenAI CLIP ViT-B/32 checkpoint should be tested with
+English descriptions. Unicode transport is supported, but Chinese retrieval
+quality has not been validated. This portal performs passive observation only:
+it is not a `SearchForObject` action client and never publishes motion intent,
+`Twist`, or `cmd_vel`.
 
 ## Formal Legacy Replay Evidence
 

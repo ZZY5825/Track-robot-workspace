@@ -93,3 +93,36 @@ def test_perception_node_is_packaged_as_console_script():
 
     assert 'semantic_search_perception' in setup_source
     assert 'track_robot_semantic_search.perception_node:main' in setup_source
+
+
+def test_perception_node_wires_multiscale_parameters_to_model_and_core():
+    source = NODE.read_text(encoding='utf-8')
+
+    for declaration in (
+            "'window_strategy', 'multiscale_v1'",
+            "'center_window_scale', 0.60",
+            "'duplicate_iou_threshold', 0.50",
+            "'duplicate_containment_threshold', 0.80"):
+        assert declaration in source
+    assert 'window_strategy=window_strategy' in source
+    assert 'center_window_scale=center_window_scale' in source
+    assert 'duplicate_iou_threshold=duplicate_iou_threshold' in source
+    assert ('duplicate_containment_threshold=' in source and
+            'duplicate_containment_threshold)' in source)
+
+
+def test_query_rejection_correlates_when_transport_parsing_succeeded():
+    source = NODE.read_text(encoding='utf-8')
+
+    assert 'query = None\n        try:' in source
+    assert "'query_id': query.query_id" in source
+    assert "'query_version': query.query_version" in source
+    assert "self._publish_diagnostics(\n                'query_rejected'," in source
+    assert "str(exc), **metrics)" in source
+
+
+def test_query_cli_is_packaged_as_console_script():
+    setup_source = (PACKAGE_ROOT / 'setup.py').read_text(encoding='utf-8')
+
+    assert 'semantic_search_query' in setup_source
+    assert 'track_robot_semantic_search.query_cli:main' in setup_source

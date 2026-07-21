@@ -4,6 +4,7 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
+from .multiscale_windows import WindowEncoding
 from .visual_candidates import normalize_descriptor
 
 
@@ -119,6 +120,24 @@ def score_regions(
         max_regions: int = 10) -> List[RegionCandidate]:
     image, text, valid = _validate_inputs(
         image_embeddings, text_embedding, valid_patch_mask, geometry)
+    _validate_scoring_options(
+        threshold, threshold_mode, quantile, min_area, max_regions)
+    if not valid.any():
+        return []
+
+    scores = _cosine_scores(image, text)
+    cutoff = _score_cutoff(
+        scores[valid], threshold, threshold_mode, quantile)
+    return _regions_from_scores(
+        image, valid, scores, cutoff, geometry, min_area, max_regions)
+
+
+def _validate_scoring_options(
+        threshold: float,
+        threshold_mode: str,
+        quantile: float,
+        min_area: int,
+        max_regions: int) -> None:
     if threshold_mode not in ('absolute', 'quantile'):
         raise ValueError('threshold_mode must be absolute or quantile')
     if not np.isfinite(threshold):
@@ -127,18 +146,35 @@ def score_regions(
         raise ValueError('quantile must be between 0 and 1')
     if min_area <= 0 or max_regions <= 0:
         raise ValueError('min_area and max_regions must be positive')
-    if not valid.any():
-        return []
 
+
+def _cosine_scores(image: np.ndarray, text: np.ndarray) -> np.ndarray:
     text_norm = float(np.linalg.norm(text))
     if text_norm <= 1e-12:
         raise ValueError('text embedding norm must be positive')
     image_norms = np.linalg.norm(image, axis=2)
     denominator = np.maximum(image_norms * text_norm, 1e-12)
-    scores = np.sum(image * text.reshape(1, 1, -1), axis=2) / denominator
-    cutoff = float(threshold)
+    return np.sum(image * text.reshape(1, 1, -1), axis=2) / denominator
+
+
+def _score_cutoff(
+        score_values: np.ndarray,
+        threshold: float,
+        threshold_mode: str,
+        quantile: float) -> float:
     if threshold_mode == 'quantile':
-        cutoff = float(np.quantile(scores[valid], quantile))
+        return float(np.quantile(score_values, quantile))
+    return float(threshold)
+
+
+def _regions_from_scores(
+        image: np.ndarray,
+        valid: np.ndarray,
+        scores: np.ndarray,
+        cutoff: float,
+        geometry: ImageGeometry,
+        min_area: int,
+        max_regions: int) -> List[RegionCandidate]:
     active = np.logical_and(valid, scores >= cutoff).astype(np.uint8)
     if not active.any():
         return []
@@ -184,3 +220,137 @@ def score_regions(
         item.height,
         item.width))
     return regions[:max_regions]
+
+
+def _region_sort_key(item: RegionCandidate):
+    return (
+        -item.score,
+        -item.peak_score,
+        item.y,
+        item.x,
+        item.height,
+        item.width,
+    )
+
+
+def _overlap_ratios(first: RegionCandidate, second: RegionCandidate):
+    left = max(first.x, second.x)
+    top = max(first.y, second.y)
+    right = min(first.x + first.width, second.x + second.width)
+    bottom = min(first.y + first.height, second.y + second.height)
+    intersection = max(0, right - left) * max(0, bottom - top)
+    first_area = first.width * first.height
+    second_area = second.width * second.height
+    union = first_area + second_area - intersection
+    iou = float(intersection) / float(union) if union > 0 else 0.0
+    containment = float(intersection) / float(min(first_area, second_area))
+    return iou, containment
+
+
+def suppress_duplicate_regions(
+        regions: List[RegionCandidate],
+        duplicate_iou_threshold: float = 0.50,
+        duplicate_containment_threshold: float = 0.80,
+        max_regions: int = 10) -> List[RegionCandidate]:
+    for name, value in (
+            ('duplicate_iou_threshold', duplicate_iou_threshold),
+            ('duplicate_containment_threshold',
+             duplicate_containment_threshold)):
+        if not np.isfinite(value) or not 0.0 <= value <= 1.0:
+            raise ValueError('{} must be finite and in [0, 1]'.format(name))
+    if max_regions <= 0:
+        raise ValueError('max_regions must be positive')
+    kept = []
+    for candidate in sorted(regions, key=_region_sort_key):
+        duplicate = False
+        for previous in kept:
+            iou, containment = _overlap_ratios(candidate, previous)
+            if iou >= duplicate_iou_threshold or (
+                    containment >= duplicate_containment_threshold):
+                duplicate = True
+                break
+        if not duplicate:
+            kept.append(candidate)
+            if len(kept) >= max_regions:
+                break
+    return kept
+
+
+def _window_score(window: WindowEncoding, text: np.ndarray) -> float:
+    if window.embedding.shape[0] != text.shape[0]:
+        raise ValueError('image and text must have the same embedding dimension')
+    text_norm = float(np.linalg.norm(text))
+    if text_norm <= 1e-12:
+        raise ValueError('text embedding norm must be positive')
+    return float(np.dot(window.embedding, text) / text_norm)
+
+
+def _window_region(
+        window: WindowEncoding,
+        score: float) -> RegionCandidate:
+    return RegionCandidate(
+        x=window.roi[0],
+        y=window.roi[1],
+        width=window.roi[2],
+        height=window.roi[3],
+        token_area=1,
+        score=score,
+        peak_score=score,
+        descriptor=window.embedding,
+        descriptor_quality=1.0,
+    )
+
+
+def score_multiscale_regions(
+        image_embeddings: np.ndarray,
+        text_embedding: np.ndarray,
+        valid_patch_mask: np.ndarray,
+        geometry: ImageGeometry,
+        extra_windows: Tuple[WindowEncoding, ...] = (),
+        threshold: float = 0.25,
+        threshold_mode: str = 'absolute',
+        quantile: float = 0.90,
+        min_area: int = 1,
+        max_regions: int = 10,
+        duplicate_iou_threshold: float = 0.50,
+        duplicate_containment_threshold: float = 0.80,
+        ) -> List[RegionCandidate]:
+    image, text, valid = _validate_inputs(
+        image_embeddings, text_embedding, valid_patch_mask, geometry)
+    _validate_scoring_options(
+        threshold, threshold_mode, quantile, min_area, max_regions)
+    extras = tuple(extra_windows)
+    if any(not isinstance(window, WindowEncoding) for window in extras):
+        raise ValueError('extra_windows must contain WindowEncoding values')
+    scores = _cosine_scores(image, text)
+    extra_scores = np.asarray(
+        [_window_score(window, text) for window in extras],
+        dtype=np.float32)
+    cutoff_values = [scores[valid]]
+    if extra_scores.size:
+        cutoff_values.append(extra_scores)
+    combined = np.concatenate(cutoff_values)
+    if combined.size == 0:
+        return []
+    cutoff = _score_cutoff(
+        combined, threshold, threshold_mode, quantile)
+
+    local_regions = _regions_from_scores(
+        image, valid, scores, cutoff, geometry, min_area, max_regions)
+    global_regions = []
+    for window, score in zip(extras, extra_scores):
+        if float(score) < cutoff:
+            continue
+        region = _window_region(window, float(score))
+        if window.kind == 'global':
+            global_regions.append(region)
+        else:
+            local_regions.append(region)
+    local_regions = suppress_duplicate_regions(
+        local_regions,
+        duplicate_iou_threshold,
+        duplicate_containment_threshold,
+        max_regions=max_regions)
+    if local_regions:
+        return local_regions
+    return sorted(global_regions, key=_region_sort_key)[:max_regions]

@@ -30,7 +30,7 @@ from track_robot_semantic_search.phase1_baselines import (
     BASELINES,
     build_baseline_report,
 )
-from track_robot_semantic_search.region_scoring import score_regions
+from track_robot_semantic_search.region_scoring import score_multiscale_regions
 from track_robot_semantic_search.replay_probe import (
     decode_bgr_image,
     read_sampled_messages,
@@ -84,7 +84,9 @@ def run_clip(arguments, rows):
         checkpoint_path=str(arguments.clip_checkpoint),
         runtime_path=str(arguments.clip_runtime),
         device='cuda',
-        grid_size=arguments.grid_size)
+        grid_size=arguments.grid_size,
+        window_strategy=arguments.window_strategy,
+        center_window_scale=arguments.center_window_scale)
     synchronize()
     model_load_ms = (time.monotonic() - load_start) * 1000.0
 
@@ -96,11 +98,12 @@ def run_clip(arguments, rows):
     def process(row):
         image = decode_bgr_image(row['data'])
         encoding = adapter.encode_image_grid(image)
-        regions = score_regions(
+        regions = score_multiscale_regions(
             encoding.embeddings,
             query,
             encoding.valid_patch_mask,
             encoding.geometry,
+            extra_windows=encoding.extra_windows,
             threshold_mode='quantile',
             quantile=0.90,
             min_area=1,
@@ -169,6 +172,8 @@ def run_clip(arguments, rows):
         'licence': 'MIT (OpenAI CLIP code and released model weights)',
         'redistribution': 'subject to the bundled OpenAI CLIP MIT licence',
         'grid_size': arguments.grid_size,
+        'window_strategy': arguments.window_strategy,
+        'center_window_scale': arguments.center_window_scale,
         'query_text': arguments.query,
         'query_role': 'runtime probe only; not ground truth',
         'model_load_ms': model_load_ms,
@@ -398,7 +403,12 @@ def parser():
     root.add_argument('--run-date', default='2026-07-15')
     root.add_argument('--samples', type=int, default=32)
     root.add_argument('--warmups', type=int, default=5)
-    root.add_argument('--grid-size', type=int, default=4)
+    root.add_argument('--grid-size', type=int, default=2)
+    root.add_argument(
+        '--window-strategy',
+        choices=('grid_only', 'multiscale_v1'),
+        default='multiscale_v1')
+    root.add_argument('--center-window-scale', type=float, default=0.60)
     root.add_argument('--query', default='a person')
     root.add_argument('--memory-limit-mb', type=float, default=1536.0)
     return root

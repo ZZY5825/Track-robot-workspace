@@ -6,6 +6,7 @@ from track_robot_semantic_search.perception_core import (
     SourceTimestampScheduler,
 )
 from track_robot_semantic_search.model_adapters import ImageGridEncoding
+from track_robot_semantic_search.multiscale_windows import WindowEncoding
 from track_robot_semantic_search.region_scoring import ImageGeometry
 from track_robot_semantic_search.visual_candidates import CandidateProposal
 
@@ -18,6 +19,8 @@ class FakeAlignedEncoder:
         self.text_calls = []
         self.image_calls = 0
         self.bad_dimension = False
+        self.extra_windows = ()
+        self.grid_matches = True
 
     def encode_text(self, text):
         self.text_calls.append(text)
@@ -27,7 +30,7 @@ class FakeAlignedEncoder:
         self.image_calls += 1
         dimension = 3 if self.bad_dimension else 2
         embeddings = np.zeros((2, 2, dimension), dtype=np.float32)
-        embeddings[0, 0, 0] = 1.0
+        embeddings[0, 0, 0 if self.grid_matches else 1] = 1.0
         return ImageGridEncoding(
             embeddings=embeddings,
             valid_patch_mask=np.ones((2, 2), dtype=bool),
@@ -42,7 +45,8 @@ class FakeAlignedEncoder:
                 padding_left=0,
                 padding_top=0,
                 patch_size=16),
-            inference_ms=12.5)
+            inference_ms=12.5,
+            extra_windows=self.extra_windows)
 
 
 def test_core_reuses_cached_text_and_increments_observation_id():
@@ -92,6 +96,27 @@ def test_core_returns_empty_candidates_without_fabricating_full_frame():
 
     assert result.regions == []
     assert result.visual_candidates == []
+
+
+def test_core_consumes_multiscale_global_fallback():
+    encoder = FakeAlignedEncoder()
+    encoder.grid_matches = False
+    encoder.extra_windows = (
+        WindowEncoding('global', (0, 0, 32, 32), [1.0, 0.0]),
+        WindowEncoding('center', (8, 8, 16, 16), [0.0, 1.0]),
+    )
+    core = PassivePerceptionCore(encoder, threshold=0.9)
+    result = core.process(
+        np.zeros((32, 32, 3), dtype=np.uint8), 'branch', 1, 1, 100)
+
+    assert [region.roi for region in result.regions] == [(0, 0, 32, 32)]
+
+
+@pytest.mark.parametrize('value', [-0.1, 1.1, float('nan')])
+def test_core_rejects_invalid_duplicate_threshold(value):
+    with pytest.raises(ValueError, match='duplicate_iou_threshold'):
+        PassivePerceptionCore(
+            FakeAlignedEncoder(), duplicate_iou_threshold=value)
 
 
 def test_core_processes_external_proposal_without_active_query():

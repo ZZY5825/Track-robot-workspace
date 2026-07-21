@@ -49,12 +49,40 @@ def test_phase1_launch_is_opt_in_and_contains_only_perception_worker():
     assert arguments['model_name'] == 'ViT-B/32'
 
 
+def test_phase1_launch_merges_config_and_cli_overrides_for_foxy():
+    source = LAUNCH.read_text(encoding='utf-8')
+    tree = ast.parse(source)
+    node = next(
+        item for item in ast.walk(tree)
+        if isinstance(item, ast.Call) and
+        isinstance(item.func, ast.Name) and item.func.id == 'Node'
+    )
+    parameters = next(
+        keyword.value for keyword in node.keywords
+        if keyword.arg == 'parameters'
+    )
+
+    assert isinstance(parameters, ast.List)
+    assert len(parameters.elts) == 1
+    assert isinstance(parameters.elts[0], ast.Name)
+    assert parameters.elts[0].id == 'parameters'
+    assert any(
+        isinstance(item, ast.Call) and
+        isinstance(item.func, ast.Name) and item.func.id == 'OpaqueFunction'
+        for item in ast.walk(tree)
+    )
+
+
 def test_phase1_config_is_bounded_and_namespaced():
     config = yaml.safe_load(CONFIG.read_text(encoding='utf-8'))
     parameters = config['semantic_search_perception']['ros__parameters']
 
     assert parameters['target_rate_hz'] == 5.0
     assert parameters['grid_size'] == 2
+    assert parameters['window_strategy'] == 'multiscale_v1'
+    assert parameters['center_window_scale'] == 0.60
+    assert parameters['duplicate_iou_threshold'] == 0.50
+    assert parameters['duplicate_containment_threshold'] == 0.80
     assert 1 <= parameters['max_regions'] <= 16
     assert parameters['adapter_implementation'] == 'openai_clip'
     assert parameters['model_name'] == 'ViT-B/32'

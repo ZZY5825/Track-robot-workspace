@@ -5,7 +5,7 @@ from typing import Any, List, Optional, Sequence
 import numpy as np
 
 from .query import CachedTextEncoder
-from .region_scoring import RegionCandidate, score_regions
+from .region_scoring import RegionCandidate, score_multiscale_regions
 from .visual_candidates import (
     CandidateProposal,
     VisualCandidateResult,
@@ -46,7 +46,9 @@ class PassivePerceptionCore:
             quantile: float = 0.90,
             min_area: int = 1,
             max_regions: int = 10,
-            max_visual_candidates: int = 64):
+            max_visual_candidates: int = 64,
+            duplicate_iou_threshold: float = 0.50,
+            duplicate_containment_threshold: float = 0.80):
         for attribute in (
                 'encoder_id', 'checkpoint_id', 'encode_text',
                 'encode_image_grid'):
@@ -61,6 +63,15 @@ class PassivePerceptionCore:
         self._quantile = quantile
         self._min_area = min_area
         self._max_regions = max_regions
+        for name, value in (
+                ('duplicate_iou_threshold', duplicate_iou_threshold),
+                ('duplicate_containment_threshold',
+                 duplicate_containment_threshold)):
+            if not np.isfinite(value) or not 0.0 <= value <= 1.0:
+                raise ValueError('{} must be finite and in [0, 1]'.format(name))
+        self._duplicate_iou_threshold = float(duplicate_iou_threshold)
+        self._duplicate_containment_threshold = float(
+            duplicate_containment_threshold)
         self._max_visual_candidates = max(1, min(64, int(
             max_visual_candidates)))
         self._observation_id = 0
@@ -110,16 +121,20 @@ class PassivePerceptionCore:
         regions = []
         if query_text is not None:
             query = self._text_cache.encode(query_text, query_version)
-            regions = score_regions(
+            regions = score_multiscale_regions(
                 image_encoding.embeddings,
                 query.vector,
                 image_encoding.valid_patch_mask,
                 image_encoding.geometry,
+                extra_windows=image_encoding.extra_windows,
                 threshold=self._threshold,
                 threshold_mode=self._threshold_mode,
                 quantile=self._quantile,
                 min_area=self._min_area,
-                max_regions=self._max_regions)
+                max_regions=self._max_regions,
+                duplicate_iou_threshold=self._duplicate_iou_threshold,
+                duplicate_containment_threshold=(
+                    self._duplicate_containment_threshold))
 
         visual_candidates = []
         for proposal in proposals:

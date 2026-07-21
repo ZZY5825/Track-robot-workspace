@@ -1,9 +1,13 @@
 import numpy as np
 import pytest
 
+from track_robot_semantic_search.multiscale_windows import WindowEncoding
 from track_robot_semantic_search.region_scoring import (
     ImageGeometry,
+    RegionCandidate,
+    score_multiscale_regions,
     score_regions,
+    suppress_duplicate_regions,
 )
 
 
@@ -20,6 +24,21 @@ def geometry(width=4, height=3, patch_size=16):
         padding_top=0,
         patch_size=patch_size,
     )
+
+
+def cosine_vector(score):
+    return np.asarray(
+        [score, np.sqrt(max(0.0, 1.0 - score ** 2))],
+        dtype=np.float32)
+
+
+def candidate(roi, score, peak=None):
+    return RegionCandidate(
+        x=roi[0], y=roi[1], width=roi[2], height=roi[3],
+        token_area=1, score=score,
+        peak_score=score if peak is None else peak,
+        descriptor=np.asarray([1.0, 0.0], dtype=np.float32),
+        descriptor_quality=1.0)
 
 
 def test_cosine_score_creates_region_for_matching_tokens():
@@ -162,3 +181,111 @@ def test_empty_valid_mask_returns_no_regions():
         np.zeros((1, 1), dtype=bool), geometry(1, 1))
 
     assert regions == []
+
+
+def test_multiscale_uses_whole_image_only_as_fallback():
+    embeddings = np.tile([0.0, 1.0], (2, 2, 1)).astype(np.float32)
+    extras = (
+        WindowEncoding('global', (0, 0, 100, 100), [1.0, 0.0]),
+        WindowEncoding('center', (20, 20, 60, 60), [0.0, 1.0]),
+    )
+
+    regions = score_multiscale_regions(
+        embeddings, [1.0, 0.0], np.ones((2, 2), dtype=bool),
+        geometry(2, 2), extras, threshold=0.5)
+
+    assert [region.roi for region in regions] == [(0, 0, 100, 100)]
+
+
+def test_multiscale_local_region_hides_passing_global_window():
+    embeddings = np.tile([0.0, 1.0], (2, 2, 1)).astype(np.float32)
+    embeddings[0, 0] = [1.0, 0.0]
+    extras = (
+        WindowEncoding('global', (0, 0, 32, 32), [1.0, 0.0]),
+    )
+
+    regions = score_multiscale_regions(
+        embeddings, [1.0, 0.0], np.ones((2, 2), dtype=bool),
+        geometry(2, 2), extras, threshold=0.5)
+
+    assert [region.roi for region in regions] == [(0, 0, 16, 16)]
+
+
+def test_multiscale_center_window_is_a_local_candidate():
+    embeddings = np.tile([0.0, 1.0], (2, 2, 1)).astype(np.float32)
+    extras = (
+        WindowEncoding('global', (0, 0, 100, 100), [0.0, 1.0]),
+        WindowEncoding('center', (20, 20, 60, 60), [1.0, 0.0]),
+    )
+
+    regions = score_multiscale_regions(
+        embeddings, [1.0, 0.0], np.ones((2, 2), dtype=bool),
+        geometry(2, 2), extras, threshold=0.5)
+
+    assert [region.roi for region in regions] == [(20, 20, 60, 60)]
+
+
+def test_duplicate_suppression_uses_iou_and_keeps_higher_score():
+    regions = [
+        candidate((0, 0, 10, 10), 0.8),
+        candidate((2, 0, 10, 10), 0.9),
+    ]
+
+    kept = suppress_duplicate_regions(regions, 0.50, 0.80)
+
+    assert [region.roi for region in kept] == [(2, 0, 10, 10)]
+
+
+def test_duplicate_suppression_uses_containment():
+    regions = [
+        candidate((0, 0, 20, 20), 0.8),
+        candidate((2, 2, 10, 10), 0.9),
+    ]
+
+    kept = suppress_duplicate_regions(regions, 0.50, 0.80)
+
+    assert [region.roi for region in kept] == [(2, 2, 10, 10)]
+
+
+def test_duplicate_suppression_ties_use_image_position():
+    regions = [
+        candidate((10, 10, 10, 10), 0.9),
+        candidate((0, 0, 20, 20), 0.9),
+    ]
+
+    kept = suppress_duplicate_regions(regions, 0.20, 0.20)
+
+    assert [region.roi for region in kept] == [(0, 0, 20, 20)]
+
+
+def test_multiscale_quantile_cutoff_uses_grid_and_extra_scores():
+    embeddings = np.asarray([[
+        cosine_vector(0.1), cosine_vector(0.2),
+        cosine_vector(0.3), cosine_vector(0.4),
+    ]])
+    extras = (
+        WindowEncoding('global', (0, 0, 64, 16), cosine_vector(0.8)),
+        WindowEncoding('center', (16, 0, 32, 16), cosine_vector(0.9)),
+    )
+
+    regions = score_multiscale_regions(
+        embeddings, [1.0, 0.0], np.ones((1, 4), dtype=bool),
+        geometry(4, 1), extras,
+        threshold_mode='quantile', quantile=0.5)
+
+    assert [region.roi for region in regions] == [
+        (16, 0, 32, 16), (48, 0, 16, 16)]
+
+
+def test_multiscale_applies_max_regions_after_deterministic_ordering():
+    embeddings = np.asarray([[
+        cosine_vector(0.9), cosine_vector(0.0),
+        cosine_vector(0.8), cosine_vector(0.0), cosine_vector(0.7),
+    ]])
+
+    regions = score_multiscale_regions(
+        embeddings, [1.0, 0.0], np.ones((1, 5), dtype=bool),
+        geometry(5, 1), (), threshold=0.5, max_regions=2)
+
+    assert [region.roi for region in regions] == [
+        (0, 0, 16, 16), (32, 0, 16, 16)]

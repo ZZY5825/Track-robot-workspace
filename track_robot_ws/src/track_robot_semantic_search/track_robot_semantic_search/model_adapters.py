@@ -3,11 +3,17 @@ import importlib
 import os
 import sys
 import time
-from typing import Any
+from typing import Any, Tuple
 
 import cv2
 import numpy as np
 
+from .multiscale_windows import (
+    WindowEncoding,
+    center_window_roi,
+    letterbox_to_square,
+    validate_window_strategy,
+)
 from .region_scoring import ImageGeometry
 
 
@@ -21,6 +27,62 @@ class ImageGridEncoding:
     valid_patch_mask: np.ndarray
     geometry: ImageGeometry
     inference_ms: float
+    extra_windows: Tuple[WindowEncoding, ...] = ()
+
+
+def _prepare_window_crops(
+        image_bgr: np.ndarray,
+        grid_size: int,
+        window_strategy: str,
+        center_window_scale: float,
+        preprocess):
+    from PIL import Image
+
+    source_height, source_width = image_bgr.shape[:2]
+    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    canvas = letterbox_to_square(image_rgb)
+    side = int(canvas.shape[0])
+    padding_left = (side - source_width) // 2
+    padding_top = (side - source_height) // 2
+    edges = np.rint(np.linspace(0, side, grid_size + 1)).astype(np.int32)
+    crops = []
+    for row in range(grid_size):
+        for column in range(grid_size):
+            crop = canvas[
+                edges[row]:edges[row + 1],
+                edges[column]:edges[column + 1]]
+            crops.append(preprocess(Image.fromarray(crop)))
+
+    extra_specs = []
+    if window_strategy == 'multiscale_v1':
+        crops.append(preprocess(Image.fromarray(canvas)))
+        extra_specs.append(('global', (0, 0, source_width, source_height)))
+        center_roi = center_window_roi(
+            source_width, source_height, center_window_scale)
+        x, y, width, height = center_roi
+        center = image_rgb[y:y + height, x:x + width]
+        crops.append(preprocess(Image.fromarray(letterbox_to_square(center))))
+        extra_specs.append(('center', center_roi))
+    return (
+        crops, tuple(extra_specs), side, source_width, source_height,
+        padding_left, padding_top)
+
+
+def _split_window_vectors(
+        vectors: np.ndarray,
+        grid_size: int,
+        extra_specs) -> Tuple[np.ndarray, Tuple[WindowEncoding, ...]]:
+    flat = np.asarray(vectors, dtype=np.float32)
+    expected = grid_size ** 2 + len(extra_specs)
+    if flat.ndim != 2 or flat.shape[0] != expected:
+        raise ValueError(
+            'image encoder returned {} vectors; expected {}'.format(
+                flat.shape[0] if flat.ndim >= 1 else 0, expected))
+    grid = flat[:grid_size ** 2].reshape(grid_size, grid_size, -1)
+    extras = tuple(
+        WindowEncoding(kind, roi, flat[grid_size ** 2 + index])
+        for index, (kind, roi) in enumerate(extra_specs))
+    return grid, extras
 
 
 def _valid_crop_mask(
@@ -61,7 +123,9 @@ class OpenClipAdapter:
             checkpoint_path: str,
             runtime_path: str = '',
             device: str = 'cuda',
-            grid_size: int = 4):
+            grid_size: int = 4,
+            window_strategy: str = 'grid_only',
+            center_window_scale: float = 0.60):
         checkpoint_path = os.path.abspath(os.path.expanduser(checkpoint_path))
         runtime_path = os.path.abspath(os.path.expanduser(runtime_path)) \
             if runtime_path else ''
@@ -73,8 +137,8 @@ class OpenClipAdapter:
                 'OpenCLIP runtime path does not exist: {}'.format(runtime_path))
         if not model_name.strip():
             raise ModelUnavailableError('OpenCLIP model_name must not be empty')
-        if grid_size <= 0:
-            raise ModelUnavailableError('OpenCLIP grid_size must be positive')
+        window_strategy = validate_window_strategy(
+            window_strategy, grid_size, center_window_scale)
         if runtime_path and runtime_path not in sys.path:
             sys.path.insert(0, runtime_path)
         try:
@@ -98,6 +162,8 @@ class OpenClipAdapter:
         self._tokenizer = tokenizer
         self._device = device
         self._grid_size = grid_size
+        self._window_strategy = window_strategy
+        self._center_window_scale = float(center_window_scale)
         self.encoder_id = 'open_clip:{}'.format(model_name.strip())
         self.checkpoint_id = os.path.basename(checkpoint_path)
 
@@ -108,26 +174,10 @@ class OpenClipAdapter:
         return vector[0].detach().float().cpu().numpy()
 
     def encode_image_grid(self, image_bgr: np.ndarray) -> ImageGridEncoding:
-        from PIL import Image
-
-        source_height, source_width = image_bgr.shape[:2]
-        side = max(source_width, source_height)
-        padding_left = (side - source_width) // 2
-        padding_top = (side - source_height) // 2
-        canvas = np.zeros((side, side, 3), dtype=np.uint8)
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        canvas[
-            padding_top:padding_top + source_height,
-            padding_left:padding_left + source_width] = image_rgb
-        edges = np.rint(
-            np.linspace(0, side, self._grid_size + 1)).astype(np.int32)
-        crops = []
-        for row in range(self._grid_size):
-            for column in range(self._grid_size):
-                crop = canvas[
-                    edges[row]:edges[row + 1],
-                    edges[column]:edges[column + 1]]
-                crops.append(self._preprocess(Image.fromarray(crop)))
+        (crops, extra_specs, side, source_width, source_height,
+         padding_left, padding_top) = _prepare_window_crops(
+            image_bgr, self._grid_size, self._window_strategy,
+            self._center_window_scale, self._preprocess)
         batch = self._torch.stack(crops).to(self._device)
         start = time.monotonic()
         with self._torch.no_grad():
@@ -135,8 +185,9 @@ class OpenClipAdapter:
         if str(self._device).startswith('cuda'):
             self._torch.cuda.synchronize()
         inference_ms = (time.monotonic() - start) * 1000.0
-        embeddings = vectors.detach().float().cpu().numpy().reshape(
-            self._grid_size, self._grid_size, -1)
+        embeddings, extra_windows = _split_window_vectors(
+            vectors.detach().float().cpu().numpy(),
+            self._grid_size, extra_specs)
 
         model_side = self._grid_size * 16
         scale = float(model_side) / float(side)
@@ -162,7 +213,8 @@ class OpenClipAdapter:
                 padding_left=model_padding_left,
                 padding_top=model_padding_top,
                 patch_size=16),
-            inference_ms=inference_ms)
+            inference_ms=inference_ms,
+            extra_windows=extra_windows)
 
 
 class OpenAIClipAdapter:
@@ -172,7 +224,9 @@ class OpenAIClipAdapter:
             checkpoint_path: str,
             runtime_path: str = '',
             device: str = 'cuda',
-            grid_size: int = 4):
+            grid_size: int = 4,
+            window_strategy: str = 'grid_only',
+            center_window_scale: float = 0.60):
         checkpoint_path = os.path.abspath(os.path.expanduser(checkpoint_path))
         runtime_path = os.path.abspath(os.path.expanduser(runtime_path)) \
             if runtime_path else ''
@@ -187,9 +241,8 @@ class OpenAIClipAdapter:
         if not model_name.strip():
             raise ModelUnavailableError(
                 'OpenAI CLIP model_name must not be empty')
-        if grid_size <= 0:
-            raise ModelUnavailableError(
-                'OpenAI CLIP grid_size must be positive')
+        window_strategy = validate_window_strategy(
+            window_strategy, grid_size, center_window_scale)
         if runtime_path and runtime_path not in sys.path:
             sys.path.insert(0, runtime_path)
         try:
@@ -213,6 +266,8 @@ class OpenAIClipAdapter:
         self._preprocess = preprocess
         self._device = device
         self._grid_size = grid_size
+        self._window_strategy = window_strategy
+        self._center_window_scale = float(center_window_scale)
         self.encoder_id = 'openai_clip:{}'.format(model_name.strip())
         self.checkpoint_id = os.path.basename(checkpoint_path)
 
@@ -223,26 +278,10 @@ class OpenAIClipAdapter:
         return vector[0].detach().float().cpu().numpy()
 
     def encode_image_grid(self, image_bgr: np.ndarray) -> ImageGridEncoding:
-        from PIL import Image
-
-        source_height, source_width = image_bgr.shape[:2]
-        side = max(source_width, source_height)
-        padding_left = (side - source_width) // 2
-        padding_top = (side - source_height) // 2
-        canvas = np.zeros((side, side, 3), dtype=np.uint8)
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        canvas[
-            padding_top:padding_top + source_height,
-            padding_left:padding_left + source_width] = image_rgb
-        edges = np.rint(
-            np.linspace(0, side, self._grid_size + 1)).astype(np.int32)
-        crops = []
-        for row in range(self._grid_size):
-            for column in range(self._grid_size):
-                crop = canvas[
-                    edges[row]:edges[row + 1],
-                    edges[column]:edges[column + 1]]
-                crops.append(self._preprocess(Image.fromarray(crop)))
+        (crops, extra_specs, side, source_width, source_height,
+         padding_left, padding_top) = _prepare_window_crops(
+            image_bgr, self._grid_size, self._window_strategy,
+            self._center_window_scale, self._preprocess)
         batch = self._torch.stack(crops).to(self._device)
         start = time.monotonic()
         with self._torch.no_grad():
@@ -250,8 +289,9 @@ class OpenAIClipAdapter:
         if str(self._device).startswith('cuda'):
             self._torch.cuda.synchronize()
         inference_ms = (time.monotonic() - start) * 1000.0
-        embeddings = vectors.detach().float().cpu().numpy().reshape(
-            self._grid_size, self._grid_size, -1)
+        embeddings, extra_windows = _split_window_vectors(
+            vectors.detach().float().cpu().numpy(),
+            self._grid_size, extra_specs)
 
         model_side = self._grid_size * 16
         scale = float(model_side) / float(side)
@@ -277,7 +317,8 @@ class OpenAIClipAdapter:
                 padding_left=model_padding_left,
                 padding_top=model_padding_top,
                 patch_size=16),
-            inference_ms=inference_ms)
+            inference_ms=inference_ms,
+            extra_windows=extra_windows)
 
 
 def create_aligned_encoder(
@@ -286,7 +327,9 @@ def create_aligned_encoder(
         checkpoint_path: str,
         runtime_path: str,
         device: str = 'cuda',
-        grid_size: int = 4) -> Any:
+        grid_size: int = 4,
+        window_strategy: str = 'grid_only',
+        center_window_scale: float = 0.60) -> Any:
     selected = implementation.strip().lower()
     if selected == 'open_clip':
         return OpenClipAdapter(
@@ -294,14 +337,18 @@ def create_aligned_encoder(
             checkpoint_path=checkpoint_path,
             runtime_path=runtime_path,
             device=device,
-            grid_size=grid_size)
+            grid_size=grid_size,
+            window_strategy=window_strategy,
+            center_window_scale=center_window_scale)
     if selected == 'openai_clip':
         return OpenAIClipAdapter(
             model_name=model_name,
             checkpoint_path=checkpoint_path,
             runtime_path=runtime_path,
             device=device,
-            grid_size=grid_size)
+            grid_size=grid_size,
+            window_strategy=window_strategy,
+            center_window_scale=center_window_scale)
     raise ModelUnavailableError(
         'unknown aligned encoder implementation: {}'.format(
             implementation))

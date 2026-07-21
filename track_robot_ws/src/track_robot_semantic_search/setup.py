@@ -38,6 +38,8 @@ setup(
             'track_robot_semantic_search.model_selection_cli:main',
             'semantic_search_perception = '
             'track_robot_semantic_search.perception_node:main',
+            'semantic_search_query = '
+            'track_robot_semantic_search.query_cli:main',
             'semantic_search_phase1_baselines = '
             'track_robot_semantic_search.phase1_baseline_cli:main',
             'semantic_search_phase2_evaluate = '

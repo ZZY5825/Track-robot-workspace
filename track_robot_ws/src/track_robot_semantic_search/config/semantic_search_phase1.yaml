@@ -14,11 +14,15 @@ semantic_search_perception:
     checkpoint_path: ''
     device: auto
     grid_size: 2
+    window_strategy: multiscale_v1
+    center_window_scale: 0.60
     threshold: 0.25
     threshold_mode: absolute
     quantile: 0.90
     min_area: 1
     max_regions: 10
+    duplicate_iou_threshold: 0.50
+    duplicate_containment_threshold: 0.80
     max_visual_candidates: 64
     producer_epoch_seed: 0
     descriptor_version: 1

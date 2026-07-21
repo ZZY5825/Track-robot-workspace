@@ -1,0 +1,53 @@
+# Local-only Git and agent workflow metadata
+.local-git/
+.worktrees/
+.superpowers/
+.agents/
+.codex/
+
+# ROS/colcon generated output
+build/
+install/
+log/
+/semantic_search_perception.yaml
+
+# Runtime datasets, models, and generated visualizations
+dataset/
+models/
+dinov3_feature_outputs/
+frames.gv
+frames.pdf
+
+# Large or externally managed source trees
+src/third_party_ros/
+src/track_robot_core/
+src/lidar_mos_filter/
+
+# Raw rosbag and telemetry payloads; metadata and guides remain trackable
+*.db3
+*.db3-wal
+*.db3-shm
+*.mcap
+*.bag
+*tegrastats*.log
+
+# Model/export artifacts
+*.onnx
+*.pt
+*.pth
+*.engine
+*.plan
+
+# Python/editor/cache artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.vscode/
+.idea/
+*~
+*.swp

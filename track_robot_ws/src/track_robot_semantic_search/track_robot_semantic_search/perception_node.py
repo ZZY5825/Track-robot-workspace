@@ -114,7 +114,11 @@ class SemanticPerceptionNode(Node):
             'cuda' if requested_device == 'auto' and torch.cuda.is_available()
             else 'cpu' if requested_device == 'auto'
             else requested_device)
-        grid_size = int(self.declare_parameter('grid_size', 4).value)
+        grid_size = int(self.declare_parameter('grid_size', 2).value)
+        window_strategy = str(self.declare_parameter(
+            'window_strategy', 'multiscale_v1').value)
+        center_window_scale = float(self.declare_parameter(
+            'center_window_scale', 0.60).value)
         threshold = float(self.declare_parameter('threshold', 0.25).value)
         threshold_mode = str(self.declare_parameter(
             'threshold_mode', 'absolute').value)
@@ -123,6 +127,10 @@ class SemanticPerceptionNode(Node):
         max_regions = int(self.declare_parameter('max_regions', 10).value)
         max_visual_candidates = int(self.declare_parameter(
             'max_visual_candidates', 64).value)
+        duplicate_iou_threshold = float(self.declare_parameter(
+            'duplicate_iou_threshold', 0.50).value)
+        duplicate_containment_threshold = float(self.declare_parameter(
+            'duplicate_containment_threshold', 0.80).value)
         try:
             encoder = create_aligned_encoder(
                 implementation=implementation,
@@ -130,7 +138,9 @@ class SemanticPerceptionNode(Node):
                 checkpoint_path=checkpoint_path,
                 runtime_path=runtime_path,
                 device=device,
-                grid_size=grid_size)
+                grid_size=grid_size,
+                window_strategy=window_strategy,
+                center_window_scale=center_window_scale)
             encoder.encode_text('object')
             encoder.encode_image_grid(np.zeros((224, 224, 3), dtype=np.uint8))
             self._core = PassivePerceptionCore(
@@ -140,7 +150,10 @@ class SemanticPerceptionNode(Node):
                 quantile=quantile,
                 min_area=min_area,
                 max_regions=max_regions,
-                max_visual_candidates=max_visual_candidates)
+                max_visual_candidates=max_visual_candidates,
+                duplicate_iou_threshold=duplicate_iou_threshold,
+                duplicate_containment_threshold=(
+                    duplicate_containment_threshold))
         except (ModelUnavailableError, RuntimeError, ValueError) as exc:
             self._core = None
             self._publish_diagnostics('not_ready', str(exc))
@@ -163,6 +176,7 @@ class SemanticPerceptionNode(Node):
                 image_frame=message.header.frame_id)
 
     def _query_callback(self, message):
+        query = None
         try:
             query = parse_query_payload(message.data)
             if len(query.query_text) > 512:
@@ -176,7 +190,14 @@ class SemanticPerceptionNode(Node):
                 image_message_count=self._image_message_count,
                 processing_timer_started=self._processing_timer_started)
         except ValueError as exc:
-            self._publish_diagnostics('query_rejected', str(exc))
+            metrics = {}
+            if query is not None:
+                metrics = {
+                    'query_id': query.query_id,
+                    'query_version': query.query_version,
+                }
+            self._publish_diagnostics(
+                'query_rejected', str(exc), **metrics)
             self.get_logger().warning('Rejected semantic query: {}'.format(exc))
 
     def _proposal_callback(self, message):

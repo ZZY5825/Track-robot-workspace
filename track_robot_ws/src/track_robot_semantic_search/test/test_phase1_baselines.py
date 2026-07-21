@@ -266,3 +266,30 @@ def test_baseline_cli_is_packaged():
 
     assert 'semantic_search_phase1_baselines' in setup_source
     assert 'track_robot_semantic_search.phase1_baseline_cli:main' in setup_source
+
+
+def test_replay_probe_exposes_and_records_multiscale_controls():
+    package_root = Path(__file__).resolve().parents[1]
+    source = (
+        package_root / 'scripts' / 'run_phase1_replay_probe.py'
+    ).read_text(encoding='utf-8')
+
+    assert "'--window-strategy'" in source
+    assert "choices=('grid_only', 'multiscale_v1')" in source
+    assert "'--center-window-scale'" in source
+    assert 'window_strategy=arguments.window_strategy' in source
+    assert 'center_window_scale=arguments.center_window_scale' in source
+    assert "'window_strategy': arguments.window_strategy" in source
+    assert "'center_window_scale': arguments.center_window_scale" in source
+    assert 'score_multiscale_regions(' in source
+
+
+def test_readme_documents_multiscale_boundary_behavior_and_global_fallback():
+    readme = (
+        Path(__file__).resolve().parents[1] / 'README.md'
+    ).read_text(encoding='utf-8')
+
+    assert 'multiscale_v1' in readme
+    assert 'six-window' in readme
+    assert 'grid boundary' in readme
+    assert 'whole-frame fallback' in readme
