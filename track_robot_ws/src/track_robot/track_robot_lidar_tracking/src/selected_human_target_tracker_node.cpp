@@ -4,8 +4,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <limits>
 #include <memory>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -27,8 +29,7 @@
 #include <std_msgs/msg/string.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <track_robot_interfaces/msg/human_detection2_d.hpp>
-#include <track_robot_interfaces/msg/human_detection2_d_array.hpp>
+#include <track_robot_interfaces/msg/camera_target.hpp>
 #include <track_robot_interfaces/msg/lidar_cluster_array.hpp>
 #include <track_robot_interfaces/msg/lidar_tracklet.hpp>
 #include <track_robot_interfaces/msg/lidar_tracklet_array.hpp>
@@ -165,8 +166,6 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     tf_listener_(tf_buffer_) {
     camera_target_topic_ = declare_parameter<std::string>(
       "camera_target_topic", "/human_tracking/camera_target");
-    detections_topic_ = declare_parameter<std::string>(
-      "detections_topic", "/human_tracking/detections");
     lidar_tracklets_topic_ = declare_parameter<std::string>(
       "lidar_tracklets_topic", "/human_tracking/lidar_tracklets");
     lidar_topic_ = declare_parameter<std::string>("lidar_topic", "/rslidar_points");
@@ -193,8 +192,18 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       "camera_guided_points_topic", "/human_tracking/camera_guided_target_points");
     debug_topic_ = declare_parameter<std::string>(
       "debug_topic", "/human_tracking/target_tracker_debug");
+    timing_debug_topic_ = declare_parameter<std::string>(
+      "timing_debug_topic", "/human_tracking/fusion_timing_debug");
+    hypothesis_marker_topic_ = declare_parameter<std::string>(
+      "hypothesis_marker_topic", "/human_tracking/association_hypothesis_markers");
 
     base_frame_ = declare_parameter<std::string>("base_frame", "base_link");
+    tracking_frame_ = declare_parameter<std::string>("tracking_frame", "track_robot_center");
+    const auto tracking_frame_override = declare_parameter<std::string>(
+      "tracking_frame_override", "");
+    if (!tracking_frame_override.empty()) {
+      tracking_frame_ = tracking_frame_override;
+    }
     lidar_frame_ = declare_parameter<std::string>("lidar_frame", "rslidar");
     camera_frame_ = declare_parameter<std::string>(
       "camera_frame", "zed_left_camera_optical_frame");
@@ -218,12 +227,39 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     camera_visible_min_confidence_ = declare_parameter<double>(
       "camera_visible_min_confidence", 0.35);
     min_association_score_ = declare_parameter<double>("min_association_score", 0.55);
-    association_confirm_frames_ = declare_parameter<int>("association_confirm_frames", 2);
+    initial_association_score_margin_ = declare_parameter<double>(
+      "initial_association_score_margin", 0.12);
+    relink_score_margin_ = declare_parameter<double>("relink_score_margin", 0.15);
+    max_association_hypotheses_ = declare_parameter<int>("max_association_hypotheses", 3);
+    initial_anchor_min_quality_ = declare_parameter<double>(
+      "initial_anchor_min_quality", 0.35);
+    initial_anchor_max_age_sec_ = declare_parameter<double>(
+      "initial_anchor_max_age_sec", 0.35);
+    initial_anchor_xy_gate_m_ = declare_parameter<double>(
+      "initial_anchor_xy_gate_m", 1.0);
+    initial_anchor_range_gate_m_ = declare_parameter<double>(
+      "initial_anchor_range_gate_m", 0.75);
+    initial_association_confirm_frames_ = declare_parameter<int>(
+      "initial_association_confirm_frames", 3);
+    selected_failure_frames_before_switch_ = declare_parameter<int>(
+      "selected_failure_frames_before_switch", 2);
+    association_switch_confirm_frames_ = declare_parameter<int>(
+      "association_switch_confirm_frames", 3);
+    association_switch_score_margin_ = declare_parameter<double>(
+      "association_switch_score_margin", 0.20);
+    association_switch_min_score_ = declare_parameter<double>(
+      "association_switch_min_score", 0.60);
+    association_switch_cooldown_sec_ = declare_parameter<double>(
+      "association_switch_cooldown_sec", 1.5);
     max_projection_center_error_px_ = declare_parameter<double>(
       "max_projection_center_error_px", 220.0);
     camera_target_timeout_sec_ = declare_parameter<double>("camera_target_timeout_sec", 1.0);
+    max_sync_offset_sec_ = declare_parameter<double>("max_sync_offset_sec", 0.08);
+    max_sync_age_sec_ = declare_parameter<double>("max_sync_age_sec", 0.20);
+    sync_queue_size_ = declare_parameter<int>("sync_queue_size", 30);
+    cloud_queue_size_ = declare_parameter<int>("cloud_queue_size", 6);
     input_timeout_sec_ = declare_parameter<double>("input_timeout_sec", 1.0);
-    publish_rate_ = declare_parameter<double>("publish_rate", 10.0);
+    publish_rate_ = declare_parameter<double>("publish_rate", 15.0);
     debug_rate_ = declare_parameter<double>("debug_rate", 2.0);
 
     min_range_ = declare_parameter<double>("min_range", 0.5);
@@ -244,6 +280,12 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       "camera_guided_depth_percentile_low", 20.0);
     camera_guided_depth_percentile_high_ = declare_parameter<double>(
       "camera_guided_depth_percentile_high", 55.0);
+    camera_guided_depth_bin_m_ = declare_parameter<double>(
+      "camera_guided_depth_bin_m", 0.15);
+    camera_guided_depth_prediction_gate_m_ = declare_parameter<double>(
+      "camera_guided_depth_prediction_gate_m", 0.60);
+    camera_guided_component_radius_m_ = declare_parameter<double>(
+      "camera_guided_component_radius_m", 0.45);
     min_keypoint_confidence_ = declare_parameter<double>("min_keypoint_confidence", 0.35);
     camera_guided_max_depth_spread_ = declare_parameter<double>(
       "camera_guided_max_depth_spread", 1.25);
@@ -256,6 +298,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     camera_anchor_xy_variance_ = declare_parameter<double>("camera_anchor_xy_variance", 0.08);
     tracklet_xy_variance_ = declare_parameter<double>("tracklet_xy_variance", 0.18);
     z_variance_ = declare_parameter<double>("z_variance", 0.35);
+    height_process_variance_per_sec_ = declare_parameter<double>(
+      "height_process_variance_per_sec", 0.02);
+    height_max_residual_m_ = declare_parameter<double>("height_max_residual_m", 0.80);
     max_camera_anchor_nis_xy_ = declare_parameter<double>("max_camera_anchor_nis_xy", 25.0);
     max_tracklet_nis_xy_ = declare_parameter<double>("max_tracklet_nis_xy", 9.21);
     prediction_gate_radius_m_ = declare_parameter<double>("prediction_gate_radius_m", 1.2);
@@ -281,12 +326,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     camera_projection_max_rate_hz_ = declare_parameter<double>(
       "camera_projection_max_rate_hz", 10.0);
 
-    camera_target_sub_ = create_subscription<track_robot_interfaces::msg::TargetState>(
+    camera_target_sub_ = create_subscription<track_robot_interfaces::msg::CameraTarget>(
       camera_target_topic_, 5,
       std::bind(&SelectedHumanTargetTrackerNode::cameraTargetCallback, this, std::placeholders::_1));
-    detections_sub_ = create_subscription<track_robot_interfaces::msg::HumanDetection2DArray>(
-      detections_topic_, 5,
-      std::bind(&SelectedHumanTargetTrackerNode::detectionsCallback, this, std::placeholders::_1));
     tracklets_sub_ = create_subscription<track_robot_interfaces::msg::LidarTrackletArray>(
       lidar_tracklets_topic_, 5,
       std::bind(&SelectedHumanTargetTrackerNode::trackletsCallback, this, std::placeholders::_1));
@@ -317,6 +359,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     camera_guided_points_pub_ =
       create_publisher<sensor_msgs::msg::PointCloud2>(camera_guided_points_topic_, 3);
     debug_pub_ = create_publisher<std_msgs::msg::String>(debug_topic_, 5);
+    timing_debug_pub_ = create_publisher<std_msgs::msg::String>(timing_debug_topic_, 5);
+    hypothesis_marker_pub_ =
+      create_publisher<visualization_msgs::msg::MarkerArray>(hypothesis_marker_topic_, 5);
 
     publish_timer_ = create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -331,31 +376,50 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   }
 
  private:
-  void cameraTargetCallback(const track_robot_interfaces::msg::TargetState::SharedPtr msg) {
+  void cameraTargetCallback(const track_robot_interfaces::msg::CameraTarget::SharedPtr msg) {
+    const rclcpp::Time camera_stamp = messageTime(msg->header.stamp);
+    handleTimestampRegression(camera_stamp);
+    camera_target_queue_.push_back(*msg);
+    while (camera_target_queue_.size() > static_cast<size_t>(std::max(2, sync_queue_size_))) {
+      camera_target_queue_.pop_front();
+    }
     latest_camera_target_ = *msg;
-    last_camera_target_time_ = now();
-    if (msg->target_id < 0 ||
-      msg->lock_state == track_robot_interfaces::msg::TargetState::LOCK_NO_TARGET ||
-      msg->lock_state == track_robot_interfaces::msg::TargetState::LOCK_CANDIDATE_VISIBLE) {
-      clearTarget();
+    last_camera_target_time_ = camera_stamp;
+    if (msg->logical_target_id < 0 ||
+      msg->lock_state == track_robot_interfaces::msg::CameraTarget::LOCK_NO_TARGET) {
+      clearTarget(msg->logical_target_id < 0 ? "negative_target_id" : "explicit_no_target");
+      return;
+    }
+    const auto pending_cloud = nearestCloud(last_camera_target_time_);
+    if (pending_cloud.has_value()) {
+      const rclcpp::Time cloud_stamp(pending_cloud->header.stamp);
+      const bool not_processed = !last_camera_projection_time_.nanoseconds() ||
+        cloud_stamp > last_camera_projection_time_;
+      const bool not_out_of_sequence = !last_filter_time_.nanoseconds() ||
+        cloud_stamp >= last_filter_time_;
+      if (not_processed && not_out_of_sequence &&
+        std::abs((cloud_stamp - last_camera_target_time_).seconds()) <= max_sync_offset_sec_) {
+        latest_cloud_ = *pending_cloud;
+        have_cloud_ = true;
+        last_cloud_time_ = cloud_stamp;
+        last_camera_projection_time_ = cloud_stamp;
+        update("cloud_event", cloud_stamp);
+      }
     }
   }
 
-  void detectionsCallback(
-    const track_robot_interfaces::msg::HumanDetection2DArray::SharedPtr msg) {
-    latest_detections_ = *msg;
-    last_detections_time_ = now();
-  }
-
   void trackletsCallback(const track_robot_interfaces::msg::LidarTrackletArray::SharedPtr msg) {
+    const rclcpp::Time tracklet_stamp = messageTime(msg->header.stamp);
+    handleTimestampRegression(tracklet_stamp);
     latest_tracklets_ = *msg;
-    last_tracklets_time_ = now();
-    update("tracklet_event");
+    last_tracklets_time_ = tracklet_stamp;
+    selectCameraTargetForStamp(last_tracklets_time_);
+    update("tracklet_event", last_tracklets_time_);
   }
 
   void candidatesCallback(const track_robot_interfaces::msg::LidarClusterArray::SharedPtr msg) {
     latest_candidates_ = *msg;
-    last_candidates_time_ = now();
+    last_candidates_time_ = messageTime(msg->header.stamp);
   }
 
   void cameraInfoCallback(const sensor_msgs::msg::CameraInfo::SharedPtr msg) {
@@ -364,26 +428,107 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   }
 
   void cloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
+    const rclcpp::Time cloud_stamp = messageTime(msg->header.stamp);
+    handleTimestampRegression(cloud_stamp);
+    cloud_queue_.push_back(*msg);
+    while (cloud_queue_.size() > static_cast<size_t>(std::max(2, cloud_queue_size_))) {
+      cloud_queue_.pop_front();
+    }
     latest_cloud_ = *msg;
     have_cloud_ = true;
-    last_cloud_time_ = now();
+    last_cloud_time_ = cloud_stamp;
+    selectCameraTargetForStamp(last_cloud_time_);
     const double minimum_period = 1.0 / std::max(1.0, camera_projection_max_rate_hz_);
     if ((!last_camera_projection_time_.nanoseconds() ||
       (last_cloud_time_ - last_camera_projection_time_).seconds() >= minimum_period) &&
       cameraVisible(last_cloud_time_)) {
       last_camera_projection_time_ = last_cloud_time_;
-      update("cloud_event");
+      update("cloud_event", last_cloud_time_);
+    }
+  }
+
+  bool selectCameraTargetForStamp(const rclcpp::Time &stamp) {
+    if (camera_target_queue_.empty()) {
+      return false;
+    }
+    const track_robot_interfaces::msg::CameraTarget *best = nullptr;
+    double best_offset = std::numeric_limits<double>::infinity();
+    for (const auto &candidate : camera_target_queue_) {
+      const rclcpp::Time candidate_stamp(candidate.header.stamp);
+      if (!candidate_stamp.nanoseconds()) {
+        continue;
+      }
+      const double offset = std::abs((stamp - candidate_stamp).seconds());
+      if (offset < best_offset) {
+        best = &candidate;
+        best_offset = offset;
+      }
+    }
+    last_sync_offset_sec_ = best_offset;
+    if (best == nullptr || best_offset > max_sync_age_sec_) {
+      return false;
+    }
+    latest_camera_target_ = *best;
+    last_camera_target_time_ = rclcpp::Time(best->header.stamp);
+    return true;
+  }
+
+  std::optional<sensor_msgs::msg::PointCloud2> nearestCloud(const rclcpp::Time &stamp) const {
+    const sensor_msgs::msg::PointCloud2 *best = nullptr;
+    double best_offset = std::numeric_limits<double>::infinity();
+    for (const auto &candidate : cloud_queue_) {
+      const rclcpp::Time candidate_stamp(candidate.header.stamp);
+      if (!candidate_stamp.nanoseconds()) {
+        continue;
+      }
+      const double offset = std::abs((stamp - candidate_stamp).seconds());
+      if (offset < best_offset) {
+        best = &candidate;
+        best_offset = offset;
+      }
+    }
+    if (best == nullptr || best_offset > max_sync_age_sec_) {
+      return std::nullopt;
+    }
+    return *best;
+  }
+
+  void handleTimestampRegression(const rclcpp::Time &stamp) {
+    if (latest_seen_sensor_stamp_.nanoseconds() &&
+      (stamp - latest_seen_sensor_stamp_).seconds() < -1.0) {
+      clearTarget("timestamp_reset");
+      tf_buffer_.clear();
+      cloud_queue_.clear();
+      latest_tracklets_.tracklets.clear();
+      latest_candidates_.clusters.clear();
+      last_camera_projection_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+      last_processing_stamp_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+      last_filter_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+      RCLCPP_INFO(get_logger(), "Sensor timestamp reset detected; cleared selected target state");
+    }
+    if (!latest_seen_sensor_stamp_.nanoseconds() || stamp > latest_seen_sensor_stamp_ ||
+      (stamp - latest_seen_sensor_stamp_).seconds() < -1.0) {
+      latest_seen_sensor_stamp_ = stamp;
     }
   }
 
   void periodicPublish() {
-    update("timer");
+    if (last_processing_stamp_.nanoseconds()) {
+      const rclcpp::Time wall_now = now();
+      const double clock_offset = std::abs((wall_now - last_processing_stamp_).seconds());
+      // Live sensor clocks follow the ROS clock. Recorded bags without /clock retain their
+      // sensor stamp so replay rate cannot alter filter age or target lifecycle.
+      update("timer", clock_offset < 5.0 ? wall_now : last_processing_stamp_);
+    }
   }
 
-  void update(const std::string &trigger) {
+  void update(const std::string &trigger, const rclcpp::Time &stamp) {
     const auto update_start = std::chrono::steady_clock::now();
-    const rclcpp::Time stamp = now();
-    predictFilter(stamp);
+    if (trigger != "timer") {
+      updateTrackingOrigin(stamp);
+      predictFilter(stamp);
+      last_processing_stamp_ = stamp;
+    }
 
     AnchorMeasurement anchor;
     TrackletMatch match;
@@ -400,21 +545,22 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       last_camera_seen_time_ = stamp;
       if (trigger == "tracklet_event") {
         const auto association_start = std::chrono::steady_clock::now();
-        match = bestVisibleTrackletMatch();
-        if (match.valid && match.score >= min_association_score_) {
-          updatePendingSelection(match.tracklet.tracklet_id);
-          selected_score = match.score;
-          updateSelectedReference(match.tracklet);
-        } else {
-          pending_tracklet_id_ = -1;
-          pending_count_ = 0;
-        }
+        match = updateVisibleTrackletSelection(stamp);
+        selected_score = match.score;
         timing.association_ms = elapsedMs(association_start);
       }
 
       if (trigger == "cloud_event") {
         timing.fresh_cloud_processed = true;
         anchor = computeCameraGuidedAnchor(stamp, timing);
+        if (anchor.valid) {
+          last_camera_anchor_position_ = anchor.position;
+          last_camera_anchor_quality_ = anchor.quality;
+          last_camera_anchor_point_count_ = anchor.point_count;
+          last_camera_anchor_depth_spread_ = anchor.depth_spread;
+          last_camera_anchor_time_ = stamp;
+          have_camera_anchor_ = true;
+        }
       }
       const auto kalman_start = std::chrono::steady_clock::now();
       if (trigger == "cloud_event" && anchor.valid) {
@@ -434,11 +580,12 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
         }
       }
 
-      if (trigger == "tracklet_event" && selected_tracklet_id_ >= 0) {
+      if (trigger == "tracklet_event" && selected_tracklet_id_ >= 0 &&
+        match.valid && match.tracklet.tracklet_id == selected_tracklet_id_) {
         auto selected = findTracklet(selected_tracklet_id_);
         if (selected.has_value() && selected->active) {
           measurement_accepted = correctFilter(
-            fromPoint(selected->position_base),
+            fromPoint(selected->position),
             tracklet_xy_variance_,
             z_variance_,
             max_tracklet_nis_xy_,
@@ -459,6 +606,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
         kf_confidence_ = std::max(kf_confidence_, std::max(anchor.quality, selected_score));
       }
     } else if (identity_active && kf_initialized_ && trigger == "tracklet_event") {
+      latest_hypotheses_.clear();
       const auto association_start = std::chrono::steady_clock::now();
       measurement_accepted = updateFromLidarOnly(
         stamp, measurement_source, rejection_reason, selected_score, nis_xy);
@@ -483,82 +631,286 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     if (!last_camera_target_time_.nanoseconds()) {
       return false;
     }
-    if (latest_camera_target_.target_id < 0) {
+    if (latest_camera_target_.logical_target_id < 0) {
       return false;
     }
     if (latest_camera_target_.lock_state !=
-      track_robot_interfaces::msg::TargetState::LOCK_TARGET_LOCKED &&
+      track_robot_interfaces::msg::CameraTarget::LOCK_TARGET_LOCKED &&
       latest_camera_target_.lock_state !=
-      track_robot_interfaces::msg::TargetState::LOCK_TARGET_LOST) {
+      track_robot_interfaces::msg::CameraTarget::LOCK_TARGET_LOST) {
       return false;
     }
-    return (stamp - last_camera_target_time_).seconds() <= camera_target_timeout_sec_;
+    return std::abs((stamp - last_camera_target_time_).seconds()) <= camera_target_timeout_sec_;
   }
 
   bool cameraVisible(const rclcpp::Time &stamp) const {
     return cameraTargetValid(stamp) &&
       latest_camera_target_.lock_state ==
-        track_robot_interfaces::msg::TargetState::LOCK_TARGET_LOCKED &&
+        track_robot_interfaces::msg::CameraTarget::LOCK_TARGET_LOCKED &&
       latest_camera_target_.camera_visible &&
-      latest_camera_target_.confidence >= camera_visible_min_confidence_;
+      latest_camera_target_.identity_state ==
+        track_robot_interfaces::msg::CameraTarget::IDENTITY_CONFIRMED &&
+      latest_camera_target_.detector_confidence >= camera_visible_min_confidence_;
   }
 
-  TrackletMatch bestVisibleTrackletMatch() {
-    TrackletMatch best;
-    if (!have_camera_info_ || latest_tracklets_.tracklets.empty()) {
-      best.reason = "missing_camera_info_or_tracklets";
-      return best;
+  bool cameraAnchorFresh(const rclcpp::Time &stamp) const {
+    return have_camera_anchor_ &&
+      last_camera_anchor_quality_ >= initial_anchor_min_quality_ &&
+      timeSince(last_camera_anchor_time_, stamp) <= initial_anchor_max_age_sec_;
+  }
+
+  TrackletMatch scoreVisibleTracklet(
+    const track_robot_interfaces::msg::LidarTracklet &tracklet,
+    const rclcpp::Time &stamp) {
+    TrackletMatch result;
+    result.tracklet = tracklet;
+    if (!tracklet.active || !tracklet.confirmed) {
+      result.reason = "inactive_or_unconfirmed";
+      return result;
+    }
+    if (!have_camera_info_) {
+      result.reason = "missing_camera_info";
+      return result;
+    }
+    if (!cameraAnchorFresh(stamp)) {
+      result.reason = "missing_fresh_3d_anchor";
+      return result;
     }
 
+    const Eigen::Vector3d position = fromPoint(tracklet.position);
+    const double anchor_distance =
+      (position.head<2>() - last_camera_anchor_position_.head<2>()).norm();
+    const double range_difference =
+      std::abs(
+        (position.head<2>() - current_tracking_origin_.head<2>()).norm() -
+        (last_camera_anchor_position_.head<2>() - current_tracking_origin_.head<2>()).norm());
+    if (anchor_distance > initial_anchor_xy_gate_m_) {
+      result.reason = "anchor_xy_gate";
+      return result;
+    }
+    if (range_difference > initial_anchor_range_gate_m_) {
+      result.reason = "anchor_range_gate";
+      return result;
+    }
+
+    const auto projection = projectTracklet(tracklet);
+    if (!projection.valid) {
+      result.reason = "projection_invalid";
+      return result;
+    }
     const BBox2D camera_box = cameraTargetBox();
     const Eigen::Vector2d camera_center(
       0.5 * (camera_box.x1 + camera_box.x2),
       0.5 * (camera_box.y1 + camera_box.y2));
+    const Eigen::Vector2d projected_center(projection.u, projection.v);
+    const double center_error = (projected_center - camera_center).norm();
+    const double center_score =
+      clamp01(1.0 - center_error / std::max(1.0, max_projection_center_error_px_));
+    const double inside_score = inside(projection.u, projection.v, camera_box) ?
+      1.0 : center_score;
+    const double overlap_score = iou(camera_box, projection.box);
+    const double anchor_score =
+      clamp01(1.0 - anchor_distance / std::max(1e-6, initial_anchor_xy_gate_m_));
+    const double range_score =
+      clamp01(1.0 - range_difference / std::max(1e-6, initial_anchor_range_gate_m_));
+    const double nis_score = kalmanNisScore(position);
+    const double temporal_score = tracklet.tracklet_id == selected_tracklet_id_ ? 1.0 : 0.0;
+    double motion_score = 0.7;
+    if (kf_initialized_) {
+      const Eigen::Vector2d filter_velocity = kf_x_.segment<2>(3);
+      const Eigen::Vector2d tracklet_velocity(tracklet.velocity.x, tracklet.velocity.y);
+      if (filter_velocity.norm() > 0.15 && tracklet_velocity.norm() > 0.15) {
+        motion_score = clamp01(
+          0.5 + 0.5 * filter_velocity.dot(tracklet_velocity) /
+          (filter_velocity.norm() * tracklet_velocity.norm()));
+      }
+    }
+    double geometry_score = 0.7;
+    const Eigen::Vector3d size(tracklet.size.x, tracklet.size.y, tracklet.size.z);
+    if (have_selected_reference_) {
+      geometry_score = clamp01(
+        1.0 - (size - last_selected_size_).cwiseAbs().sum() /
+        std::max(0.3, 1.5 * last_selected_size_.sum()));
+    } else {
+      geometry_score = clamp01(1.0 - std::max(0.0, size.head<2>().maxCoeff() - 1.2) / 1.2);
+    }
+    const double quality_score = clamp01(
+      0.5 * tracklet.confidence + 0.5 * tracklet.observation_quality);
 
+    result.valid = true;
+    result.score =
+      0.22 * anchor_score +
+      0.13 * range_score +
+      0.10 * overlap_score +
+      0.05 * inside_score +
+      0.18 * nis_score +
+      0.10 * temporal_score +
+      0.08 * motion_score +
+      0.08 * geometry_score +
+      0.06 * quality_score;
+    result.nis_xy = last_projected_nis_xy_;
+    result.reason = "depth_anchor_match";
+    return result;
+  }
+
+  TrackletMatch bestVisibleTrackletMatch(
+    const rclcpp::Time &stamp,
+    const int excluded_tracklet_id = -1) {
+    TrackletMatch best;
+    latest_hypotheses_.clear();
+    if (latest_tracklets_.tracklets.empty()) {
+      best.reason = "missing_tracklets";
+      return best;
+    }
     for (const auto &tracklet : latest_tracklets_.tracklets) {
-      const auto projection = projectTracklet(tracklet);
-      if (!projection.valid) {
+      if (tracklet.tracklet_id == excluded_tracklet_id) {
         continue;
       }
-      const Eigen::Vector2d projected_center(projection.u, projection.v);
-      const double center_error = (projected_center - camera_center).norm();
-      const double center_score =
-        clamp01(1.0 - center_error / std::max(1.0, max_projection_center_error_px_));
-      const double inside_score = inside(projection.u, projection.v, camera_box) ? 1.0 : 0.0;
-      const double overlap_score = iou(camera_box, projection.box);
-      const double temporal_score =
-        tracklet.tracklet_id == selected_tracklet_id_ ? 1.0 : 0.0;
-      const double confidence_score = clamp01(tracklet.confidence);
-      const double size_score = humanSizeScore(tracklet);
-      const double nis_score = kalmanNisScore(fromPoint(tracklet.position_base));
-
-      const double score =
-        0.30 * overlap_score +
-        0.20 * inside_score +
-        0.20 * nis_score +
-        0.15 * temporal_score +
-        0.10 * confidence_score +
-        0.05 * size_score;
-
-      if (score > best.score) {
-        best.valid = true;
-        best.tracklet = tracklet;
-        best.score = score;
-        best.nis_xy = last_projected_nis_xy_;
-        best.reason = "best_projected_tracklet";
+      const auto candidate = scoreVisibleTracklet(tracklet, stamp);
+      if (candidate.valid) {
+        latest_hypotheses_.emplace_back(candidate);
+      } else if (!best.valid && best.reason == "none") {
+        best.reason = candidate.reason;
       }
+    }
+    std::sort(
+      latest_hypotheses_.begin(), latest_hypotheses_.end(),
+      [](const TrackletMatch &a, const TrackletMatch &b) {return a.score > b.score;});
+    if (latest_hypotheses_.size() > static_cast<size_t>(max_association_hypotheses_)) {
+      latest_hypotheses_.resize(static_cast<size_t>(max_association_hypotheses_));
+    }
+    if (!latest_hypotheses_.empty()) {
+      best = latest_hypotheses_.front();
     }
     return best;
   }
 
-  double humanSizeScore(const track_robot_interfaces::msg::LidarTracklet &tracklet) const {
-    const double width = std::max(tracklet.size.x, tracklet.size.y);
-    const double depth = std::min(tracklet.size.x, tracklet.size.y);
-    const double height = tracklet.size.z;
-    const double width_score = clamp01(1.0 - std::abs(width - 0.55) / 1.2);
-    const double depth_score = clamp01(1.0 - std::abs(depth - 0.35) / 1.0);
-    const double height_score = clamp01(1.0 - std::abs(height - 1.2) / 1.8);
-    return 0.4 * width_score + 0.25 * depth_score + 0.35 * height_score;
+  TrackletMatch updateVisibleTrackletSelection(const rclcpp::Time &stamp) {
+    last_challenger_tracklet_id_ = -1;
+    last_challenger_score_ = 0.0;
+    last_switch_reject_reason_ = "none";
+
+    if (selected_tracklet_id_ < 0) {
+      auto best = bestVisibleTrackletMatch(stamp);
+      const double margin = latest_hypotheses_.size() > 1 ?
+        best.score - latest_hypotheses_[1].score : 1.0;
+      if (best.valid && margin < initial_association_score_margin_) {
+        pending_tracklet_id_ = -1;
+        pending_count_ = 0;
+        last_association_ambiguous_ = true;
+        best.valid = false;
+        best.reason = "initial_top_two_ambiguous";
+        last_switch_reject_reason_ = best.reason;
+        return best;
+      }
+      if (!best.valid || best.score < min_association_score_) {
+        pending_tracklet_id_ = -1;
+        pending_count_ = 0;
+        last_switch_reject_reason_ = best.reason;
+        return best;
+      }
+      last_association_ambiguous_ = false;
+      if (pending_tracklet_id_ == best.tracklet.tracklet_id) {
+        ++pending_count_;
+      } else {
+        pending_tracklet_id_ = best.tracklet.tracklet_id;
+        pending_count_ = 1;
+      }
+      if (pending_count_ >= initial_association_confirm_frames_) {
+        selected_tracklet_id_ = best.tracklet.tracklet_id;
+        pending_count_ = initial_association_confirm_frames_;
+        last_switch_time_ = stamp;
+        updateSelectedReference(best.tracklet);
+      } else {
+        last_switch_reject_reason_ = "initial_depth_match_pending";
+      }
+      last_selected_association_score_ = best.score;
+      return best;
+    }
+
+    TrackletMatch current;
+    auto selected = findTracklet(selected_tracklet_id_);
+    if (selected.has_value()) {
+      current = scoreVisibleTracklet(*selected, stamp);
+    } else {
+      current.reason = "selected_tracklet_missing";
+    }
+    if (current.valid) {
+      last_association_ambiguous_ = false;
+      selected_failure_count_ = 0;
+      challenger_tracklet_id_ = -1;
+      challenger_count_ = 0;
+      pending_tracklet_id_ = selected_tracklet_id_;
+      pending_count_ = initial_association_confirm_frames_;
+      last_selected_association_score_ = current.score;
+      updateSelectedReference(current.tracklet);
+      return current;
+    }
+
+    ++selected_failure_count_;
+    last_selected_association_score_ = 0.0;
+    if (selected_failure_count_ < selected_failure_frames_before_switch_) {
+      last_switch_reject_reason_ = "selected_failure_grace";
+      return current;
+    }
+
+    auto challenger = bestVisibleTrackletMatch(stamp, selected_tracklet_id_);
+    if (!challenger.valid) {
+      challenger_tracklet_id_ = -1;
+      challenger_count_ = 0;
+      last_switch_reject_reason_ = challenger.reason;
+      return current;
+    }
+    last_challenger_tracklet_id_ = challenger.tracklet.tracklet_id;
+    last_challenger_score_ = challenger.score;
+    const double challenger_margin = latest_hypotheses_.size() > 1 ?
+      challenger.score - latest_hypotheses_[1].score : 1.0;
+    if (challenger_margin < association_switch_score_margin_) {
+      challenger_tracklet_id_ = -1;
+      challenger_count_ = 0;
+      last_association_ambiguous_ = true;
+      last_switch_reject_reason_ = "challenger_top_two_ambiguous";
+      return current;
+    }
+    const double required_score = std::max(
+      association_switch_min_score_,
+      current.score + association_switch_score_margin_);
+    if (challenger.score < required_score) {
+      challenger_tracklet_id_ = -1;
+      challenger_count_ = 0;
+      last_switch_reject_reason_ = "challenger_score_or_margin";
+      return current;
+    }
+    if (last_switch_time_.nanoseconds() &&
+      (stamp - last_switch_time_).seconds() < association_switch_cooldown_sec_) {
+      challenger_tracklet_id_ = -1;
+      challenger_count_ = 0;
+      last_switch_reject_reason_ = "switch_cooldown";
+      return current;
+    }
+    if (challenger_tracklet_id_ == challenger.tracklet.tracklet_id) {
+      ++challenger_count_;
+    } else {
+      challenger_tracklet_id_ = challenger.tracklet.tracklet_id;
+      challenger_count_ = 1;
+    }
+    if (challenger_count_ < association_switch_confirm_frames_) {
+      last_switch_reject_reason_ = "challenger_pending";
+      return current;
+    }
+
+    selected_tracklet_id_ = challenger.tracklet.tracklet_id;
+    pending_tracklet_id_ = selected_tracklet_id_;
+    pending_count_ = initial_association_confirm_frames_;
+    selected_failure_count_ = 0;
+    challenger_tracklet_id_ = -1;
+    challenger_count_ = 0;
+    last_switch_time_ = stamp;
+    last_selected_association_score_ = challenger.score;
+    last_switch_reject_reason_ = "switched_after_depth_hysteresis";
+    last_association_ambiguous_ = false;
+    updateSelectedReference(challenger.tracklet);
+    return challenger;
   }
 
   double kalmanNisScore(const Eigen::Vector3d &measurement) {
@@ -573,24 +925,6 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const double nis = residual.transpose() * covariance.inverse() * residual;
     last_projected_nis_xy_ = nis;
     return clamp01(1.0 - nis / std::max(1e-6, max_tracklet_nis_xy_));
-  }
-
-  void updatePendingSelection(const int tracklet_id) {
-    if (selected_tracklet_id_ == tracklet_id) {
-      pending_tracklet_id_ = tracklet_id;
-      pending_count_ = association_confirm_frames_;
-      return;
-    }
-    if (pending_tracklet_id_ == tracklet_id) {
-      ++pending_count_;
-    } else {
-      pending_tracklet_id_ = tracklet_id;
-      pending_count_ = 1;
-    }
-    if (pending_count_ >= association_confirm_frames_) {
-      selected_tracklet_id_ = tracklet_id;
-      pending_count_ = association_confirm_frames_;
-    }
   }
 
   std::optional<track_robot_interfaces::msg::LidarTracklet> findTracklet(const int id) const {
@@ -626,7 +960,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     if (!tracklet.active || !tracklet.confirmed) {
       return -1.0;
     }
-    const Eigen::Vector3d position = fromPoint(tracklet.position_base);
+    const Eigen::Vector3d position = fromPoint(tracklet.position);
     const double distance = (position.head<2>() - kf_x_.head<2>()).norm();
     const double nis = measurementNisXY(position);
     if (distance > selected_relink_absolute_gate_m_ || nis > max_tracklet_nis_xy_) {
@@ -670,13 +1004,14 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     auto selected = findTracklet(selected_tracklet_id_);
     if (selected.has_value() && selected->active) {
       const bool accepted = correctFilter(
-        fromPoint(selected->position_base),
+        fromPoint(selected->position),
         tracklet_xy_variance_,
         z_variance_,
         max_tracklet_nis_xy_,
         nis_xy);
       measurement_source = "selected_tracklet_lidar_only";
       if (accepted) {
+        last_association_ambiguous_ = false;
         selected_missing_since_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
         relink_tracklet_id_ = -1;
         relink_count_ = 0;
@@ -704,16 +1039,31 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     int best_id = -1;
     double best_score = selected_relink_min_score_;
     std::optional<track_robot_interfaces::msg::LidarTracklet> best;
+    std::vector<std::pair<double, track_robot_interfaces::msg::LidarTracklet>> relink_candidates;
     for (const auto &candidate : latest_tracklets_.tracklets) {
       if (candidate.tracklet_id == selected_tracklet_id_) {
         continue;
       }
       const double candidate_score = relinkScore(candidate);
+      if (candidate_score >= selected_relink_min_score_) {
+        relink_candidates.emplace_back(candidate_score, candidate);
+      }
       if (candidate_score > best_score) {
         best_id = candidate.tracklet_id;
         best_score = candidate_score;
         best = candidate;
       }
+    }
+    std::sort(
+      relink_candidates.begin(), relink_candidates.end(),
+      [](const auto &a, const auto &b) {return a.first > b.first;});
+    if (relink_candidates.size() > 1 &&
+      relink_candidates[0].first - relink_candidates[1].first < relink_score_margin_) {
+      relink_tracklet_id_ = -1;
+      relink_count_ = 0;
+      last_association_ambiguous_ = true;
+      rejection_reason = "lidar_relink_top_two_ambiguous";
+      return false;
     }
     if (!best.has_value()) {
       relink_tracklet_id_ = -1;
@@ -735,13 +1085,14 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     }
 
     selected_tracklet_id_ = best_id;
+    last_association_ambiguous_ = false;
     pending_tracklet_id_ = best_id;
-    pending_count_ = association_confirm_frames_;
+    pending_count_ = initial_association_confirm_frames_;
     selected_missing_since_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     relink_tracklet_id_ = -1;
     relink_count_ = 0;
     const bool accepted = correctFilter(
-      fromPoint(best->position_base),
+      fromPoint(best->position),
       tracklet_xy_variance_,
       z_variance_,
       max_tracklet_nis_xy_,
@@ -761,6 +1112,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const bool camera_visible) const {
     if (!identity_active) {
       return "none";
+    }
+    if (last_association_ambiguous_ && kf_initialized_) {
+      return "prediction_only";
     }
     const double since_lidar = timeSince(last_lidar_seen_time_, stamp);
     if (camera_visible) {
@@ -789,6 +1143,16 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     }
     if ((stamp - last_cloud_time_).seconds() > input_timeout_sec_) {
       result.status = "stale_cloud";
+      publishCameraGuidedCloud({}, stamp);
+      return result;
+    }
+    const rclcpp::Time camera_stamp(latest_camera_target_.header.stamp);
+    const double sync_offset = camera_stamp.nanoseconds() ?
+      std::abs((last_cloud_time_ - camera_stamp).seconds()) :
+      std::numeric_limits<double>::infinity();
+    last_sync_offset_sec_ = sync_offset;
+    if (sync_offset > max_sync_offset_sec_) {
+      result.status = "camera_cloud_sync_offset";
       publishCameraGuidedCloud({}, stamp);
       return result;
     }
@@ -821,12 +1185,12 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       lidar_frame_ : latest_cloud_.header.frame_id;
     std::vector<Eigen::Vector3d> base_points;
     std::vector<Eigen::Vector3d> camera_points;
-    if (!transformPointSet(raw_points, cloud_frame, base_frame_, base_points)) {
-      result.status = "missing_base_tf";
+    if (!transformPointSet(raw_points, cloud_frame, tracking_frame_, base_points, stamp)) {
+      result.status = "missing_tracking_tf";
       publishCameraGuidedCloud({}, stamp);
       return result;
     }
-    if (!transformPointSetToCamera(raw_points, cloud_frame, camera_points)) {
+    if (!transformPointSetToCamera(raw_points, cloud_frame, camera_points, stamp)) {
       result.status = "missing_camera_tf";
       publishCameraGuidedCloud({}, stamp);
       return result;
@@ -842,7 +1206,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     for (size_t i = 0; i < base_points.size() && i < camera_points.size(); ++i) {
       const auto &bp = base_points[i];
       const auto &cp = camera_points[i];
-      const double range = normXY(bp);
+      const double range = (bp.head<2>() - current_tracking_origin_.head<2>()).norm();
       if (range < min_range_ || range > max_range_ || bp.z() < min_z_ || bp.z() > max_z_) {
         continue;
       }
@@ -865,19 +1229,78 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       return result;
     }
 
-    const double low = percentile(selected_depth, camera_guided_depth_percentile_low_);
-    const double high = percentile(selected_depth, camera_guided_depth_percentile_high_);
+    std::map<int, std::vector<size_t>> depth_bins;
+    for (size_t i = 0; i < selected_depth.size(); ++i) {
+      depth_bins[static_cast<int>(std::floor(
+        selected_depth[i] / std::max(0.05, camera_guided_depth_bin_m_)))].push_back(i);
+    }
+    struct DepthMode {int first{0}; int last{0}; std::vector<size_t> indices;};
+    std::vector<DepthMode> modes;
+    for (const auto &entry : depth_bins) {
+      if (modes.empty() || entry.first > modes.back().last + 1) {
+        modes.push_back(DepthMode{entry.first, entry.first, entry.second});
+      } else {
+        modes.back().last = entry.first;
+        modes.back().indices.insert(
+          modes.back().indices.end(), entry.second.begin(), entry.second.end());
+      }
+    }
+    const double predicted_depth = kf_initialized_ ?
+      (kf_x_.head<2>() - current_tracking_origin_.head<2>()).norm() : -1.0;
+    const auto depth_minmax = std::minmax_element(selected_depth.begin(), selected_depth.end());
+    const DepthMode *best_mode = nullptr;
+    double best_mode_score = -1.0;
+    for (const auto &mode : modes) {
+      std::vector<double> depths;
+      depths.reserve(mode.indices.size());
+      for (const auto index : mode.indices) {
+        depths.emplace_back(selected_depth[index]);
+      }
+      const double mode_depth = percentile(depths, 50.0);
+      const double prediction_difference = predicted_depth > 0.0 ?
+        std::abs(mode_depth - predicted_depth) : 0.0;
+      if (predicted_depth > 0.0 &&
+        prediction_difference > camera_guided_depth_prediction_gate_m_) {
+        continue;
+      }
+      const double count_score = std::min(1.0, mode.indices.size() / 20.0);
+      const double prediction_score = predicted_depth > 0.0 ? clamp01(
+        1.0 - prediction_difference / camera_guided_depth_prediction_gate_m_) : clamp01(
+        1.0 - (mode_depth - *depth_minmax.first) /
+        std::max(0.15, *depth_minmax.second - *depth_minmax.first));
+      const double score = predicted_depth > 0.0 ?
+        0.55 * count_score + 0.45 * prediction_score :
+        0.45 * count_score + 0.55 * prediction_score;
+      if (score > best_mode_score) {
+        best_mode_score = score;
+        best_mode = &mode;
+      }
+    }
+    if (best_mode == nullptr) {
+      result.status = "no_depth_mode_in_prediction_gate";
+      result.point_count = selected_base.size();
+      publishCameraGuidedCloud({}, stamp);
+      return result;
+    }
     std::vector<Eigen::Vector3d> filtered;
     std::vector<double> filtered_depth;
-    for (size_t i = 0; i < selected_base.size(); ++i) {
-      if (selected_depth[i] >= low && selected_depth[i] <= high) {
-        filtered.emplace_back(selected_base[i]);
-        filtered_depth.emplace_back(selected_depth[i]);
+    std::vector<Eigen::Vector3d> mode_points;
+    for (const auto index : best_mode->indices) {
+      mode_points.emplace_back(selected_base[index]);
+    }
+    const Eigen::Vector3d preliminary_anchor = medianPoint(mode_points);
+    for (const auto index : best_mode->indices) {
+      if ((selected_base[index].head<2>() - preliminary_anchor.head<2>()).norm() <=
+        camera_guided_component_radius_m_) {
+        filtered.emplace_back(selected_base[index]);
+        filtered_depth.emplace_back(selected_depth[index]);
       }
     }
     if (filtered.size() < static_cast<size_t>(camera_guided_min_points_)) {
-      filtered = selected_base;
-      filtered_depth = selected_depth;
+      result.status = "depth_mode_component_too_small";
+      result.point_count = filtered.size();
+      publishCameraGuidedCloud(filtered, stamp);
+      return result;
     }
 
     const Eigen::Vector3d anchor = medianPoint(filtered);
@@ -907,7 +1330,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       1.0 - depth_spread / std::max(1e-6, camera_guided_max_depth_spread_));
     const double prediction_score = clamp01(
       1.0 - prediction_distance / std::max(1e-6, camera_guided_prediction_gate_m_));
-    const double camera_score = clamp01(latest_camera_target_.confidence);
+    const double camera_score = clamp01(
+      0.5 * latest_camera_target_.detector_confidence +
+      0.5 * latest_camera_target_.identity_confidence);
     result.quality =
       0.35 * point_score +
       0.25 * spread_score +
@@ -947,9 +1372,8 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
 
   BBox2D targetBodyRoi(std::string *roi_type) const {
     const BBox2D bbox = cameraTargetBox();
-    const auto detection = matchedDetection();
-    if (detection.has_value()) {
-      const auto &keypoints = detection->keypoints;
+    const auto &keypoints = latest_camera_target_.keypoints;
+    if (!keypoints.empty()) {
       const auto valid = [&](const size_t index) {
         const size_t offset = index * 3;
         return keypoints.size() > offset + 2 && keypoints[offset + 2] >= min_keypoint_confidence_;
@@ -1005,30 +1429,6 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       std::min(bbox.y2, *minmax_y.second + y_margin_fraction * height)};
   }
 
-  std::optional<track_robot_interfaces::msg::HumanDetection2D> matchedDetection() const {
-    const BBox2D target = cameraTargetBox();
-    std::optional<track_robot_interfaces::msg::HumanDetection2D> best;
-    double best_score = 0.0;
-    const double tx = 0.5 * (target.x1 + target.x2);
-    const double ty = 0.5 * (target.y1 + target.y2);
-    const double diag = std::max(
-      1.0, std::hypot(target.x2 - target.x1, target.y2 - target.y1));
-    for (const auto &detection : latest_detections_.detections) {
-      BBox2D box{
-        detection.bbox[0], detection.bbox[1], detection.bbox[2], detection.bbox[3]};
-      const double dx = 0.5 * (box.x1 + box.x2) - tx;
-      const double dy = 0.5 * (box.y1 + box.y2) - ty;
-      const double center_score = clamp01(1.0 - std::hypot(dx, dy) / diag);
-      const double overlap = iou(target, box);
-      const double score = 0.75 * overlap + 0.25 * center_score;
-      if (score > best_score) {
-        best = detection;
-        best_score = score;
-      }
-    }
-    return best_score > 0.05 ? best : std::nullopt;
-  }
-
   bool correctFilter(
     const Eigen::Vector3d &measurement,
     const double xy_variance,
@@ -1043,35 +1443,60 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
         initial_position_variance_, initial_position_variance_, initial_position_variance_,
         initial_velocity_variance_, initial_velocity_variance_, initial_velocity_variance_;
       kf_initialized_ = true;
-      last_filter_time_ = now();
+      height_initialized_ = true;
+      height_state_ = measurement.z();
+      height_variance_state_ = initial_position_variance_;
+      for (size_t model = 0; model < imm_states_.size(); ++model) {
+        imm_states_[model] = kf_x_;
+        imm_covariances_[model] = kf_p_;
+      }
+      imm_probabilities_ << 0.20, 0.60, 0.20;
+      last_filter_time_ = last_processing_stamp_.nanoseconds() ? last_processing_stamp_ : now();
       nis_xy = 0.0;
       return true;
     }
 
-    Eigen::Matrix<double, 3, 6> h;
+    Eigen::Matrix<double, 2, 6> h;
     h.setZero();
     h(0, 0) = 1.0;
     h(1, 1) = 1.0;
-    h(2, 2) = 1.0;
-    Eigen::Matrix3d r = Eigen::Matrix3d::Zero();
+    Eigen::Matrix2d r = Eigen::Matrix2d::Zero();
     r(0, 0) = std::max(1e-6, xy_variance);
     r(1, 1) = std::max(1e-6, xy_variance);
-    r(2, 2) = std::max(1e-6, z_variance);
-    const Eigen::Vector3d residual = measurement - h * kf_x_;
+    const Eigen::Vector2d residual = measurement.head<2>() - h * kf_x_;
     Eigen::Matrix2d s_xy = kf_p_.block<2, 2>(0, 0);
     s_xy(0, 0) += r(0, 0);
     s_xy(1, 1) += r(1, 1);
-    nis_xy = residual.head<2>().transpose() * s_xy.inverse() * residual.head<2>();
+    nis_xy = residual.transpose() * s_xy.inverse() * residual;
     if (nis_xy > max_nis_xy) {
       return false;
     }
-    const Eigen::Matrix3d s = h * kf_p_ * h.transpose() + r;
-    const Eigen::Matrix<double, 6, 3> k = kf_p_ * h.transpose() * s.inverse();
-    kf_x_ = kf_x_ + k * residual;
     const Eigen::Matrix<double, 6, 6> identity =
       Eigen::Matrix<double, 6, 6>::Identity();
-    const auto kh = k * h;
-    kf_p_ = (identity - kh) * kf_p_ * (identity - kh).transpose() + k * r * k.transpose();
+    Eigen::Vector3d likelihoods = Eigen::Vector3d::Zero();
+    for (size_t model = 0; model < imm_states_.size(); ++model) {
+      const Eigen::Vector2d model_residual = measurement.head<2>() - h * imm_states_[model];
+      const Eigen::Matrix2d s =
+        h * imm_covariances_[model] * h.transpose() + r;
+      const Eigen::Matrix<double, 6, 2> k =
+        imm_covariances_[model] * h.transpose() * s.inverse();
+      imm_states_[model] += k * model_residual;
+      const auto kh = k * h;
+      imm_covariances_[model] =
+        (identity - kh) * imm_covariances_[model] * (identity - kh).transpose() +
+        k * r * k.transpose();
+      const double exponent = -0.5 * model_residual.transpose() * s.inverse() * model_residual;
+      likelihoods(static_cast<Eigen::Index>(model)) =
+        std::exp(std::max(-50.0, exponent)) /
+        std::sqrt(std::max(1e-12, s.determinant()));
+    }
+    imm_probabilities_ = imm_probabilities_.cwiseProduct(likelihoods);
+    const double probability_sum = imm_probabilities_.sum();
+    imm_probabilities_ = probability_sum > 1e-12 ?
+      imm_probabilities_ / probability_sum : Eigen::Vector3d(0.2, 0.6, 0.2);
+    combineImmEstimate();
+    updateHeightFilter(measurement.z(), z_variance);
+    applyHeightEstimate();
     kf_confidence_ = std::min(1.0, kf_confidence_ + 0.15);
     return true;
   }
@@ -1087,39 +1512,148 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     if (dt <= 1e-6) {
       return;
     }
-    Eigen::Matrix<double, 6, 6> f = Eigen::Matrix<double, 6, 6>::Identity();
-    f(0, 3) = dt;
-    f(1, 4) = dt;
-    f(2, 5) = dt;
-    Eigen::Matrix<double, 6, 6> q = Eigen::Matrix<double, 6, 6>::Zero();
-    const double accel_var = process_noise_accel_std_ * process_noise_accel_std_;
-    for (int i = 0; i < 3; ++i) {
-      q(i, i) = 0.25 * dt * dt * dt * dt * accel_var;
-      q(i, i + 3) = 0.5 * dt * dt * dt * accel_var;
-      q(i + 3, i) = 0.5 * dt * dt * dt * accel_var;
-      q(i + 3, i + 3) = dt * dt * accel_var;
+    const Eigen::Matrix3d transition = (Eigen::Matrix3d() <<
+      0.85, 0.14, 0.01,
+      0.05, 0.90, 0.05,
+      0.02, 0.18, 0.80).finished();
+    const Eigen::Vector3d predicted_probabilities = transition.transpose() * imm_probabilities_;
+    std::array<Eigen::Matrix<double, 6, 1>, 3> mixed_states;
+    std::array<Eigen::Matrix<double, 6, 6>, 3> mixed_covariances;
+    for (size_t target_model = 0; target_model < 3; ++target_model) {
+      mixed_states[target_model].setZero();
+      const double normalizer = std::max(1e-12, predicted_probabilities(target_model));
+      for (size_t source_model = 0; source_model < 3; ++source_model) {
+        const double weight = imm_probabilities_(source_model) *
+          transition(source_model, target_model) / normalizer;
+        mixed_states[target_model] += weight * imm_states_[source_model];
+      }
+      mixed_covariances[target_model].setZero();
+      for (size_t source_model = 0; source_model < 3; ++source_model) {
+        const double weight = imm_probabilities_(source_model) *
+          transition(source_model, target_model) / normalizer;
+        const auto difference = imm_states_[source_model] - mixed_states[target_model];
+        mixed_covariances[target_model] += weight *
+          (imm_covariances_[source_model] + difference * difference.transpose());
+      }
     }
-    kf_x_ = f * kf_x_;
-    kf_p_ = f * kf_p_ * f.transpose() + q;
+    const std::array<double, 3> acceleration_std{{0.15, 0.80, 2.50}};
+    for (size_t model = 0; model < 3; ++model) {
+      Eigen::Matrix<double, 6, 6> f = Eigen::Matrix<double, 6, 6>::Identity();
+      f(0, 3) = dt;
+      f(1, 4) = dt;
+      f(2, 5) = 0.0;
+      if (model == 0) {
+        f(3, 3) = 0.20;
+        f(4, 4) = 0.20;
+        f(5, 5) = 0.20;
+      }
+      Eigen::Matrix<double, 6, 6> q = Eigen::Matrix<double, 6, 6>::Zero();
+      const double accel_var = acceleration_std[model] * acceleration_std[model];
+      for (int axis = 0; axis < 2; ++axis) {
+        q(axis, axis) = 0.25 * std::pow(dt, 4) * accel_var;
+        q(axis, axis + 3) = 0.5 * std::pow(dt, 3) * accel_var;
+        q(axis + 3, axis) = q(axis, axis + 3);
+        q(axis + 3, axis + 3) = dt * dt * accel_var;
+      }
+      imm_states_[model] = f * mixed_states[model];
+      imm_covariances_[model] =
+        f * mixed_covariances[model] * f.transpose() + q;
+    }
+    imm_probabilities_ = predicted_probabilities;
+    if (height_initialized_) {
+      height_variance_state_ += height_process_variance_per_sec_ * dt;
+    }
+    combineImmEstimate();
+    applyHeightEstimate();
     const double since_lidar = timeSince(last_lidar_seen_time_, stamp);
     if (since_lidar > prediction_only_timeout_sec_) {
-      kf_x_.tail<3>().setZero();
+      for (auto &state : imm_states_) {
+        state.tail<3>().setZero();
+      }
     } else if (since_lidar > prediction_velocity_damping_delay_sec_) {
       const double damping = std::exp(-prediction_velocity_damping_rate_ * dt);
-      kf_x_.tail<3>() *= damping;
+      for (auto &state : imm_states_) {
+        state.tail<3>() *= damping;
+      }
     }
     const double speed_xy = kf_x_.segment<2>(3).norm();
     if (speed_xy > max_target_speed_mps_ && speed_xy > 1e-6) {
       kf_x_.segment<2>(3) *= max_target_speed_mps_ / speed_xy;
+      for (auto &state : imm_states_) {
+        const double model_speed = state.segment<2>(3).norm();
+        if (model_speed > max_target_speed_mps_) {
+          state.segment<2>(3) *= max_target_speed_mps_ / model_speed;
+        }
+      }
     }
+    combineImmEstimate();
     last_filter_time_ = stamp;
     kf_confidence_ = std::max(0.0, kf_confidence_ - 0.02 * dt);
+  }
+
+  void combineImmEstimate() {
+    kf_x_.setZero();
+    for (size_t model = 0; model < 3; ++model) {
+      kf_x_ += imm_probabilities_(model) * imm_states_[model];
+    }
+    kf_p_.setZero();
+    for (size_t model = 0; model < 3; ++model) {
+      const auto difference = imm_states_[model] - kf_x_;
+      kf_p_ += imm_probabilities_(model) *
+        (imm_covariances_[model] + difference * difference.transpose());
+    }
+  }
+
+  void updateHeightFilter(const double measurement, const double measurement_variance) {
+    if (!std::isfinite(measurement)) {
+      return;
+    }
+    if (!height_initialized_) {
+      height_initialized_ = true;
+      height_state_ = measurement;
+      height_variance_state_ = std::max(1e-4, measurement_variance);
+      return;
+    }
+    const double residual = measurement - height_state_;
+    const double innovation_variance =
+      height_variance_state_ + std::max(1e-4, measurement_variance);
+    if (std::abs(residual) > height_max_residual_m_ ||
+      residual * residual / innovation_variance > 9.0) {
+      return;
+    }
+    const double gain = height_variance_state_ / innovation_variance;
+    height_state_ += gain * residual;
+    height_variance_state_ = std::max(1e-4, (1.0 - gain) * height_variance_state_);
+  }
+
+  void applyHeightEstimate() {
+    if (!height_initialized_) {
+      return;
+    }
+    for (size_t model = 0; model < imm_states_.size(); ++model) {
+      imm_states_[model](2) = height_state_;
+      imm_states_[model](5) = 0.0;
+      imm_covariances_[model].row(2).setZero();
+      imm_covariances_[model].col(2).setZero();
+      imm_covariances_[model](2, 2) = height_variance_state_;
+      imm_covariances_[model].row(5).setZero();
+      imm_covariances_[model].col(5).setZero();
+      imm_covariances_[model](5, 5) = 1e-4;
+    }
+    kf_x_(2) = height_state_;
+    kf_x_(5) = 0.0;
+    kf_p_.row(2).setZero();
+    kf_p_.col(2).setZero();
+    kf_p_(2, 2) = height_variance_state_;
+    kf_p_.row(5).setZero();
+    kf_p_.col(5).setZero();
+    kf_p_(5, 5) = 1e-4;
   }
 
   Projection projectTracklet(const track_robot_interfaces::msg::LidarTracklet &tracklet) {
     std::vector<Eigen::Vector3d> points;
     points.reserve(9);
-    points.emplace_back(fromPoint(tracklet.position_base));
+    points.emplace_back(fromPoint(tracklet.position));
     const Eigen::Vector3d mn = fromPoint(tracklet.minimum);
     const Eigen::Vector3d mx = fromPoint(tracklet.maximum);
     for (int ix = 0; ix < 2; ++ix) {
@@ -1134,7 +1668,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     }
 
     std::vector<Eigen::Vector3d> camera_points;
-    if (!transformVectorsToCamera(points, base_frame_, camera_points)) {
+    const std::string source_frame = latest_tracklets_.header.frame_id.empty() ?
+      tracking_frame_ : latest_tracklets_.header.frame_id;
+    if (!transformVectorsToCamera(points, source_frame, camera_points, last_tracklets_time_)) {
       return Projection{};
     }
     return projectCameraPoints(camera_points);
@@ -1273,7 +1809,8 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   bool lookupTransform(
     const std::string &target_frame,
     const std::string &source_frame,
-    geometry_msgs::msg::TransformStamped &transform) {
+    geometry_msgs::msg::TransformStamped &transform,
+    const rclcpp::Time &stamp = rclcpp::Time(0, 0, RCL_ROS_TIME)) {
     if (target_frame == source_frame) {
       transform.header.frame_id = target_frame;
       transform.child_frame_id = source_frame;
@@ -1281,7 +1818,11 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       return true;
     }
     try {
-      transform = tf_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero, 20ms);
+      if (stamp.nanoseconds()) {
+        transform = tf_buffer_.lookupTransform(target_frame, source_frame, stamp, 20ms);
+      } else {
+        transform = tf_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero, 20ms);
+      }
       return true;
     } catch (const std::exception &) {
       return false;
@@ -1292,9 +1833,10 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const std::vector<PointXYZI> &input,
     const std::string &source_frame,
     const std::string &target_frame,
-    std::vector<Eigen::Vector3d> &output) {
+    std::vector<Eigen::Vector3d> &output,
+    const rclcpp::Time &stamp = rclcpp::Time(0, 0, RCL_ROS_TIME)) {
     geometry_msgs::msg::TransformStamped transform;
-    if (!lookupTransform(target_frame, source_frame, transform)) {
+    if (!lookupTransform(target_frame, source_frame, transform, stamp)) {
       return false;
     }
     const auto rotation = transformRotation(transform);
@@ -1309,9 +1851,10 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   bool transformVectorsToCamera(
     const std::vector<Eigen::Vector3d> &input,
     const std::string &source_frame,
-    std::vector<Eigen::Vector3d> &output) {
+    std::vector<Eigen::Vector3d> &output,
+    const rclcpp::Time &stamp = rclcpp::Time(0, 0, RCL_ROS_TIME)) {
     geometry_msgs::msg::TransformStamped transform;
-    if (lookupTransform(camera_frame_, source_frame, transform)) {
+    if (lookupTransform(camera_frame_, source_frame, transform, stamp)) {
       const auto rotation = transformRotation(transform);
       const auto translation = transformTranslation(transform);
       output.reserve(input.size());
@@ -1322,7 +1865,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     }
     if (source_frame == base_frame_) {
       geometry_msgs::msg::TransformStamped base_to_lidar;
-      if (!lookupTransform(lidar_frame_, base_frame_, base_to_lidar)) {
+      if (!lookupTransform(lidar_frame_, base_frame_, base_to_lidar, stamp)) {
         return false;
       }
       const auto rotation = transformRotation(base_to_lidar);
@@ -1340,9 +1883,10 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   bool transformPointSetToCamera(
     const std::vector<PointXYZI> &input,
     const std::string &source_frame,
-    std::vector<Eigen::Vector3d> &output) {
+    std::vector<Eigen::Vector3d> &output,
+    const rclcpp::Time &stamp) {
     geometry_msgs::msg::TransformStamped transform;
-    if (lookupTransform(camera_frame_, source_frame, transform)) {
+    if (lookupTransform(camera_frame_, source_frame, transform, stamp)) {
       const auto rotation = transformRotation(transform);
       const auto translation = transformTranslation(transform);
       output.reserve(input.size());
@@ -1385,6 +1929,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     selected_target_marker_pub_->publish(makeSelectedTargetMarkers(state, state_name));
     selected_tracklet_marker_pub_->publish(makeSelectedTrackletMarkers(stamp));
     prediction_gate_marker_pub_->publish(makePredictionGateMarkers(stamp));
+    hypothesis_marker_pub_->publish(makeHypothesisMarkers(stamp));
     fused_marker_pub_->publish(makeFusedMarkers(state, state_name));
     timing.publish_ms = elapsedMs(publish_start);
 
@@ -1401,15 +1946,15 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
 
   track_robot_interfaces::msg::TargetState makeTargetState(
     const rclcpp::Time &stamp,
-    const std::string &state_name) const {
+    const std::string &state_name) {
     track_robot_interfaces::msg::TargetState state;
     state.header.stamp = stamp;
     state.header.frame_id = base_frame_;
-    state.target_id = latest_camera_target_.target_id;
+    state.target_id = latest_camera_target_.logical_target_id;
     state.lock_state = latest_camera_target_.lock_state;
     state.bbox = latest_camera_target_.bbox;
     state.camera_visible = cameraVisible(stamp);
-    state.confidence = latest_camera_target_.confidence;
+    state.confidence = latest_camera_target_.detector_confidence;
     if (state_name == "camera_lidar") {
       state.track_state = track_robot_interfaces::msg::TargetState::TRACK_CAMERA_LIDAR_TRACKED;
       state.source_state = track_robot_interfaces::msg::TargetState::SOURCE_CAMERA_LIDAR;
@@ -1440,30 +1985,107 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
       state.lidar_visible = false;
     }
     if (kf_initialized_) {
-      const Eigen::Vector3d position = kf_x_.head<3>();
-      const Eigen::Vector3d velocity = kf_x_.tail<3>();
-      state.position_base = toPoint(position);
-      state.velocity = toVector(velocity);
-      state.distance = static_cast<float>(normXY(position));
-      state.bearing = static_cast<float>(std::atan2(position.y(), position.x()));
+      Eigen::Vector3d position = kf_x_.head<3>();
+      Eigen::Vector3d velocity = kf_x_.tail<3>();
+      Eigen::Matrix3d tracking_to_base_rotation = Eigen::Matrix3d::Identity();
+      state.position_base_valid = transformEstimateToBase(
+        position, velocity, stamp, &tracking_to_base_rotation);
+      if (state.position_base_valid) {
+        state.position_base = toPoint(position);
+        state.velocity = toVector(velocity);
+        state.distance = static_cast<float>(normXY(position));
+        state.bearing = static_cast<float>(std::atan2(position.y(), position.x()));
+        const Eigen::Matrix3d covariance_base = tracking_to_base_rotation *
+          kf_p_.block<3, 3>(0, 0) * tracking_to_base_rotation.transpose();
+        state.position_covariance = {
+          static_cast<float>(covariance_base(0, 0)),
+          static_cast<float>(covariance_base(0, 1)),
+          static_cast<float>(covariance_base(0, 2)),
+          static_cast<float>(covariance_base(1, 0)),
+          static_cast<float>(covariance_base(1, 1)),
+          static_cast<float>(covariance_base(1, 2)),
+          static_cast<float>(covariance_base(2, 0)),
+          static_cast<float>(covariance_base(2, 1)),
+          static_cast<float>(covariance_base(2, 2))};
+      } else {
+        state.confidence = 0.0F;
+        state.lidar_visible = false;
+      }
     }
     state.position_map_valid = false;
     state.time_since_camera_seen = static_cast<float>(timeSince(last_camera_seen_time_, stamp));
     state.time_since_lidar_seen = static_cast<float>(timeSince(last_lidar_seen_time_, stamp));
+    state.selected_tracklet_id = selected_tracklet_id_;
+    state.identity_confidence = latest_camera_target_.identity_confidence;
+    const double measurement_age = timeSince(last_lidar_seen_time_, stamp);
+    state.geometry_confidence = static_cast<float>(
+      kf_confidence_ * std::exp(-0.5 * std::min(10.0, measurement_age)));
+    state.overall_confidence = state.camera_visible ?
+      0.55F * state.identity_confidence + 0.45F * state.geometry_confidence :
+      std::min(state.identity_confidence, state.geometry_confidence);
+    state.tracking_frame = tracking_frame_;
+    state.measurement_age = static_cast<float>(measurement_age);
+    if (state_name == "target_lost") {
+      state.association_state = track_robot_interfaces::msg::TargetState::ASSOCIATION_LOST;
+    } else if (last_association_ambiguous_) {
+      state.association_state = track_robot_interfaces::msg::TargetState::ASSOCIATION_AMBIGUOUS;
+    } else if (state_name == "prediction_only") {
+      state.association_state = track_robot_interfaces::msg::TargetState::ASSOCIATION_PREDICTED;
+    } else if (state_name == "camera_lidar" || state_name == "lidar_only") {
+      state.association_state = track_robot_interfaces::msg::TargetState::ASSOCIATION_CONFIRMED;
+    } else {
+      state.association_state = track_robot_interfaces::msg::TargetState::ASSOCIATION_UNBOUND;
+    }
+    state.confidence = state.overall_confidence;
     return state;
+  }
+
+  bool transformEstimateToBase(
+    Eigen::Vector3d &position,
+    Eigen::Vector3d &velocity,
+    const rclcpp::Time &stamp,
+    Eigen::Matrix3d *rotation_out = nullptr) {
+    if (tracking_frame_ == base_frame_) {
+      if (rotation_out) {
+        *rotation_out = Eigen::Matrix3d::Identity();
+      }
+      return true;
+    }
+    geometry_msgs::msg::TransformStamped transform;
+    if (!lookupTransform(base_frame_, tracking_frame_, transform, stamp)) {
+      return false;
+    }
+    const auto rotation = transformRotation(transform);
+    if (rotation_out) {
+      *rotation_out = rotation;
+    }
+    position = rotation * position + transformTranslation(transform);
+    velocity = rotation * velocity;
+    return true;
+  }
+
+  void updateTrackingOrigin(const rclcpp::Time &stamp) {
+    current_tracking_origin_.setZero();
+    if (tracking_frame_ == base_frame_) {
+      return;
+    }
+    geometry_msgs::msg::TransformStamped transform;
+    if (lookupTransform(tracking_frame_, base_frame_, transform, stamp)) {
+      current_tracking_origin_ = transformTranslation(transform);
+    }
   }
 
   void publishSelectedTracklet(const rclcpp::Time &stamp, const double score) {
     track_robot_interfaces::msg::SelectedLidarTracklet msg;
     msg.header.stamp = stamp;
-    msg.header.frame_id = base_frame_;
-    msg.camera_target_id = latest_camera_target_.target_id;
+    msg.header.frame_id = tracking_frame_;
+    msg.camera_target_id = latest_camera_target_.logical_target_id;
     msg.selected_tracklet_id = selected_tracklet_id_;
     msg.selected = selected_tracklet_id_ >= 0;
-    msg.confirmed = selected_tracklet_id_ >= 0;
     msg.association_score = static_cast<float>(score);
     msg.time_since_selected_seen = static_cast<float>(timeSince(last_lidar_seen_time_, stamp));
     auto selected = findTracklet(selected_tracklet_id_);
+    msg.confirmed = selected.has_value() && selected->active && selected->confirmed;
     if (selected.has_value()) {
       msg.tracklet = *selected;
     }
@@ -1475,7 +2097,8 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const std::string &state_name) const {
     visualization_msgs::msg::MarkerArray markers;
     markers.markers.emplace_back(clearMarker(state.header));
-    if (!kf_initialized_ || state.track_state == track_robot_interfaces::msg::TargetState::TRACK_NO_TARGET) {
+    if (!kf_initialized_ || !state.position_base_valid ||
+      state.track_state == track_robot_interfaces::msg::TargetState::TRACK_NO_TARGET) {
       return markers;
     }
     visualization_msgs::msg::Marker box;
@@ -1509,7 +2132,10 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     text.color.a = 1.0F;
     text.text = "target id=" + std::to_string(state.target_id) +
       " src=" + state_name +
-      " lidar=" + std::to_string(selected_tracklet_id_);
+      " lidar=" + std::to_string(selected_tracklet_id_) +
+      " range=" + shortFloat(
+        (kf_x_.head<2>() - current_tracking_origin_.head<2>()).norm()) +
+      " score=" + shortFloat(last_selected_association_score_);
     text.lifetime = rclcpp::Duration::from_seconds(0.25);
     markers.markers.emplace_back(text);
     return markers;
@@ -1520,10 +2146,29 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     visualization_msgs::msg::MarkerArray markers;
     std_msgs::msg::Header header;
     header.stamp = stamp;
-    header.frame_id = base_frame_;
+    header.frame_id = tracking_frame_;
     markers.markers.emplace_back(clearMarker(header));
     auto selected = findTracklet(selected_tracklet_id_);
     if (!selected.has_value()) {
+      if (kf_initialized_ && selected_tracklet_id_ >= 0) {
+        visualization_msgs::msg::Marker text;
+        text.header = header;
+        text.ns = "selected_lidar_tracklet_status";
+        text.id = 2;
+        text.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+        text.action = visualization_msgs::msg::Marker::ADD;
+        text.pose.position = toPoint(kf_x_.head<3>());
+        text.pose.position.z += 1.2;
+        text.pose.orientation.w = 1.0;
+        text.scale.z = 0.18;
+        text.color.r = 1.0F;
+        text.color.g = 0.75F;
+        text.color.b = 0.1F;
+        text.color.a = 1.0F;
+        text.text = "physical tracklet " + std::to_string(selected_tracklet_id_) + " missing";
+        text.lifetime = rclcpp::Duration::from_seconds(0.20);
+        markers.markers.emplace_back(text);
+      }
       return markers;
     }
     visualization_msgs::msg::Marker box;
@@ -1546,11 +2191,59 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     return markers;
   }
 
+  visualization_msgs::msg::MarkerArray makeHypothesisMarkers(const rclcpp::Time &stamp) const {
+    visualization_msgs::msg::MarkerArray markers;
+    std_msgs::msg::Header header;
+    header.stamp = stamp;
+    header.frame_id = tracking_frame_;
+    markers.markers.emplace_back(clearMarker(header));
+    int marker_id = 1;
+    for (const auto &hypothesis : latest_hypotheses_) {
+      visualization_msgs::msg::Marker box;
+      box.header = header;
+      box.ns = "association_hypotheses";
+      box.id = marker_id++;
+      box.type = visualization_msgs::msg::Marker::CUBE;
+      box.action = visualization_msgs::msg::Marker::ADD;
+      box.pose.position.x = 0.5 * (hypothesis.tracklet.minimum.x + hypothesis.tracklet.maximum.x);
+      box.pose.position.y = 0.5 * (hypothesis.tracklet.minimum.y + hypothesis.tracklet.maximum.y);
+      box.pose.position.z = 0.5 * (hypothesis.tracklet.minimum.z + hypothesis.tracklet.maximum.z);
+      box.pose.orientation.w = 1.0;
+      box.scale = hypothesis.tracklet.size;
+      box.color.r = hypothesis.tracklet.tracklet_id == selected_tracklet_id_ ? 0.1F : 1.0F;
+      box.color.g = hypothesis.tracklet.tracklet_id == selected_tracklet_id_ ? 1.0F : 0.55F;
+      box.color.b = 0.15F;
+      box.color.a = 0.18F;
+      box.lifetime = rclcpp::Duration::from_seconds(0.20);
+      markers.markers.emplace_back(box);
+
+      visualization_msgs::msg::Marker text_marker;
+      text_marker.header = header;
+      text_marker.ns = "association_hypothesis_labels";
+      text_marker.id = marker_id++;
+      text_marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+      text_marker.action = visualization_msgs::msg::Marker::ADD;
+      text_marker.pose.position = box.pose.position;
+      text_marker.pose.position.z += 0.8;
+      text_marker.pose.orientation.w = 1.0;
+      text_marker.scale.z = 0.16;
+      text_marker.color.r = 1.0F;
+      text_marker.color.g = 1.0F;
+      text_marker.color.b = 1.0F;
+      text_marker.color.a = 1.0F;
+      text_marker.text = "H" + std::to_string(hypothesis.tracklet.tracklet_id) +
+        " score=" + shortFloat(hypothesis.score);
+      text_marker.lifetime = rclcpp::Duration::from_seconds(0.20);
+      markers.markers.emplace_back(text_marker);
+    }
+    return markers;
+  }
+
   visualization_msgs::msg::MarkerArray makePredictionGateMarkers(const rclcpp::Time &stamp) const {
     visualization_msgs::msg::MarkerArray markers;
     std_msgs::msg::Header header;
     header.stamp = stamp;
-    header.frame_id = base_frame_;
+    header.frame_id = tracking_frame_;
     markers.markers.emplace_back(clearMarker(header));
     if (!kf_initialized_) {
       return markers;
@@ -1586,7 +2279,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const std::string &state_name) const {
     visualization_msgs::msg::MarkerArray markers;
     markers.markers.emplace_back(clearMarker(state.header));
-    if (!kf_initialized_) {
+    if (!kf_initialized_ || !state.position_base_valid) {
       return markers;
     }
     visualization_msgs::msg::Marker sphere;
@@ -1647,7 +2340,7 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const rclcpp::Time &stamp) {
     sensor_msgs::msg::PointCloud2 msg;
     msg.header.stamp = stamp;
-    msg.header.frame_id = base_frame_;
+    msg.header.frame_id = tracking_frame_;
     msg.height = 1;
     const size_t stride = points.size() > static_cast<size_t>(debug_cloud_max_points_) ?
       static_cast<size_t>(std::ceil(
@@ -1696,28 +2389,67 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     const std::string &trigger,
     const double processing_ms,
     const ProcessingTiming &timing) {
+    const auto selected = findTracklet(selected_tracklet_id_);
+    const double anchor_age = timeSince(last_camera_anchor_time_, now());
+    std::ostringstream hypotheses_json;
+    hypotheses_json << "[";
+    for (size_t i = 0; i < latest_hypotheses_.size(); ++i) {
+      if (i) {
+        hypotheses_json << ",";
+      }
+      hypotheses_json << "{\"id\":" << latest_hypotheses_[i].tracklet.tracklet_id
+                      << ",\"score\":" << shortFloat(latest_hypotheses_[i].score) << "}";
+    }
+    hypotheses_json << "]";
     std::ostringstream ss;
     ss << "{"
        << "\"state\":\"" << state_name << "\","
        << "\"trigger\":\"" << trigger << "\","
-       << "\"camera_target_id\":" << latest_camera_target_.target_id << ","
+       << "\"camera_target_id\":" << latest_camera_target_.logical_target_id << ","
        << "\"selected_lidar_tracklet_id\":" << selected_tracklet_id_ << ","
        << "\"pending_lidar_tracklet_id\":" << pending_tracklet_id_ << ","
        << "\"pending_count\":" << pending_count_ << ","
+       << "\"anchor_age_sec\":" << shortFloat(anchor_age) << ","
+       << "\"anchor_range\":" << shortFloat(
+          have_camera_anchor_ ?
+          (last_camera_anchor_position_.head<2>() - current_tracking_origin_.head<2>()).norm() :
+          0.0) << ","
+       << "\"anchor_quality\":" << shortFloat(last_camera_anchor_quality_) << ","
+       << "\"selected_tracklet_present\":" <<
+          (selected.has_value() ? "true" : "false") << ","
+       << "\"selected_tracklet_active\":" <<
+          (selected.has_value() && selected->active ? "true" : "false") << ","
+       << "\"selected_tracklet_score\":" <<
+          shortFloat(last_selected_association_score_) << ","
+       << "\"challenger_tracklet_id\":" << last_challenger_tracklet_id_ << ","
+       << "\"challenger_score\":" << shortFloat(last_challenger_score_) << ","
+       << "\"switch_failure_count\":" << selected_failure_count_ << ","
+       << "\"switch_pending_count\":" << challenger_count_ << ","
+       << "\"switch_reject_reason\":\"" << last_switch_reject_reason_ << "\","
+       << "\"target_clear_reason\":\"" << last_target_clear_reason_ << "\","
        << "\"relink_lidar_tracklet_id\":" << relink_tracklet_id_ << ","
        << "\"relink_count\":" << relink_count_ << ","
        << "\"camera_visible\":" << (latest_camera_target_.camera_visible ? "true" : "false") << ","
-       << "\"camera_confidence\":" << shortFloat(latest_camera_target_.confidence) << ","
+       << "\"camera_confidence\":" << shortFloat(latest_camera_target_.detector_confidence) << ","
        << "\"tracklet_count\":" << latest_tracklets_.tracklets.size() << ","
        << "\"candidate_count\":" << latest_candidates_.clusters.size() << ","
+       << "\"association_ambiguous\":" <<
+          (last_association_ambiguous_ ? "true" : "false") << ","
+       << "\"hypotheses\":" << hypotheses_json.str() << ","
        << "\"camera_association_score\":" << shortFloat(association_score) << ","
        << "\"camera_guided_anchor_quality\":" << shortFloat(anchor.quality) << ","
        << "\"camera_guided_status\":\"" << anchor.status << "\","
        << "\"camera_guided_roi\":\"" << anchor.roi_type << "\","
        << "\"camera_guided_points\":" << anchor.point_count << ","
+       << "\"sync_offset_sec\":" << shortFloat(last_sync_offset_sec_) << ","
        << "\"measurement_source\":\"" << measurement_source << "\","
        << "\"kalman_nis_xy\":" << shortFloat(nis_xy) << ","
        << "\"kalman_initialized\":" << (kf_initialized_ ? "true" : "false") << ","
+       << "\"imm_probabilities\":[" << shortFloat(imm_probabilities_(0)) << ","
+          << shortFloat(imm_probabilities_(1)) << ","
+          << shortFloat(imm_probabilities_(2)) << "],"
+       << "\"height_state\":" << shortFloat(height_state_) << ","
+       << "\"height_variance\":" << shortFloat(height_variance_state_) << ","
        << "\"measurement_accepted\":" << (measurement_accepted ? "true" : "false") << ","
        << "\"rejection_reason\":\"" << rejection_reason << "\","
        << "\"fresh_cloud_processed\":" <<
@@ -1730,7 +2462,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
        << "\"total_measurement_ms\":" << shortFloat(processing_ms) << ","
        << "\"processing_ms\":" << shortFloat(processing_ms)
        << "}";
-    debug_pub_->publish(std_msgs::msg::String().set__data(ss.str()));
+    const auto message = std_msgs::msg::String().set__data(ss.str());
+    debug_pub_->publish(message);
+    timing_debug_pub_->publish(message);
   }
 
   double timeSince(const rclcpp::Time &then, const rclcpp::Time &stamp) const {
@@ -1749,7 +2483,14 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     return get_clock()->now();
   }
 
-  void clearTarget() {
+  rclcpp::Time messageTime(const builtin_interfaces::msg::Time &stamp) {
+    const rclcpp::Time value(stamp);
+    return value.nanoseconds() ? value : now();
+  }
+
+  void clearTarget(const std::string &reason) {
+    last_target_clear_reason_ = reason;
+    camera_target_queue_.clear();
     selected_tracklet_id_ = -1;
     pending_tracklet_id_ = -1;
     pending_count_ = 0;
@@ -1759,18 +2500,37 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
     have_selected_reference_ = false;
     last_selected_point_count_ = 0;
     last_measurement_source_ = "none";
+    selected_failure_count_ = 0;
+    challenger_tracklet_id_ = -1;
+    challenger_count_ = 0;
+    last_challenger_tracklet_id_ = -1;
+    last_challenger_score_ = 0.0;
+    last_selected_association_score_ = 0.0;
+    last_switch_reject_reason_ = "none";
+    have_camera_anchor_ = false;
+    last_camera_anchor_quality_ = 0.0;
+    last_camera_anchor_point_count_ = 0;
+    last_camera_anchor_depth_spread_ = 0.0;
+    last_camera_anchor_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     camera_guided_marker_offset_ = Eigen::Vector3d(0.0, 0.0, 0.55);
     camera_guided_marker_size_ = Eigen::Vector3d(0.55, 0.55, 1.35);
     kf_initialized_ = false;
     kf_x_.setZero();
     kf_p_.setIdentity();
+    for (size_t model = 0; model < imm_states_.size(); ++model) {
+      imm_states_[model].setZero();
+      imm_covariances_[model].setIdentity();
+    }
+    imm_probabilities_ << 0.20, 0.60, 0.20;
+    height_initialized_ = false;
+    height_state_ = 0.0;
+    height_variance_state_ = 1.0;
     kf_confidence_ = 0.0;
     last_camera_seen_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     last_lidar_seen_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   }
 
   std::string camera_target_topic_;
-  std::string detections_topic_;
   std::string lidar_tracklets_topic_;
   std::string lidar_topic_;
   std::string candidate_clusters_topic_;
@@ -1784,7 +2544,10 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   std::string fused_marker_topic_;
   std::string camera_guided_points_topic_;
   std::string debug_topic_;
+  std::string timing_debug_topic_;
+  std::string hypothesis_marker_topic_;
   std::string base_frame_;
+  std::string tracking_frame_;
   std::string lidar_frame_;
   std::string camera_frame_;
   std::string map_frame_;
@@ -1799,9 +2562,25 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
 
   double camera_visible_min_confidence_{0.35};
   double min_association_score_{0.55};
-  int association_confirm_frames_{2};
+  double initial_association_score_margin_{0.12};
+  double relink_score_margin_{0.15};
+  int max_association_hypotheses_{3};
+  double initial_anchor_min_quality_{0.35};
+  double initial_anchor_max_age_sec_{0.35};
+  double initial_anchor_xy_gate_m_{1.0};
+  double initial_anchor_range_gate_m_{0.75};
+  int initial_association_confirm_frames_{3};
+  int selected_failure_frames_before_switch_{2};
+  int association_switch_confirm_frames_{3};
+  double association_switch_score_margin_{0.20};
+  double association_switch_min_score_{0.60};
+  double association_switch_cooldown_sec_{1.5};
   double max_projection_center_error_px_{220.0};
   double camera_target_timeout_sec_{1.0};
+  double max_sync_offset_sec_{0.08};
+  double max_sync_age_sec_{0.20};
+  int sync_queue_size_{30};
+  int cloud_queue_size_{6};
   double input_timeout_sec_{1.0};
   double publish_rate_{10.0};
   double debug_rate_{2.0};
@@ -1817,6 +2596,9 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   double camera_guided_roi_y_max_fraction_{0.70};
   double camera_guided_depth_percentile_low_{20.0};
   double camera_guided_depth_percentile_high_{55.0};
+  double camera_guided_depth_bin_m_{0.15};
+  double camera_guided_depth_prediction_gate_m_{0.60};
+  double camera_guided_component_radius_m_{0.45};
   double min_keypoint_confidence_{0.35};
   double camera_guided_max_depth_spread_{1.25};
   double camera_guided_prediction_gate_m_{1.5};
@@ -1826,6 +2608,8 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   double camera_anchor_xy_variance_{0.08};
   double tracklet_xy_variance_{0.18};
   double z_variance_{0.35};
+  double height_process_variance_per_sec_{0.02};
+  double height_max_residual_m_{0.80};
   double max_camera_anchor_nis_xy_{25.0};
   double max_tracklet_nis_xy_{9.21};
   double prediction_gate_radius_m_{1.2};
@@ -1841,16 +2625,16 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   double max_target_speed_mps_{2.2};
   double camera_projection_max_rate_hz_{10.0};
 
-  track_robot_interfaces::msg::TargetState latest_camera_target_;
-  track_robot_interfaces::msg::HumanDetection2DArray latest_detections_;
+  track_robot_interfaces::msg::CameraTarget latest_camera_target_;
+  std::deque<track_robot_interfaces::msg::CameraTarget> camera_target_queue_;
   track_robot_interfaces::msg::LidarTrackletArray latest_tracklets_;
   track_robot_interfaces::msg::LidarClusterArray latest_candidates_;
   sensor_msgs::msg::CameraInfo latest_camera_info_;
   sensor_msgs::msg::PointCloud2 latest_cloud_;
+  std::deque<sensor_msgs::msg::PointCloud2> cloud_queue_;
   bool have_camera_info_{false};
   bool have_cloud_{false};
   rclcpp::Time last_camera_target_time_{0, 0, RCL_ROS_TIME};
-  rclcpp::Time last_detections_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_tracklets_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_candidates_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_cloud_time_{0, 0, RCL_ROS_TIME};
@@ -1860,13 +2644,32 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   rclcpp::Time last_debug_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_camera_projection_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time selected_missing_since_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_camera_anchor_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_switch_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_processing_stamp_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time latest_seen_sensor_stamp_{0, 0, RCL_ROS_TIME};
 
   int selected_tracklet_id_{-1};
   int pending_tracklet_id_{-1};
   int pending_count_{0};
   int relink_tracklet_id_{-1};
   int relink_count_{0};
+  int selected_failure_count_{0};
+  int challenger_tracklet_id_{-1};
+  int challenger_count_{0};
+  int last_challenger_tracklet_id_{-1};
+  double last_challenger_score_{0.0};
+  double last_selected_association_score_{0.0};
+  std::string last_switch_reject_reason_{"none"};
+  std::string last_target_clear_reason_{"none"};
   std::string last_measurement_source_{"none"};
+  std::vector<TrackletMatch> latest_hypotheses_;
+  bool last_association_ambiguous_{false};
+  Eigen::Vector3d last_camera_anchor_position_{Eigen::Vector3d::Zero()};
+  double last_camera_anchor_quality_{0.0};
+  size_t last_camera_anchor_point_count_{0};
+  double last_camera_anchor_depth_spread_{0.0};
+  bool have_camera_anchor_{false};
   Eigen::Vector3d last_selected_size_{Eigen::Vector3d::Zero()};
   Eigen::Vector3d camera_guided_marker_offset_{Eigen::Vector3d(0.0, 0.0, 0.55)};
   Eigen::Vector3d camera_guided_marker_size_{Eigen::Vector3d(0.55, 0.55, 1.35)};
@@ -1875,13 +2678,26 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   bool kf_initialized_{false};
   double kf_confidence_{0.0};
   double last_projected_nis_xy_{0.0};
+  double last_sync_offset_sec_{std::numeric_limits<double>::infinity()};
   Eigen::Matrix<double, 6, 1> kf_x_{Eigen::Matrix<double, 6, 1>::Zero()};
   Eigen::Matrix<double, 6, 6> kf_p_{Eigen::Matrix<double, 6, 6>::Identity()};
+  std::array<Eigen::Matrix<double, 6, 1>, 3> imm_states_{{
+    Eigen::Matrix<double, 6, 1>::Zero(),
+    Eigen::Matrix<double, 6, 1>::Zero(),
+    Eigen::Matrix<double, 6, 1>::Zero()}};
+  std::array<Eigen::Matrix<double, 6, 6>, 3> imm_covariances_{{
+    Eigen::Matrix<double, 6, 6>::Identity(),
+    Eigen::Matrix<double, 6, 6>::Identity(),
+    Eigen::Matrix<double, 6, 6>::Identity()}};
+  Eigen::Vector3d imm_probabilities_{Eigen::Vector3d(0.20, 0.60, 0.20)};
+  bool height_initialized_{false};
+  double height_state_{0.0};
+  double height_variance_state_{1.0};
+  Eigen::Vector3d current_tracking_origin_{Eigen::Vector3d::Zero()};
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-  rclcpp::Subscription<track_robot_interfaces::msg::TargetState>::SharedPtr camera_target_sub_;
-  rclcpp::Subscription<track_robot_interfaces::msg::HumanDetection2DArray>::SharedPtr detections_sub_;
+  rclcpp::Subscription<track_robot_interfaces::msg::CameraTarget>::SharedPtr camera_target_sub_;
   rclcpp::Subscription<track_robot_interfaces::msg::LidarTrackletArray>::SharedPtr tracklets_sub_;
   rclcpp::Subscription<track_robot_interfaces::msg::LidarClusterArray>::SharedPtr candidates_sub_;
   rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
@@ -1895,6 +2711,8 @@ class SelectedHumanTargetTrackerNode : public rclcpp::Node {
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fused_marker_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr camera_guided_points_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr debug_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr timing_debug_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr hypothesis_marker_pub_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
 };
 

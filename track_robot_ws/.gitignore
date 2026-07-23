@@ -18,6 +18,10 @@ dinov3_feature_outputs/
 frames.gv
 frames.pdf
 
+# Machine-local measured configuration
+config/local/
+config/*.measured.yaml
+
 # Large or externally managed source trees
 src/third_party_ros/
 src/track_robot_core/

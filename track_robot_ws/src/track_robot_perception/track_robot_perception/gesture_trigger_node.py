@@ -8,8 +8,9 @@ import rclpy
 from cv_bridge import CvBridge
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 from sensor_msgs.msg import Image
-from track_robot_interfaces.msg import GestureState, HumanDetection2D, HumanDetection2DArray
+from track_robot_interfaces.msg import CameraTarget, GestureState, HumanDetection2D, HumanDetection2DArray
 
 
 LSHOULDER = 5
@@ -40,6 +41,8 @@ class GestureTriggerNode(Node):
             'image_topic', '/zed/zed_node/left/image_rect_color').value
         self.output_topic = self.declare_parameter(
             'output_topic', '/human_tracking/gesture_state').value
+        self.camera_target_topic = self.declare_parameter(
+            'camera_target_topic', '/human_tracking/camera_target').value
         self.overlay_topic = self.declare_parameter(
             'overlay_topic', '/human_tracking/gesture_overlay').value
         self.min_keypoint_confidence = float(
@@ -72,6 +75,7 @@ class GestureTriggerNode(Node):
         self.bridge = CvBridge()
         self.latest_detections: List[HumanDetection2D] = []
         self.last_trigger_time = self.get_clock().now()
+        self.current_measurement_time = self.last_trigger_time
         self.track_history: Dict[int, deque] = defaultdict(
             lambda: deque(maxlen=self.start_window_frames))
         self.start_hold_counts: Dict[int, int] = defaultdict(int)
@@ -90,12 +94,31 @@ class GestureTriggerNode(Node):
             self.create_subscription(Image, self.image_topic, self.image_callback, 5)
         self.create_subscription(
             HumanDetection2DArray, self.detections_topic, self.detections_callback, 5)
+        self.create_subscription(
+            CameraTarget, self.camera_target_topic, self.camera_target_callback, 5)
 
         self.get_logger().info(
             f'gesture_trigger_node listening to {self.detections_topic}; '
             f'publishing {self.output_topic}')
 
+    def camera_target_callback(self, msg: CameraTarget):
+        if (self.fsm_state == 'TRACKING' and msg.logical_target_id >= 0 and
+                msg.visual_track_id >= 0):
+            self.active_target_id = int(msg.visual_track_id)
+
     def detections_callback(self, msg: HumanDetection2DArray):
+        if msg.header.stamp.sec or msg.header.stamp.nanosec:
+            measurement_time = Time.from_msg(msg.header.stamp)
+            if (measurement_time - self.current_measurement_time).nanoseconds < -100000000:
+                self.track_history.clear()
+                self.start_hold_counts.clear()
+                self.stop_hold_counts.clear()
+                self.latest_track_commands = {}
+                self.fsm_state = 'WAITING_FOR_START'
+                self.active_target_id = -1
+                self.last_trigger_time = measurement_time - Duration(
+                    seconds=self.trigger_cooldown_sec)
+            self.current_measurement_time = measurement_time
         self.latest_detections = list(msg.detections)
         self.latest_track_commands = {}
         best_state = GestureState()
@@ -135,7 +158,7 @@ class GestureTriggerNode(Node):
                 elif command == 'stop_tracking' and track_id == self.active_target_id:
                     self.fsm_state = 'WAITING_FOR_START'
                     self.last_stop_target_id = track_id
-                    self.last_stop_until = self.get_clock().now() + Duration(
+                    self.last_stop_until = self.current_measurement_time + Duration(
                         seconds=self.stop_visualization_hold_sec)
                     self.active_target_id = -1
                 break
@@ -176,20 +199,20 @@ class GestureTriggerNode(Node):
             self.stop_hold_counts[track_id] = max(0, self.stop_hold_counts[track_id] - 1)
 
         cooldown_ok = (
-            self.get_clock().now() - self.last_trigger_time).nanoseconds * 1e-9 >= (
+            self.current_measurement_time - self.last_trigger_time).nanoseconds * 1e-9 >= (
                 self.trigger_cooldown_sec)
 
         stop_confidence = min(
             1.0, float(self.stop_hold_counts[track_id]) / float(self.stop_hold_frames))
         if self.stop_hold_counts[track_id] >= self.stop_hold_frames and cooldown_ok:
-            self.last_trigger_time = self.get_clock().now()
+            self.last_trigger_time = self.current_measurement_time
             return True, 'one_hand_high', 'stop_tracking', stop_confidence
 
         start_hold_confidence = min(
             1.0, float(self.start_hold_counts[track_id]) / float(self.trigger_hold_frames))
         start_confidence = min(start_hold_confidence, raw_start_confidence)
         if self.start_hold_counts[track_id] >= self.trigger_hold_frames and cooldown_ok:
-            self.last_trigger_time = self.get_clock().now()
+            self.last_trigger_time = self.current_measurement_time
             return True, start_name, 'start_tracking', start_confidence
 
         if stop_one_hand_high:
@@ -370,7 +393,7 @@ class GestureTriggerNode(Node):
                 track_id, ('none', 'none', 0.0))
             stop_hold_active = (
                 track_id == self.last_stop_target_id and
-                self.get_clock().now() < self.last_stop_until)
+                self.current_measurement_time < self.last_stop_until)
             if (command == 'stop_tracking' and confidence > 0.0) or stop_hold_active:
                 color = (0, 0, 255)
                 label = f'id={detection.track_id} STOP {confidence:.2f}'

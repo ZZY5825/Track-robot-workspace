@@ -18,7 +18,7 @@ def generate_launch_description():
 
     rslidar_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
-            FindPackageShare('track_robot_bringup'),
+            FindPackageShare('track_robot_sensor_bringup'),
             'launch',
             'rslidar_with_tf.launch.py',
         ])),
@@ -143,7 +143,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'rslidar_config_file',
             default_value=PathJoinSubstitution([
-                FindPackageShare('track_robot_bringup'),
+                FindPackageShare('track_robot_sensor_bringup'),
                 'config',
                 'rslidar_track_robot.yaml',
             ]),

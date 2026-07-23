@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0.0",
+  "stage": "2D",
+  "status": "runtime_integration_complete",
+  "date": "2026-07-16",
+  "calibration_dependency": {
+    "report": "artifacts/semantic_search/reports/phase2_association_calibration_2026-07-16.json",
+    "status": "calibrated",
+    "camera_attachment_allowed": true,
+    "match_threshold": 0.6303095604656801,
+    "ambiguity_margin": 0.058443876599150624,
+    "precision": 1.0,
+    "recall": 0.8181818181818182
+  },
+  "runtime_policy": {
+    "safe_default_camera_attachment_enabled": false,
+    "calibrated_profile": "src/track_robot/track_robot_semantic_memory/config/phase2_camera_attachment.yaml",
+    "global_assignment": "deterministic_hungarian",
+    "confirmation_frames": 3,
+    "maximum_visual_confirmation_states": 64,
+    "maximum_pairs_per_frame": 1024,
+    "stable_visual_identity_order": [
+      "camera_track_key",
+      "upstream_proposal_key"
+    ],
+    "missing_stable_identity_behavior": "tentative_fail_closed",
+    "whole_frame_commit": "coordinator_and_memory_core_two_phase_copy_commit",
+    "lidar_epoch_buffer_isolation": true,
+    "evidence_age_watermark": "latest_accepted_lidar_batch_source_stamp",
+    "stable_visual_owner_count_maximum": 1,
+    "calibration_contract_version": "stage2d_association_v1",
+    "calibration_report_location": "installed_package_share"
+  },
+  "safety_assertions": {
+    "ambiguous_evidence_mutates_memory": false,
+    "task_conditioned_labels_become_permanent": false,
+    "delayed_camera_updates_position": false,
+    "delayed_camera_updates_velocity": false,
+    "delayed_camera_updates_covariance": false,
+    "delayed_camera_rewinds_metric_state_stamp": false,
+    "truncated_matrix_can_attach": false,
+    "debug_publication_required_for_attachment": false,
+    "calibration_report_required_when_enabled": true,
+    "rejected_frame_advances_confirmation": false,
+    "cross_lidar_epoch_evidence_can_match": false,
+    "runtime_scoring_drift_is_authorized": false,
+    "supplement_failure_commits_confirmation": false
+  },
+  "verification": {
+    "semantic_memory_package_tests": {
+      "test_cases": 137,
+      "errors": 0,
+      "failures": 0,
+      "expected_skips": 1,
+      "skip_reason": "DDS runtime probe is opt-in and was not started in the restricted environment"
+    },
+    "three_package_colcon_test_result": {
+      "reported_entries": 531,
+      "ctest_suite_wrapper_entries": 26,
+      "errors": 0,
+      "failures": 0,
+      "expected_skips": 1
+    },
+    "commands": [
+      "colcon build --packages-select track_robot_interfaces track_robot_semantic_search track_robot_semantic_memory --build-base build-stage2d-final2 --install-base install-stage2d-final2 --cmake-args -DBUILD_TESTING=ON",
+      "colcon test --packages-select track_robot_interfaces track_robot_semantic_search track_robot_semantic_memory --build-base build-stage2d-final2 --install-base install-stage2d-final2 --return-code-on-test-failure",
+      "colcon test-result --test-result-base build-stage2d-final2 --all --verbose",
+      "git diff --check"
+    ],
+    "deterministic_decision_fixtures": {
+      "stable_identity_three_frames": {
+        "tentative": 2,
+        "matched": 1
+      },
+      "duplicate_stable_key_transaction": {
+        "rejected_frames": 1,
+        "subsequent_tentative": 2,
+        "subsequent_matched": 1
+      },
+      "threshold_boundary": {
+        "ambiguous": 1,
+        "unmatched": 1
+      }
+    },
+    "focused_behaviors": [
+      "stable composite identity confirms on the third source frame despite changing candidate IDs",
+      "global assignment remains one-to-one and input-permutation deterministic",
+      "threshold boundary uses the calibrated threshold as a virtual runner-up",
+      "confirmation state is bounded with deterministic oldest-state eviction",
+      "delayed camera evidence supplements metadata without changing metric state",
+      "duplicate and older visual evidence is idempotently rejected",
+      "public ROS objects expose camera identity, counts, labels and last-camera time",
+      "duplicate stable keys are rejected without partial confirmation mutation",
+      "LiDAR source-time lookup is restricted to the current producer epoch",
+      "one stable visual key has exactly one memory owner",
+      "all calibrated gates, weights, camera calibration and confirmation parameters are bound",
+      "installed attachment profile resolves its report from package share",
+      "coordinator and memory supplementation commit transactionally",
+      "visual owner transfer removes only camera support and never fabricates LiDAR support"
+    ]
+  },
+  "runtime_scope": {
+    "ros_dds_attachment_replay_executed": false,
+    "reason": "DDS runtime probe is opt-in; Stage 2D completion is backed by pure coordinator, memory-core, conversion, calibration-contract and launch-contract tests",
+    "ros_processes_started_by_stage2d_verification": 0,
+    "next_stage_not_started": "2E"
+  }
+}

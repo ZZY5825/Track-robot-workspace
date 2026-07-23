@@ -1,0 +1,45 @@
+local_trajectory_planner_node:
+  ros__parameters:
+    desired_cmd_topic: /follow/cmd_vel_planned
+    target_topic: /human_tracking/target_state
+    obstacle_grid_topic: /safety/local_obstacle_grid
+    output_cmd_topic: /follow/cmd_vel_avoiding
+    planner_state_topic: /follow/avoidance_state
+    marker_topic: /follow/avoidance_trajectory_markers
+    debug_topic: /follow/avoidance_debug
+    base_frame: base_link
+
+    enable_avoidance: true
+    publish_rate: 20.0
+    marker_publish_rate: 10.0
+    desired_timeout_sec: 0.20
+    target_timeout_sec: 0.50
+    grid_timeout_sec: 0.30
+    require_target_state: true
+    unknown_is_obstacle: true
+
+    max_linear_x: 0.15
+    max_angular_z: 0.35
+    linear_samples: 4
+    angular_samples: 15
+    simulation_horizon_sec: 6.0
+    simulation_step_sec: 0.10
+
+    footprint_length: 1.20
+    footprint_width: 1.00
+    safety_inflation: 0.20
+    footprint_sample_spacing: 0.10
+    collision_padding: 0.08
+    direct_preference_clearance: 0.35
+
+    weight_target_heading: 2.5
+    weight_target_progress: 2.0
+    weight_clearance: 0.8
+    weight_command_change: 0.8
+    weight_desired_command: 1.0
+    weight_forward_speed: 0.5
+    stationary_penalty: 2.5
+    side_switch_penalty: 3.0
+    side_commitment_sec: 1.5
+    direct_command_bonus: 1.0
+    max_marker_candidates: 30

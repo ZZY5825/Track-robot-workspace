@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>track_robot_sensor_bringup</name>
+  <version>0.0.1</version>
+  <description>Motion-free shared sensor bringup for Track Robot.</description>
+
+  <maintainer email="track-robot@example.com">track-robot</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>rslidar_sdk</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <test_depend>ament_cmake_pytest</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

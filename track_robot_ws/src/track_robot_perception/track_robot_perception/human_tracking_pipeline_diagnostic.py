@@ -10,6 +10,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from track_robot_interfaces.msg import (
+    CameraTarget,
     GestureState,
     HumanDetection2DArray,
     LidarClusterArray,
@@ -46,10 +47,12 @@ class HumanTrackingPipelineDiagnostic(Node):
 
         self.marker_stats: Dict[str, MarkerStats] = {}
         self.cloud_stats: Dict[str, CloudStats] = {}
-        self.last_camera_target: Optional[TargetState] = None
+        self.last_camera_target: Optional[CameraTarget] = None
         self.last_fused_target: Optional[TargetState] = None
         self.last_target_tracker_debug = {}
         self.last_camera_target_debug = {}
+        self.last_camera_identity_debug = {}
+        self.last_fusion_timing_debug = {}
         self.last_lidar_debug = {}
         self.detection_messages = 0
         self.detection_count = 0
@@ -64,7 +67,7 @@ class HumanTrackingPipelineDiagnostic(Node):
         self.human_candidate_count = 0
 
         self.create_subscription(
-            TargetState, '/human_tracking/camera_target',
+            CameraTarget, '/human_tracking/camera_target',
             self.camera_target_callback, 10)
         self.create_subscription(
             TargetState, '/human_tracking/fused_target_state',
@@ -88,6 +91,12 @@ class HumanTrackingPipelineDiagnostic(Node):
             String, '/human_tracking/camera_target_debug',
             self.camera_target_debug_callback, 10)
         self.create_subscription(
+            String, '/human_tracking/camera_identity_debug',
+            self.camera_identity_debug_callback, 10)
+        self.create_subscription(
+            String, '/human_tracking/fusion_timing_debug',
+            self.fusion_timing_debug_callback, 10)
+        self.create_subscription(
             String, '/human_tracking/lidar_tracklet_debug',
             self.lidar_debug_callback, 10)
         self.create_subscription(
@@ -99,6 +108,7 @@ class HumanTrackingPipelineDiagnostic(Node):
             '/human_tracking/selected_target_marker',
             '/human_tracking/target_prediction_gate_marker',
             '/human_tracking/fused_target_marker',
+            '/human_tracking/association_hypothesis_markers',
             '/human_tracking/lidar_candidate_cluster_markers',
             '/human_tracking/lidar_tracklet_markers',
         ):
@@ -124,7 +134,7 @@ class HumanTrackingPipelineDiagnostic(Node):
         self.get_logger().info(
             f'Collecting human tracking diagnostics for {self.duration_sec:.1f}s')
 
-    def camera_target_callback(self, msg: TargetState):
+    def camera_target_callback(self, msg: CameraTarget):
         self.last_camera_target = msg
 
     def fused_target_callback(self, msg: TargetState):
@@ -154,6 +164,12 @@ class HumanTrackingPipelineDiagnostic(Node):
 
     def camera_target_debug_callback(self, msg: String):
         self.last_camera_target_debug = self.parse_json(msg.data)
+
+    def camera_identity_debug_callback(self, msg: String):
+        self.last_camera_identity_debug = self.parse_json(msg.data)
+
+    def fusion_timing_debug_callback(self, msg: String):
+        self.last_fusion_timing_debug = self.parse_json(msg.data)
 
     def lidar_debug_callback(self, msg: String):
         self.last_lidar_debug = self.parse_json(msg.data)
@@ -206,10 +222,10 @@ class HumanTrackingPipelineDiagnostic(Node):
     @staticmethod
     def lock_name(value: int) -> str:
         names = {
-            TargetState.LOCK_NO_TARGET: 'NO_TARGET',
-            TargetState.LOCK_CANDIDATE_VISIBLE: 'CANDIDATE_VISIBLE',
-            TargetState.LOCK_TARGET_LOCKED: 'TARGET_LOCKED',
-            TargetState.LOCK_TARGET_LOST: 'TARGET_LOST',
+            CameraTarget.LOCK_NO_TARGET: 'NO_TARGET',
+            CameraTarget.LOCK_CANDIDATE_VISIBLE: 'CANDIDATE_VISIBLE',
+            CameraTarget.LOCK_TARGET_LOCKED: 'TARGET_LOCKED',
+            CameraTarget.LOCK_TARGET_LOST: 'TARGET_LOST',
         }
         return names.get(int(value), str(int(value)))
 
@@ -264,8 +280,10 @@ class HumanTrackingPipelineDiagnostic(Node):
             target = self.last_camera_target
             print(
                 '  camera_target: '
-                f'id={target.target_id} lock={self.lock_name(target.lock_state)} '
-                f'visible={target.camera_visible} conf={target.confidence:.2f} '
+                f'id={target.logical_target_id} visual={target.visual_track_id} '
+                f'lock={self.lock_name(target.lock_state)} '
+                f'visible={target.camera_visible} conf={target.detector_confidence:.2f} '
+                f'identity={target.identity_state}/{target.identity_confidence:.2f} '
                 f'bbox={[round(float(v), 1) for v in target.bbox]}')
 
         if self.last_fused_target is None:
@@ -299,6 +317,10 @@ class HumanTrackingPipelineDiagnostic(Node):
         print(json.dumps(self.last_target_tracker_debug, indent=2, sort_keys=True))
         print('\nCamera target-lock debug:')
         print(json.dumps(self.last_camera_target_debug, indent=2, sort_keys=True))
+        print('\nCamera identity debug:')
+        print(json.dumps(self.last_camera_identity_debug, indent=2, sort_keys=True))
+        print('\nFusion timing debug:')
+        print(json.dumps(self.last_fusion_timing_debug, indent=2, sort_keys=True))
         print('\nTracker debug:')
         print(json.dumps(self.tracker_debug, indent=2, sort_keys=True))
         print('\nLiDAR tracklet debug:')
@@ -341,10 +363,12 @@ class HumanTrackingPipelineDiagnostic(Node):
 
         if self.last_camera_target is None:
             blockers.append('/human_tracking/camera_target is missing.')
-        elif self.last_camera_target.lock_state != TargetState.LOCK_TARGET_LOCKED:
+        elif self.last_camera_target.lock_state != CameraTarget.LOCK_TARGET_LOCKED:
             blockers.append(
                 'Camera target is not locked. YOLO may be working, but target_lock needs a '
                 'start gesture and then the same/reacquired target track.')
+        elif self.last_camera_target.identity_state == CameraTarget.IDENTITY_AMBIGUOUS:
+            blockers.append('Camera target identity is ambiguous; fusion correctly rejects camera correction.')
         elif not self.last_camera_target.camera_visible:
             blockers.append('Camera target is locked but not visible; camera-guided extraction will not run.')
 
@@ -353,6 +377,9 @@ class HumanTrackingPipelineDiagnostic(Node):
             blockers.append(f'Camera-guided extraction status is {status}.')
         if self.last_target_tracker_debug.get('camera_guided_points', 0) == 0:
             blockers.append('Camera-guided extraction selected 0 points.')
+        sync_offset = self.last_target_tracker_debug.get('sync_offset_sec')
+        if isinstance(sync_offset, (int, float)) and sync_offset > 0.08:
+            blockers.append(f'Camera/LiDAR synchronization offset is {sync_offset:.3f}s (>0.080s).')
 
         if self.cloud_stats['/human_tracking/camera_guided_target_points'].max_width == 0:
             blockers.append('/human_tracking/camera_guided_target_points is empty.')

@@ -18,6 +18,7 @@ selected_human_target_tracker_node:
     debug_topic: /human_tracking/target_tracker_debug
 
     base_frame: base_link
+    tracking_frame: track_robot_center
     lidar_frame: rslidar
     camera_frame: zed_left_camera_optical_frame
     map_frame: map
@@ -35,12 +36,28 @@ selected_human_target_tracker_node:
     direct_camera_lidar_optical_qw: 0.5
 
     camera_visible_min_confidence: 0.35
-    min_association_score: 0.55
-    association_confirm_frames: 2
+    min_association_score: 0.65
+    initial_association_score_margin: 0.12
+    relink_score_margin: 0.15
+    max_association_hypotheses: 3
+    initial_anchor_min_quality: 0.35
+    initial_anchor_max_age_sec: 0.35
+    initial_anchor_xy_gate_m: 1.0
+    initial_anchor_range_gate_m: 0.75
+    initial_association_confirm_frames: 3
+    selected_failure_frames_before_switch: 2
+    association_switch_confirm_frames: 3
+    association_switch_score_margin: 0.20
+    association_switch_min_score: 0.72
+    association_switch_cooldown_sec: 1.5
     max_projection_center_error_px: 220.0
     camera_target_timeout_sec: 1.0
     input_timeout_sec: 1.0
-    publish_rate: 10.0
+    max_sync_offset_sec: 0.08
+    max_sync_age_sec: 0.20
+    sync_queue_size: 30
+    cloud_queue_size: 6
+    publish_rate: 15.0
     debug_rate: 2.0
 
     min_range: 0.5
@@ -56,6 +73,9 @@ selected_human_target_tracker_node:
     camera_guided_roi_y_max_fraction: 0.70
     camera_guided_depth_percentile_low: 20.0
     camera_guided_depth_percentile_high: 55.0
+    camera_guided_depth_bin_m: 0.15
+    camera_guided_depth_prediction_gate_m: 0.60
+    camera_guided_component_radius_m: 0.45
     min_keypoint_confidence: 0.35
     camera_guided_max_depth_spread: 1.25
     camera_guided_prediction_gate_m: 1.5
@@ -67,10 +87,12 @@ selected_human_target_tracker_node:
     camera_anchor_xy_variance: 0.08
     tracklet_xy_variance: 0.18
     z_variance: 0.35
+    height_process_variance_per_sec: 0.02
+    height_max_residual_m: 0.80
     max_camera_anchor_nis_xy: 25.0
     max_tracklet_nis_xy: 9.21
     prediction_gate_radius_m: 1.2
-    max_prediction_gate_radius_m: 2.0
+    max_prediction_gate_radius_m: 1.2
 
     # Camera-invisible continuation accepts the exact selected ID first. A
     # replacement ID must remain locally compatible for three updates.
@@ -78,7 +100,7 @@ selected_human_target_tracker_node:
     selected_relink_confirm_frames: 3
     selected_relink_timeout_sec: 1.5
     selected_relink_absolute_gate_m: 1.2
-    selected_relink_min_score: 0.55
+    selected_relink_min_score: 0.72
 
     # Prediction is a short bridge, not a substitute for LiDAR evidence.
     prediction_velocity_damping_delay_sec: 0.4
@@ -87,4 +109,4 @@ selected_human_target_tracker_node:
     max_target_speed_mps: 2.2
 
     # Full-cloud camera projection runs only on fresh cloud callbacks.
-    camera_projection_max_rate_hz: 10.0
+    camera_projection_max_rate_hz: 15.0

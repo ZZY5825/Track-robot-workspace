@@ -111,7 +111,7 @@ cover at least `0.90` of the 45.0-second source-time target.
 Compare the three reports against the one immutable manifest they reference:
 
     ros2 run track_robot_semantic_search semantic_search_compare_reports \
-      --manifest rosbags/semantic_search/manifests/legacy/human_tracking_lidar_20260706_150711.json \
+      --manifest artifacts/semantic_search/manifests/legacy/human_tracking_lidar_20260706_150711.json \
       /tmp/semantic_search_rate_05.json \
       /tmp/semantic_search_rate_10.json \
       /tmp/semantic_search_rate_20.json
@@ -145,4 +145,4 @@ that exact threshold; uncalibrated production profiles stay fail-closed.
 and requires byte-equivalent canonical JSON. The checked synthetic fixture
 proves deterministic ID, lifecycle, assignment and task-overlay mechanics; it
 does not replace the annotated pilot bag or physical resource evidence. Follow
-`rosbags/semantic_search/phase2_recording_guide.md` for field collection.
+`docs/guides/semantic-search/phase2-recording-and-evaluation.md` for field collection.

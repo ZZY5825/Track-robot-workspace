@@ -5,6 +5,13 @@ imu_lio_adapter:
     output_frame_id: rslidar
     # Convention: output stamp = input stamp - time_offset_sec.
     time_offset_sec: 0.0
+    # First-pass Point-LIO noise gate from stationary rqt_plot observations.
+    # Values inside +/- angular_velocity_deadband_radps are treated as gyro
+    # zero-rate noise. Values inside +/- linear_acceleration_deadband_mps2 are
+    # treated as per-axis accelerometer noise, but this does not remove gravity
+    # or larger static accel offsets from sensor tilt/bias.
+    angular_velocity_deadband_radps: 0.015
+    linear_acceleration_deadband_mps2: 0.02
     # Plan A convention: vector_in_lidar = rotation_matrix * vector_in_raw_imu.
     # This is R_lidar_imu, row-major. It must be a proper rotation with
     # determinant +1. The naive observed X/Y swap [0,1,0; 1,0,0; 0,0,1]

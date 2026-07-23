@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>semantic_search_discovery</transport_id>
+      <type>UDPv4</type>
+      <maxInitialPeersRange>64</maxInitialPeersRange>
+    </transport_descriptor>
+  </transport_descriptors>
+
+  <participant profile_name="semantic_search_participant" is_default_profile="true">
+    <rtps>
+      <!-- Keep Fast DDS builtin transports enabled, including shared memory. -->
+      <useBuiltinTransports>true</useBuiltinTransports>
+      <userTransports>
+        <transport_id>semantic_search_discovery</transport_id>
+      </userTransports>
+      <builtin>
+        <discovery_config>
+          <discoveryProtocol>SIMPLE</discoveryProtocol>
+        </discovery_config>
+      </builtin>
+    </rtps>
+  </participant>
+</profiles>

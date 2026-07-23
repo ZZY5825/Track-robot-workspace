@@ -1,7 +1,7 @@
 # Human Tracking Fusion Refactor Log
 
 Date: 2026-07-09
-Workspace: `~/track_robot_ws`
+Workspace: `/home/track-robot/track_robot_ws`
 ROS distribution: ROS2 Foxy
 Platform: Jetson AGX
 Tracking frame: `base_link`
@@ -157,7 +157,7 @@ The diagnostic now reads:
 
 The rosbag test guide was also updated:
 
-`rosbags/human_tracking_rosbag_test_guide.md`
+`docs/guides/human-tracking/rosbag-replay.md`
 
 ## 4. Current Data Flow
 
@@ -843,3 +843,260 @@ The next milestone is controlled validation and tuning:
 
 The safety rule remains unchanged: losing the target is preferable to silently
 switching identity.
+
+## 16. Latest Selected-Target Stability Fix
+
+### 16.1 Observed test behavior
+
+User rosbag testing after the C++ refactor showed:
+
+- `lidar_tracklet_markers` stayed smooth and high-rate.
+- `selected_tracklet_marker` tracked the human well through much of the bag.
+- `selected_target_marker` disappeared near the last quarter of the recording.
+- The failure often happened after the person left the camera view for a while,
+  stopped, turned, or crossed near another generic LiDAR tracklet.
+- At the beginning of the recording, nearby clutter tracklets could also make
+  initial selection ambiguous.
+
+### 16.2 Root cause identified
+
+The strongest code-level root cause was in
+`camera_target_lock_node.py`.
+
+The node used `target_memory_sec = 8.0` for two different meanings:
+
+- short-term camera bbox/YOLO reacquisition memory
+- logical target identity lifetime
+
+After the target was outside the camera for more than eight seconds, the node
+set the target lock inactive. The selected-target C++ node then received a
+non-locked or candidate state and cleared:
+
+- selected LiDAR tracklet ID
+- Kalman filter state
+- selected marker state
+- LiDAR-only continuation state
+
+For a recording where the final camera-invisible segment lasts longer than
+eight seconds, this exactly matches the selected marker disappearing in the
+last part of the bag. This is not mainly a Kalman-filter failure.
+
+### 16.3 Camera lock behavior change
+
+`camera_target_lock_node.py` now separates logical identity from camera bbox
+reacquisition.
+
+New behavior:
+
+- A gesture-selected logical target stays locked after camera dropout.
+- `target_memory_sec` only expires predicted bbox reacquisition quality.
+- The target is cleared by the stop gesture or by an explicit operator reset.
+- The reset service is:
+
+```text
+/human_tracking/reset_target
+```
+
+Reset command:
+
+```bash
+ros2 service call /human_tracking/reset_target std_srvs/srv/Trigger '{}'
+```
+
+New debug fields:
+
+- `identity_persistent`
+- `bbox_reacquire_expired`
+- `lock_age_sec`
+- `unlock_reason`
+
+Configuration change:
+
+```yaml
+camera_target_lock_node:
+  ros__parameters:
+    reset_service: /human_tracking/reset_target
+```
+
+### 16.4 Selected-tracklet association change
+
+`selected_human_target_tracker_node.cpp` now avoids selecting or switching a
+LiDAR tracklet from 2D projection alone.
+
+Initial selection now requires:
+
+- camera target is logically locked
+- camera-guided 3D anchor exists
+- anchor quality is at least `initial_anchor_min_quality`
+- anchor age is less than `initial_anchor_max_age_sec`
+- candidate tracklet is close to the anchor in XY
+- candidate tracklet range matches the anchor range
+- the same candidate wins for `initial_association_confirm_frames`
+
+This directly targets the startup ambiguity case where two tracklets are close
+in image direction but not close in depth.
+
+When a selected tracklet already exists, the node now uses hysteresis:
+
+- keep the current selected ID if it still passes the depth-anchor gates
+- tolerate a short selected-ID failure window
+- require a challenger to beat the current tracklet by score margin
+- require several consecutive challenger wins
+- enforce a switch cooldown
+
+This is designed for the case where the human crosses near another tracklet or
+the generic LiDAR manager briefly changes IDs.
+
+### 16.5 New selected-target parameters
+
+Added to `selected_target_tracker.yaml`:
+
+| Parameter | Default | Purpose |
+|---|---:|---|
+| `initial_anchor_min_quality` | `0.35` | Minimum camera-guided 3D anchor quality |
+| `initial_anchor_max_age_sec` | `0.35` | Maximum age for using camera-guided anchor |
+| `initial_anchor_xy_gate_m` | `1.0` | XY distance gate between anchor and tracklet |
+| `initial_anchor_range_gate_m` | `0.75` | Radial distance gate between anchor and tracklet |
+| `initial_association_confirm_frames` | `3` | Consecutive frames required for initial bind |
+| `selected_failure_frames_before_switch` | `2` | Grace frames before considering a switch |
+| `association_switch_confirm_frames` | `3` | Consecutive frames required for ID switch |
+| `association_switch_score_margin` | `0.20` | Challenger must exceed current by this margin |
+| `association_switch_min_score` | `0.60` | Minimum score for a challenger |
+| `association_switch_cooldown_sec` | `1.5` | Minimum time between confirmed switches |
+
+### 16.6 Kalman filter currently used
+
+The selected-target node uses a linear constant-velocity Kalman filter in
+`base_link`.
+
+State:
+
+```text
+[x, y, z, vx, vy, vz]
+```
+
+Prediction:
+
+```text
+x = x + vx * dt
+y = y + vy * dt
+z = z + vz * dt
+```
+
+Measurement types:
+
+- camera-guided LiDAR anchor
+- selected LiDAR tracklet center
+- prediction only during short gaps
+
+Measurement rejection uses XY normalized innovation squared (NIS). This keeps a
+large residual from immediately dragging the selected target to a wrong
+cluster.
+
+### 16.7 Build verification
+
+After these changes, the affected packages rebuilt successfully:
+
+```bash
+cd ~/track_robot_ws
+source /opt/ros/foxy/setup.bash
+colcon build \
+  --packages-select track_robot_interfaces track_robot_lidar_tracking track_robot_perception \
+  --symlink-install
+```
+
+`camera_target_lock_node.py` also passed Python compile validation.
+
+Runtime reset service smoke test previously passed:
+
+```text
+success=True
+message='Cleared logical target -1'
+```
+
+### 16.8 What still needs rosbag validation
+
+This fix has been compiled, but it still needs behavioral validation on the
+recorded bags.
+
+Check these fields while replaying:
+
+```bash
+ros2 topic echo /human_tracking/camera_target_debug
+ros2 topic echo /human_tracking/target_tracker_debug
+```
+
+Expected signs of improvement:
+
+- `identity_persistent` stays true after camera dropout.
+- `lock_state` should not fall back to candidate only because eight seconds
+  passed.
+- `selected_lidar_tracklet_id` should not reset when camera is absent.
+- `target_clear_reason` should stay `none` unless stop gesture or reset is
+  used.
+- `switch_reject_reason` should explain why a nearby tracklet was not accepted.
+- If the selected tracklet truly disappears, the state should decay to
+  prediction or lost instead of switching to clutter.
+
+## 17. Legacy Human-Tracking Stack Removed
+
+After rosbag `145900` showed the C++ selected-tracklet pipeline working
+robustly, the previous Python human-tracking fusion stack was removed from the
+active source package.
+
+Removed source files:
+
+```text
+track_robot_perception/lidar_human_cluster_node.py
+track_robot_perception/target_fusion_node.py
+track_robot_perception/camera_lidar_tracklet_association_node.py
+```
+
+Removed launch files:
+
+```text
+launch/human_lidar_tracking.launch.py
+launch/human_target_fusion.launch.py
+```
+
+Removed configs:
+
+```text
+config/lidar_human_candidates.yaml
+config/target_fusion.yaml
+config/camera_lidar_tracklet_association.yaml
+```
+
+Removed ROS2 console scripts:
+
+```text
+lidar_human_cluster_node
+target_fusion_node
+camera_lidar_tracklet_association_node
+```
+
+The active human-tracking stack is now:
+
+```text
+human_image_tracker_node
+gesture_trigger_node
+camera_target_lock_node
+lidar_tracklet_manager_node
+selected_human_target_tracker_node
+human_tracking_pipeline_diagnostic
+```
+
+The RViz config now uses the current C++ topics:
+
+```text
+/human_tracking/lidar_tracklet_markers
+/human_tracking/lidar_candidate_cluster_markers
+/human_tracking/selected_tracklet_marker
+/human_tracking/selected_target_marker
+/human_tracking/target_prediction_gate_marker
+/human_tracking/camera_guided_target_points
+/human_tracking/fused_target_marker
+```
+
+The old cylinder/search-gate visualization topics are no longer part of the
+current human-tracking path.

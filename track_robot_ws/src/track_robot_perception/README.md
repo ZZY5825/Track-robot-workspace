@@ -207,24 +207,6 @@ LiDAR clustering:
 LiDAR geometry -> independently discover 3D object candidates
 ```
 
-The baseline performs:
-
-```text
-PointCloud2
--> finite/range/ROI filtering
--> simple ground-height removal
--> voxel downsampling
--> SciPy cKDTree DBSCAN or Euclidean clustering
--> cluster shape filtering
--> 3D boxes, centroids, labels, and optional colored cloud
-```
-
-No additional heavy Python dependency is required. SciPy is already installed
-on the Jetson. The node implements both `dbscan` and `euclidean` methods with
-`scipy.spatial.cKDTree`.
-
-Outputs:
-
 ```text
 /lidar_cluster_markers   visualization_msgs/MarkerArray
 /lidar_clusters_debug    std_msgs/String JSON

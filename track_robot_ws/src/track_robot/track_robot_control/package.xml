@@ -12,7 +12,12 @@
   <!-- 先把常用依赖写上，后面写 node 一般都会用 -->
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>geometry_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>bunker_msgs</depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <!-- 未来如果要用你自己的 msg/srv，就启用 -->
   <depend>track_robot_interfaces</depend>

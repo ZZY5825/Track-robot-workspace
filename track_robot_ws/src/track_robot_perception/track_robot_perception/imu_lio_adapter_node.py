@@ -36,6 +36,16 @@ def _mat_vec_mul(matrix: List[float], vector: Iterable[float]) -> List[float]:
     ]
 
 
+def _apply_deadband(value: float, deadband: float) -> float:
+    if deadband > 0.0 and abs(value) <= deadband:
+        return 0.0
+    return value
+
+
+def _apply_vector_deadband(vector: Iterable[float], deadband: float) -> List[float]:
+    return [_apply_deadband(value, deadband) for value in vector]
+
+
 def _rotate_covariance(matrix: List[float], covariance: Iterable[float]) -> List[float]:
     cov = list(covariance)
     if len(cov) != 9 or cov[0] < 0.0 or all(abs(value) < 1.0e-18 for value in cov):
@@ -86,6 +96,8 @@ class ImuLioAdapterNode(Node):
         self.declare_parameter("output_topic", "/imu/data_lio")
         self.declare_parameter("output_frame_id", "rslidar")
         self.declare_parameter("time_offset_sec", 0.0)
+        self.declare_parameter("angular_velocity_deadband_radps", 0.0)
+        self.declare_parameter("linear_acceleration_deadband_mps2", 0.0)
         self.declare_parameter(
             "rotation_matrix",
             [1.0, 0.0, 0.0,
@@ -97,6 +109,14 @@ class ImuLioAdapterNode(Node):
         self.output_topic = str(self.get_parameter("output_topic").value)
         self.output_frame_id = str(self.get_parameter("output_frame_id").value)
         self.time_offset_sec = float(self.get_parameter("time_offset_sec").value)
+        self.angular_velocity_deadband_radps = max(
+            0.0,
+            float(self.get_parameter("angular_velocity_deadband_radps").value),
+        )
+        self.linear_acceleration_deadband_mps2 = max(
+            0.0,
+            float(self.get_parameter("linear_acceleration_deadband_mps2").value),
+        )
         self.rotation_matrix = [
             float(value) for value in self.get_parameter("rotation_matrix").value
         ]
@@ -120,6 +140,13 @@ class ImuLioAdapterNode(Node):
                 self.output_topic,
                 self.output_frame_id,
                 self.time_offset_sec,
+            )
+        )
+        self.get_logger().info(
+            "IMU LIO adapter deadbands: angular_velocity={:.6f} rad/s, "
+            "linear_acceleration={:.6f} m/s^2".format(
+                self.angular_velocity_deadband_radps,
+                self.linear_acceleration_deadband_mps2,
             )
         )
         if self.rotation_matrix == [
@@ -150,6 +177,9 @@ class ImuLioAdapterNode(Node):
                 message.linear_acceleration.z,
             ],
         )
+        acc = _apply_vector_deadband(
+            acc, self.linear_acceleration_deadband_mps2
+        )
         out.linear_acceleration.x = acc[0]
         out.linear_acceleration.y = acc[1]
         out.linear_acceleration.z = acc[2]
@@ -164,6 +194,9 @@ class ImuLioAdapterNode(Node):
                 message.angular_velocity.y,
                 message.angular_velocity.z,
             ],
+        )
+        gyro = _apply_vector_deadband(
+            gyro, self.angular_velocity_deadband_radps
         )
         out.angular_velocity.x = gyro[0]
         out.angular_velocity.y = gyro[1]

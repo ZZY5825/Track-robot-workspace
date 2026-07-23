@@ -303,7 +303,7 @@ install(
 install(FILES README.md DESTINATION share/${PROJECT_NAME})
 install(
   FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../rosbags/semantic_search/reports/phase2_association_calibration_2026-07-16.json
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../artifacts/semantic_search/reports/phase2_association_calibration_2026-07-16.json
   DESTINATION share/${PROJECT_NAME}/reports
 )
 

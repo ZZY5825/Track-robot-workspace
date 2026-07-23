@@ -1,76 +1,84 @@
-# Phase 4 Camera-Initialized LiDAR Target Tracking
+# Phase 4 Camera-Initialized LiDAR Tracklet Tracking
 
 Phase 4 no longer tries to classify humans from LiDAR alone. Camera and gesture
-locking provide identity; LiDAR estimates and maintains the locked target's 3D
-position.
+locking provide identity. LiDAR provides 3D geometry, persistent tracklets, and
+short camera-out-of-view continuation.
+
+The old Python `lidar_human_cluster_node`, `target_fusion_node`, and Python
+camera-LiDAR association node were removed from the active human-tracking
+source path. The current implementation is the C++ tracklet pipeline.
 
 ## Data Flow
 
 ```text
 /human_tracking/camera_target
+/human_tracking/detections
 /zed/zed_node/left/camera_info
 /rslidar_points
 TF or configured fallback: rslidar -> zed_left_camera_optical_frame
 TF or configured fallback: rslidar -> base_link
 TF when available: base_link -> map
-  -> lidar_human_cluster_node
+  -> lidar_tracklet_manager_node
+  -> selected_human_target_tracker_node
   -> /human_tracking/fused_target_state
   -> /human_tracking/target_state
 ```
 
-When the camera target is visible, LiDAR points are projected into the image and
-points inside the locked bbox initialize/correct the 3D track. The selected ROI
-uses foreground depth filtering and local clustering. When the camera target is
-not visible, the tracker predicts target position and searches only inside a
-local range-adaptive gate using the last camera-confirmed LiDAR target cluster
-as identity memory.
+The tracklet manager publishes generic LiDAR candidates and persistent LiDAR
+tracklets. It does not decide which cluster is the human target.
+
+The selected-target tracker binds the gesture-selected camera target to one
+LiDAR tracklet using camera-guided 3D anchor points. When the camera target is
+not visible, it continues only the selected LiDAR tracklet and uses a
+constant-velocity Kalman filter for short prediction gaps.
 
 ## Outputs
 
 ```text
-/human_tracking/target_lidar_points       sensor_msgs/PointCloud2
-/human_tracking/target_search_gate_marker visualization_msgs/MarkerArray
-/human_tracking/fused_target_state        track_robot_interfaces/TargetState
-/human_tracking/target_state              track_robot_interfaces/TargetState
-/human_tracking/fused_target_marker       visualization_msgs/MarkerArray
-/human_tracking/lidar_target_debug        std_msgs/String JSON
+/human_tracking/lidar_candidate_clusters        track_robot_interfaces/LidarClusterArray
+/human_tracking/lidar_tracklets                 track_robot_interfaces/LidarTrackletArray
+/human_tracking/selected_lidar_tracklet         track_robot_interfaces/LidarTracklet
+/human_tracking/camera_guided_target_points     sensor_msgs/PointCloud2
+/human_tracking/fused_target_state              track_robot_interfaces/TargetState
+/human_tracking/target_state                    track_robot_interfaces/TargetState
+/human_tracking/lidar_tracklet_markers          visualization_msgs/MarkerArray
+/human_tracking/lidar_candidate_cluster_markers visualization_msgs/MarkerArray
+/human_tracking/selected_tracklet_marker        visualization_msgs/MarkerArray
+/human_tracking/selected_target_marker          visualization_msgs/MarkerArray
+/human_tracking/target_prediction_gate_marker   visualization_msgs/MarkerArray
+/human_tracking/fused_target_marker             visualization_msgs/MarkerArray
+/human_tracking/target_tracker_debug            std_msgs/String JSON
 ```
-
-The legacy `/human_tracking/lidar_clusters` and
-`/human_tracking/lidar_human_candidates` topics are not used as the tracking
-source. After target association succeeds, they publish one selected target
-cluster for compatibility/debug visualization.
 
 ## Current Hardware Assumptions
 
 The live validation setup uses `base_link` as the RViz/output frame. If TF is
-missing, the tracker can fall back to these configured static extrinsics:
+missing, the tracker can fall back to configured static extrinsics.
+
+Current expected local frames:
 
 ```text
-base_link -> rslidar
-x=0.0, y=0.0, z=0.70
-yaw=0.0, pitch=0.0, roll=0.0
-
-zed_camera_link -> rslidar
-x=-0.27, y=0.0, z=0.08
-yaw=0.0, pitch=0.0, roll=0.0
+base_link
+rslidar
+zed_left_camera_optical_frame
 ```
 
 ## Run
 
-Camera-only lock plus LiDAR target tracking:
+Camera-only lock plus LiDAR tracklet tracking:
 
 ```bash
 cd ~/track_robot_ws
+source /opt/ros/foxy/setup.bash
 source install/setup.bash
 ros2 launch track_robot_perception human_tracking_validation.launch.py
 ```
 
-LiDAR target tracker only, assuming `/human_tracking/camera_target` already
-exists:
+LiDAR tracklet and selected-target tracker only, assuming
+`/human_tracking/camera_target` already exists:
 
 ```bash
-ros2 launch track_robot_perception human_lidar_tracking.launch.py
+ros2 launch track_robot_perception camera_lidar_tracklet_tracking.launch.py
 ```
 
 ## RViz
@@ -80,26 +88,31 @@ Use:
 ```text
 Fixed Frame: base_link
 PointCloud2: /rslidar_points
-PointCloud2: /human_tracking/target_lidar_points
-MarkerArray: /human_tracking/target_search_gate_marker
+PointCloud2: /human_tracking/camera_guided_target_points
+MarkerArray: /human_tracking/lidar_tracklet_markers
+MarkerArray: /human_tracking/lidar_candidate_cluster_markers
+MarkerArray: /human_tracking/selected_tracklet_marker
+MarkerArray: /human_tracking/selected_target_marker
+MarkerArray: /human_tracking/target_prediction_gate_marker
 MarkerArray: /human_tracking/fused_target_marker
 ```
 
-For `/human_tracking/target_lidar_points`, use the `RGB8` or `RGB` color
-transformer.
+For `/human_tracking/camera_guided_target_points`, use the `RGB8` or `RGB`
+color transformer.
 
 ## Debug
 
 ```bash
-ros2 topic echo /human_tracking/lidar_target_debug
+ros2 topic echo /human_tracking/target_tracker_debug
 ros2 topic echo /human_tracking/fused_target_state
-ros2 topic hz /human_tracking/target_lidar_points
+ros2 topic echo /human_tracking/selected_lidar_tracklet
+ros2 topic hz /human_tracking/camera_guided_target_points
 ```
 
 Use `--full-length` when inspecting the JSON debug message:
 
 ```bash
-ros2 topic echo /human_tracking/lidar_target_debug --full-length
+ros2 topic echo /human_tracking/target_tracker_debug --full-length
 ```
 
 Important `TargetState.track_state` values:
@@ -113,42 +126,36 @@ Important `TargetState.track_state` values:
 5 TARGET_LOST
 ```
 
-Important debug fields for camera-to-LiDAR initialization:
+Important selected-target debug fields:
 
 ```text
-camera_init_status
-projection_status
-projection_in_front_points
-projection_roi_points_raw
-projection_roi_points_depth_filtered
-camera_bbox
-projected_uv_range
-```
-
-Important debug fields for LiDAR-only continuation:
-
-```text
-lidar_only_candidate_count
-lidar_only_selected_score
-lidar_only_reject_reason
-allowed_lidar_only_jump
-last_measurement_base
-last_target_z_range
+state
+camera_target_id
+selected_lidar_tracklet_id
+selected_tracklet_present
+selected_tracklet_score
+challenger_tracklet_id
+challenger_score
+switch_reject_reason
+target_clear_reason
+camera_guided_status
+camera_guided_points
+camera_guided_anchor_quality
+kalman_nis_xy
+measurement_source
+rejection_reason
+processing_ms
 ```
 
 ## Tuning Order
 
-1. Increase `bbox_padding_px` if too few LiDAR points land inside the camera bbox.
-2. Lower `min_projected_points` for sparse/far targets.
-3. If camera-visible tracking works but LiDAR-only drops the target, inspect
-   `lidar_only_reject_reason`.
-4. Increase `near_search_radius`, `mid_search_radius`, or `far_search_radius` if
-   LiDAR-only recovery has too few local points.
-5. Increase `lidar_only_max_jump_m` or `lidar_only_z_margin` if a real target is
-   rejected during normal walking.
-6. Lower `lidar_only_min_score` only after checking that wrong clutter is not
-   being accepted.
-7. Tune `confidence_prediction_decay_per_sec` after the position estimate is stable.
+1. Validate generic person tracklets first with `/human_tracking/lidar_tracklet_markers`.
+2. Validate camera-guided anchor points with `/human_tracking/camera_guided_target_points`.
+3. If initial selected ID is wrong, tune anchor gates before projection scores.
+4. If selected ID flickers near clutter, tune switch hysteresis and relink gates.
+5. If camera-out-of-view tracking drops too soon, inspect selected ID continuity
+   before increasing prediction timeout.
+6. Prefer `TARGET_LOST` over switching to clutter.
 
 ## Validation Scenarios
 
@@ -159,4 +166,5 @@ target far from robot with sparse returns
 target exits camera FOV but remains visible to 360-degree LiDAR
 target walks near desks or lab equipment
 multiple clutter objects near predicted target path
+target stops and turns near another tracklet
 ```

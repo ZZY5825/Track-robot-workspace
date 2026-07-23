@@ -68,6 +68,20 @@ def field_by_name(cloud: PointCloud2, name: str) -> Optional[PointField]:
     return None
 
 
+def contiguous_point_bytes(cloud: PointCloud2) -> bytes:
+    expected_row_step = cloud.width * cloud.point_step
+    if cloud.row_step == expected_row_step:
+        return bytes(cloud.data[:cloud.height * cloud.row_step])
+
+    output = bytearray(cloud.height * expected_row_step)
+    for row in range(cloud.height):
+        input_start = row * cloud.row_step
+        output_start = row * expected_row_step
+        output[output_start:output_start + expected_row_step] = (
+            cloud.data[input_start:input_start + expected_row_step])
+    return bytes(output)
+
+
 def cloud_field_array(cloud: PointCloud2, name: str) -> Optional[np.ndarray]:
     field = field_by_name(cloud, name)
     if field is None or field.datatype not in POINT_FIELD_TO_DTYPE:
@@ -80,8 +94,9 @@ def cloud_field_array(cloud: PointCloud2, name: str) -> Optional[np.ndarray]:
         'offsets': [field.offset],
         'itemsize': cloud.point_step,
     })
+    raw_points = contiguous_point_bytes(cloud)
     return np.frombuffer(
-        cloud.data,
+        raw_points,
         dtype=dtype,
         count=cloud.width * cloud.height)[name]
 
@@ -100,8 +115,9 @@ def cloud_xyz_intensity(cloud: PointCloud2) -> Tuple[np.ndarray, np.ndarray]:
         'offsets': [field.offset for field in fields],
         'itemsize': cloud.point_step,
     })
+    raw_points = contiguous_point_bytes(cloud)
     values = np.frombuffer(
-        cloud.data, dtype=dtype, count=cloud.width * cloud.height)
+        raw_points, dtype=dtype, count=cloud.width * cloud.height)
     points = np.column_stack(
         (values['x'], values['y'], values['z'])).astype(np.float32)
 

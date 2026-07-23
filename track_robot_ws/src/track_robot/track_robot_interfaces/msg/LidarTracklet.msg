@@ -1,4 +1,7 @@
 int32 tracklet_id
+# Position, velocity, bounds, and covariance use LidarTrackletArray.header.frame_id.
+geometry_msgs/Point position
+# Deprecated compatibility field. New code must use position.
 geometry_msgs/Point position_base
 bool position_map_valid
 geometry_msgs/Point position_map
@@ -16,3 +19,6 @@ uint32 hit_count
 uint32 miss_count
 bool confirmed
 bool active
+float32 observation_quality
+float32[4] position_covariance_xy
+builtin_interfaces/Time last_measurement_stamp

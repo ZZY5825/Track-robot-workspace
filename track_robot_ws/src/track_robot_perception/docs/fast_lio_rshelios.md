@@ -49,7 +49,8 @@ source /opt/ros/foxy/setup.bash
 source install/setup.bash
 sudo -v
 ROS_DOMAIN_ID=20 PYTHONWARNINGS=ignore::DeprecationWarning \
-  ros2 launch track_robot_bringup rslidar_with_tf.launch.py configure_network:=false
+  ros2 launch track_robot_sensor_bringup rslidar_with_tf.launch.py \
+  configure_network:=false
 ```
 
 Terminal 3: after `/imu/data_raw` and `/rslidar_points` are publishing, start

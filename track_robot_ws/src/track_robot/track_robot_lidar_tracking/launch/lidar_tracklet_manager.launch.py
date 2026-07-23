@@ -17,6 +17,7 @@ def generate_launch_description():
             'lidar_topic': LaunchConfiguration('lidar_topic'),
             'lidar_qos_reliability': LaunchConfiguration('lidar_qos_reliability'),
             'tracking_frame': LaunchConfiguration('tracking_frame'),
+            'base_frame': LaunchConfiguration('base_frame'),
             'map_frame': LaunchConfiguration('map_frame'),
         }],
     )
@@ -32,6 +33,7 @@ def generate_launch_description():
         DeclareLaunchArgument('lidar_topic', default_value='/rslidar_points'),
         DeclareLaunchArgument('lidar_qos_reliability', default_value='reliable'),
         DeclareLaunchArgument('tracking_frame', default_value='base_link'),
+        DeclareLaunchArgument('base_frame', default_value='base_link'),
         DeclareLaunchArgument('map_frame', default_value='map'),
         manager,
     ])
