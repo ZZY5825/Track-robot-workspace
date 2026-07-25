@@ -115,6 +115,13 @@ def build_parser():
         '--workspace-root', default=_default_workspace_root(),
         help=argparse.SUPPRESS)
 
+    visualize = commands.add_parser(
+        'visualize', help='open the passive RViz test console in foreground')
+    visualize.add_argument('stage', choices=('phase1', 'phase2'))
+    visualize.add_argument(
+        '--workspace-root', default=_default_workspace_root(),
+        help=argparse.SUPPRESS)
+
     test = commands.add_parser(
         'test', help='delegate a bounded live test to Task 5 support')
     _add_stage_options(test, hardware=True, stages=('phase1', 'phase2'))
@@ -680,6 +687,26 @@ def main(
         except OSError as error:
             stderr.write('Failed to execute semantic_search_query: {}\n'.format(
                 error))
+            return 4
+
+    if args.command == 'visualize':
+        paths = default_workspace_paths(args.workspace_root)
+        environment = _environment(base_environment, paths)
+        command = [
+            'ros2',
+            'launch',
+            'track_robot_bringup',
+            'semantic_search_visualization.launch.py',
+            'stage:={}'.format(args.stage),
+        ]
+        exec_api = os_api or os
+        try:
+            result = exec_api.execvpe(command[0], command, environment)
+            return int(result) if result is not None else 0
+        except OSError as error:
+            stderr.write(
+                'Failed to execute semantic-search visualization: {}\n'.format(
+                    error))
             return 4
 
     paths = _paths_for(args)

@@ -19,6 +19,8 @@ from track_robot_bringup.readiness import CheckResult, CheckStatus, ReadinessRep
     ['status', 'phase1'],
     ['status', 'phase2'],
     ['query', 'blue chair'],
+    ['visualize', 'phase1'],
+    ['visualize', 'phase2'],
     ['test', 'phase1', 'blue chair'],
     ['stop'],
 ])
@@ -599,6 +601,40 @@ def test_query_execs_existing_portal_with_managed_domain():
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
     assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
         '/config/fastdds_semantic_search.xml')
+
+
+def test_visualize_execs_foreground_launch_with_managed_domain():
+    calls = []
+
+    class OsApi:
+        def execvpe(self, executable, argv, environment):
+            calls.append((executable, argv, environment))
+            return 23
+
+    code = control_cli.main(
+        ['visualize', 'phase2'],
+        os_api=OsApi(),
+        environ={'PATH': '/bin', 'ROS_DOMAIN_ID': '99'},
+    )
+
+    assert code == 23
+    assert calls[0][0:2] == (
+        'ros2',
+        [
+            'ros2', 'launch', 'track_robot_bringup',
+            'semantic_search_visualization.launch.py',
+            'stage:=phase2',
+        ],
+    )
+    assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
+    assert calls[0][2]['PATH'] == '/bin'
+    assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
+        '/config/fastdds_semantic_search.xml')
+
+
+def test_visualize_rejects_unknown_stage():
+    with pytest.raises(SystemExit):
+        control_cli.build_parser().parse_args(['visualize', 'sensors'])
 
 
 def test_test_command_fails_clearly_until_task5_exists(monkeypatch):

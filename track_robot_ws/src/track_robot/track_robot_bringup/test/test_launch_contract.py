@@ -13,6 +13,11 @@ CAMERA_LAUNCH = LAUNCH_ROOT / 'semantic_search_camera.launch.py'
 PLATFORM_LAUNCH = LAUNCH_ROOT / 'semantic_search_platform.launch.py'
 SENSORS_LAUNCH = LAUNCH_ROOT / 'semantic_search_sensors.launch.py'
 LIVE_LAUNCH = LAUNCH_ROOT / 'semantic_search_live.launch.py'
+VISUALIZATION_LAUNCH = (
+    LAUNCH_ROOT / 'semantic_search_visualization.launch.py')
+RVIZ_ROOT = PACKAGE_ROOT / 'rviz'
+PHASE1_RVIZ = RVIZ_ROOT / 'semantic_search_phase1.rviz'
+PHASE2_RVIZ = RVIZ_ROOT / 'semantic_search_phase2.rviz'
 RSLIDAR_IMPLEMENTATION = (
     PACKAGE_ROOT.parent
     / 'track_robot_sensor_bringup'
@@ -186,6 +191,39 @@ def test_live_launch_exposes_public_contract_and_composes_all_phases():
     ]
     assert source.index("if stage == 'phase2':") < source.index(
         "if stage in ('phase1', 'phase2'):")
+
+
+def test_visualization_launch_is_foreground_passive_and_closes_with_rviz():
+    source = _source(VISUALIZATION_LAUNCH)
+
+    assert 'semantic_search_live_overlay' in source
+    assert "package='rviz2'" in source
+    assert "executable='rviz2'" in source
+    assert 'semantic_search_phase1.rviz' in source
+    assert 'semantic_search_phase2.rviz' in source
+    assert 'OnProcessExit' in source
+    assert 'EmitEvent' in source
+    assert 'Shutdown' in source
+    for forbidden in ('cmd_vel', 'controller', 'planner'):
+        assert forbidden not in source
+
+
+def test_saved_rviz_views_use_live_topics_and_custom_panel():
+    phase1 = _source(PHASE1_RVIZ)
+    phase2 = _source(PHASE2_RVIZ)
+    panel = (
+        'track_robot_semantic_search_rviz_plugins/'
+        'SemanticSearchPanel'
+    )
+
+    assert panel in phase1
+    assert panel in phase2
+    assert '/semantic_search/overlay_image' in phase1
+    assert 'zed_left_camera_optical_frame' in phase1
+    assert '/semantic_search/overlay_image' in phase2
+    assert '/rslidar_points' in phase2
+    assert '/semantic_memory/markers' in phase2
+    assert 'Fixed Frame: odom' in phase2
 
 
 def test_camera_launch_is_opt_in_and_disables_zed_owned_tf_edges():

@@ -17,6 +17,7 @@
   <!-- 后面一般还会用到 -->
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>rviz2</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
@@ -28,6 +29,7 @@
   <exec_depend>track_robot_semantic_search</exec_depend>
   <exec_depend>track_robot_lidar_tracking</exec_depend>
   <exec_depend>track_robot_semantic_memory</exec_depend>
+  <exec_depend>track_robot_semantic_search_rviz_plugins</exec_depend>
   <exec_depend>bunker_base</exec_depend>
   <exec_depend>zed_wrapper</exec_depend>
   <exec_depend>track_robot_core</exec_depend>

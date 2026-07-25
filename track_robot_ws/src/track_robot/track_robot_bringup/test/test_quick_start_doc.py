@@ -26,7 +26,8 @@ def test_quick_start_documents_fixed_domain_and_all_control_commands():
     text = _guide()
 
     assert 'ROS_DOMAIN_ID=20' in text
-    for command in ('doctor', 'start', 'status', 'query', 'test', 'stop'):
+    for command in (
+            'doctor', 'start', 'status', 'query', 'visualize', 'test', 'stop'):
         assert 'semantic_search_ctl {}'.format(command) in text
     assert 'semantic_search_ctl doctor phase1' in text
     assert 'semantic_search_ctl doctor phase2' in text

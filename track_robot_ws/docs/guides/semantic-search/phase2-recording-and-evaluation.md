@@ -53,6 +53,17 @@ ros2 run track_robot_bringup semantic_search_ctl query "blue chair"
 ros2 run track_robot_bringup semantic_search_ctl test phase1 "blue chair" --hardware external
 ```
 
+To inspect the live correlated candidate image and submit or revise queries
+from RViz, keep the stack terminal running and open a second foreground
+visualization terminal:
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl visualize phase1
+```
+
+The image rectangles are candidates, not ground truth. Closing RViz stops only
+the visualization launch and its overlay node.
+
 `test` normally reuses an already-ready stack. To make one command start a
 missing stack, wait for readiness, test, and clean up only what it owns:
 
@@ -96,6 +107,7 @@ ros2 run track_robot_bringup semantic_search_ctl status phase2 \
 ros2 run track_robot_bringup semantic_search_ctl query "blue chair"
 ros2 run track_robot_bringup semantic_search_ctl test phase2 "blue chair" \
   --hardware external --extrinsic-mode measured --extrinsic-file "$EXTRINSIC"
+ros2 run track_robot_bringup semantic_search_ctl visualize phase2
 ```
 
 Without a measured extrinsic, Phase 2 is `NOT READY`. Rough prototype geometry
