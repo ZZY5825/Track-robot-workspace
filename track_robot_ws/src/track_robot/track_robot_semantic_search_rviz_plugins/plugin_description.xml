@@ -1,0 +1,11 @@
+<library path="track_robot_semantic_search_rviz_plugins">
+  <class
+    name="track_robot_semantic_search_rviz_plugins/SemanticSearchPanel"
+    type="track_robot_semantic_search_rviz_plugins::SemanticSearchPanel"
+    base_class_type="rviz_common::Panel">
+    <description>
+      Passive language-query and semantic-search status panel.
+    </description>
+  </class>
+</library>
+
