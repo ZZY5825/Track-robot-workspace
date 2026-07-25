@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
+#include <sstream>
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -16,6 +18,10 @@ namespace
 {
 
 constexpr const char * kObjectNamespace = "semantic_memory_objects";
+constexpr const char * kLabelNamespace = "semantic_memory_labels";
+constexpr const char * kBestNamespace = "semantic_memory_best_candidate";
+constexpr const char * kBestLabelNamespace =
+  "semantic_memory_best_candidate_label";
 constexpr double kMinimumMarkerExtent = 0.05;
 
 bool finite(double value)
@@ -23,7 +29,62 @@ bool finite(double value)
   return std::isfinite(value);
 }
 
-visualization_msgs::msg::Marker make_add_marker(
+const char * lifecycle_name(std::uint8_t state)
+{
+  using Object = track_robot_interfaces::msg::SemanticObject;
+  switch (state) {
+    case Object::LIFECYCLE_TENTATIVE:
+      return "tentative";
+    case Object::LIFECYCLE_CONFIRMED:
+      return "confirmed";
+    case Object::LIFECYCLE_STALE:
+      return "stale";
+    case Object::LIFECYCLE_LOST:
+      return "lost";
+    case Object::LIFECYCLE_ARCHIVED:
+      return "archived";
+    default:
+      return "invalid-lifecycle";
+  }
+}
+
+const char * support_name(std::uint8_t state)
+{
+  using Object = track_robot_interfaces::msg::SemanticObject;
+  switch (state) {
+    case Object::SUPPORT_NONE:
+      return "no-support";
+    case Object::SUPPORT_CAMERA_LIDAR:
+      return "camera+lidar";
+    case Object::SUPPORT_CAMERA_ONLY:
+      return "camera-only";
+    case Object::SUPPORT_LIDAR_ONLY:
+      return "lidar-only";
+    case Object::SUPPORT_PREDICTION_ONLY:
+      return "prediction-only";
+    default:
+      return "invalid-support";
+  }
+}
+
+const char * motion_name(std::uint8_t state)
+{
+  using Object = track_robot_interfaces::msg::SemanticObject;
+  switch (state) {
+    case Object::MOTION_STATIC:
+      return "static";
+    case Object::MOTION_DYNAMIC:
+      return "dynamic";
+    case Object::MOTION_UNCERTAIN:
+      return "motion-uncertain";
+    case Object::MOTION_TEMPORARILY_MOVING:
+      return "temporarily-moving";
+    default:
+      return "invalid-motion";
+  }
+}
+
+visualization_msgs::msg::Marker make_object_marker(
   const track_robot_interfaces::msg::SemanticObjectArray & snapshot,
   const track_robot_interfaces::msg::SemanticObject & object,
   std::int32_t marker_id)
@@ -63,13 +124,93 @@ visualization_msgs::msg::Marker make_add_marker(
   return marker;
 }
 
-visualization_msgs::msg::Marker make_delete_marker(
+visualization_msgs::msg::Marker make_label_marker(
   const track_robot_interfaces::msg::SemanticObjectArray & snapshot,
+  const track_robot_interfaces::msg::SemanticObject & object,
   std::int32_t marker_id)
 {
   visualization_msgs::msg::Marker marker;
   marker.header = snapshot.header;
-  marker.ns = kObjectNamespace;
+  marker.ns = kLabelNamespace;
+  marker.id = marker_id;
+  marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.pose.position = object.position;
+  marker.pose.position.z +=
+    std::max(kMinimumMarkerExtent, object.extent.z * 0.5) + 0.15;
+  marker.pose.orientation.w = 1.0;
+  marker.scale.z = 0.12;
+  marker.color.r = 1.0F;
+  marker.color.g = 1.0F;
+  marker.color.b = 1.0F;
+  marker.color.a = 0.95F;
+
+  std::ostringstream text;
+  text << "object " << object.global_object_id << '\n'
+       << lifecycle_name(object.lifecycle_state) << " | "
+       << support_name(object.support_state) << " | "
+       << motion_name(object.motion_class);
+  if (object.active_query_id != 0U && object.active_query_version != 0U &&
+    finite(object.task_relevance))
+  {
+    text.setf(std::ios::fixed);
+    text.precision(3);
+    text << "\nrelevance=" << object.task_relevance;
+  }
+  marker.text = text.str();
+  return marker;
+}
+
+visualization_msgs::msg::Marker make_best_marker(
+  const track_robot_interfaces::msg::SemanticObjectArray & snapshot,
+  const track_robot_interfaces::msg::SemanticObject & object,
+  std::int32_t marker_id)
+{
+  visualization_msgs::msg::Marker marker;
+  marker.header = snapshot.header;
+  marker.ns = kBestNamespace;
+  marker.id = marker_id;
+  marker.type = visualization_msgs::msg::Marker::CUBE;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.pose.position = object.position;
+  marker.pose.orientation.w = 1.0;
+  marker.scale.x =
+    std::max(kMinimumMarkerExtent, object.extent.x * 1.15 + 0.03);
+  marker.scale.y =
+    std::max(kMinimumMarkerExtent, object.extent.y * 1.15 + 0.03);
+  marker.scale.z =
+    std::max(kMinimumMarkerExtent, object.extent.z * 1.15 + 0.03);
+  marker.color.r = 1.0F;
+  marker.color.g = 0.05F;
+  marker.color.b = 0.85F;
+  marker.color.a = 0.22F;
+  return marker;
+}
+
+visualization_msgs::msg::Marker make_best_label_marker(
+  const track_robot_interfaces::msg::SemanticObjectArray & snapshot,
+  const track_robot_interfaces::msg::SemanticObject & object,
+  std::int32_t marker_id)
+{
+  auto marker = make_label_marker(snapshot, object, marker_id);
+  marker.ns = kBestLabelNamespace;
+  marker.pose.position.z += 0.17;
+  marker.scale.z = 0.14;
+  marker.color.r = 1.0F;
+  marker.color.g = 0.2F;
+  marker.color.b = 0.9F;
+  marker.text = "BEST CANDIDATE";
+  return marker;
+}
+
+visualization_msgs::msg::Marker make_delete_marker(
+  const track_robot_interfaces::msg::SemanticObjectArray & snapshot,
+  const char * marker_namespace,
+  std::int32_t marker_id)
+{
+  visualization_msgs::msg::Marker marker;
+  marker.header = snapshot.header;
+  marker.ns = marker_namespace;
   marker.id = marker_id;
   marker.action = visualization_msgs::msg::Marker::DELETE;
   return marker;
@@ -83,6 +224,15 @@ MarkerRegistry::MarkerRegistry(std::size_t max_objects)
   if (max_objects_ == 0U || max_objects_ > 256U) {
     throw std::invalid_argument("visualizer max_objects must be in [1,256]");
   }
+}
+
+void MarkerRegistry::set_best_candidate(
+  std::optional<GlobalObjectKey> candidate)
+{
+  if (candidate.has_value() && !candidate->valid()) {
+    throw std::invalid_argument("best candidate key must be valid");
+  }
+  best_candidate_ = candidate;
 }
 
 visualization_msgs::msg::MarkerArray MarkerRegistry::update(
@@ -123,7 +273,15 @@ visualization_msgs::msg::MarkerArray MarkerRegistry::update(
   auto next_marker_by_key = marker_by_key_;
   auto next_key_by_marker = key_by_marker_;
   visualization_msgs::msg::MarkerArray output;
-  output.markers.reserve(objects.size() + removed_keys.size());
+  output.markers.reserve(
+    objects.size() * 2U + removed_keys.size() * 2U + 4U);
+  std::optional<GlobalObjectKey> current_best;
+  if (best_candidate_.has_value() &&
+    best_candidate_->memory_epoch_id == snapshot.memory_epoch_id &&
+    objects.count(*best_candidate_) != 0U)
+  {
+    current_best = best_candidate_;
+  }
   for (const auto & entry : objects) {
     auto assignment = next_marker_by_key.find(entry.first);
     if (assignment == next_marker_by_key.end()) {
@@ -132,19 +290,46 @@ visualization_msgs::msg::MarkerArray MarkerRegistry::update(
       next_key_by_marker.emplace(id, entry.first);
     }
     output.markers.push_back(
-      make_add_marker(snapshot, *entry.second, assignment->second));
+      make_object_marker(snapshot, *entry.second, assignment->second));
+    output.markers.push_back(
+      make_label_marker(snapshot, *entry.second, assignment->second));
+    if (current_best.has_value() && entry.first == *current_best) {
+      output.markers.push_back(
+        make_best_marker(snapshot, *entry.second, assignment->second));
+      output.markers.push_back(
+        make_best_label_marker(snapshot, *entry.second, assignment->second));
+    }
   }
   for (const auto & key : removed_keys) {
     const auto assignment = next_marker_by_key.find(key);
-    output.markers.push_back(make_delete_marker(snapshot, assignment->second));
+    output.markers.push_back(
+      make_delete_marker(snapshot, kObjectNamespace, assignment->second));
+    output.markers.push_back(
+      make_delete_marker(snapshot, kLabelNamespace, assignment->second));
     next_key_by_marker.erase(assignment->second);
     next_marker_by_key.erase(assignment);
+  }
+  if (published_best_candidate_.has_value() &&
+    (!current_best.has_value() ||
+    *published_best_candidate_ != *current_best))
+  {
+    const auto old_assignment =
+      marker_by_key_.find(*published_best_candidate_);
+    if (old_assignment != marker_by_key_.end()) {
+      output.markers.push_back(
+        make_delete_marker(
+          snapshot, kBestNamespace, old_assignment->second));
+      output.markers.push_back(
+        make_delete_marker(
+          snapshot, kBestLabelNamespace, old_assignment->second));
+    }
   }
 
   marker_by_key_ = std::move(next_marker_by_key);
   key_by_marker_ = std::move(next_key_by_marker);
   last_memory_epoch_id_ = snapshot.memory_epoch_id;
   last_snapshot_sequence_ = snapshot.snapshot_sequence;
+  published_best_candidate_ = current_best;
   return output;
 }
 

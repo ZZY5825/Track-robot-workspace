@@ -1,6 +1,8 @@
 #include <cstdint>
+#include <optional>
 #include <set>
 #include <stdexcept>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -43,6 +45,19 @@ interfaces::SemanticObjectArray snapshot(
   return value;
 }
 
+const visualization_msgs::msg::Marker * find_marker(
+  const visualization_msgs::msg::MarkerArray & output,
+  const std::string & marker_namespace,
+  std::int32_t action = visualization_msgs::msg::Marker::ADD)
+{
+  for (const auto & marker : output.markers) {
+    if (marker.ns == marker_namespace && marker.action == action) {
+      return &marker;
+    }
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 TEST(Visualization, KeepsStableIdsAndExplicitlyDeletesMissingObjects)
@@ -52,9 +67,9 @@ TEST(Visualization, KeepsStableIdsAndExplicitlyDeletesMissingObjects)
   first.objects = {object(10U, 1U), object(10U, 2U)};
 
   const auto first_markers = registry.update(first);
-  ASSERT_EQ(first_markers.markers.size(), 2U);
+  ASSERT_EQ(first_markers.markers.size(), 4U);
   const int first_id = first_markers.markers[0].id;
-  const int second_id = first_markers.markers[1].id;
+  const int second_id = first_markers.markers[2].id;
   EXPECT_NE(first_id, second_id);
   EXPECT_EQ(first_markers.markers[0].action,
     visualization_msgs::msg::Marker::ADD);
@@ -63,13 +78,13 @@ TEST(Visualization, KeepsStableIdsAndExplicitlyDeletesMissingObjects)
   second.objects = {object(10U, 2U)};
   const auto second_markers = registry.update(second);
 
-  ASSERT_EQ(second_markers.markers.size(), 2U);
+  ASSERT_EQ(second_markers.markers.size(), 4U);
   EXPECT_EQ(second_markers.markers[0].action,
     visualization_msgs::msg::Marker::ADD);
   EXPECT_EQ(second_markers.markers[0].id, second_id);
-  EXPECT_EQ(second_markers.markers[1].action,
+  EXPECT_EQ(second_markers.markers[2].action,
     visualization_msgs::msg::Marker::DELETE);
-  EXPECT_EQ(second_markers.markers[1].id, first_id);
+  EXPECT_EQ(second_markers.markers[2].id, first_id);
 }
 
 TEST(Visualization, ResolvesPublicKeyHashCollisionsDeterministically)
@@ -82,10 +97,13 @@ TEST(Visualization, ResolvesPublicKeyHashCollisionsDeterministically)
 
   const auto output = registry.update(input);
 
-  ASSERT_EQ(output.markers.size(), 2U);
+  ASSERT_EQ(output.markers.size(), 4U);
   std::set<std::int32_t> ids;
-  ids.insert(output.markers[0].id);
-  ids.insert(output.markers[1].id);
+  for (const auto & marker : output.markers) {
+    if (marker.ns == "semantic_memory_objects") {
+      ids.insert(marker.id);
+    }
+  }
   EXPECT_EQ(ids.size(), 2U);
 }
 
@@ -100,7 +118,7 @@ TEST(Visualization, EncodesGeometryAndStateWithBoundedMarkers)
 
   const auto output = registry.update(input);
 
-  ASSERT_EQ(output.markers.size(), 1U);
+  ASSERT_EQ(output.markers.size(), 2U);
   const auto & marker = output.markers[0];
   EXPECT_EQ(marker.header.frame_id, "odom");
   EXPECT_EQ(marker.ns, "semantic_memory_objects");
@@ -143,10 +161,70 @@ TEST(Visualization, AllowsSequenceResetOnlyWhenMemoryEpochChanges)
   restarted.objects = {object(11U, 1U)};
   const auto output = registry.update(restarted);
 
-  ASSERT_EQ(output.markers.size(), 2U);
+  ASSERT_EQ(output.markers.size(), 4U);
   EXPECT_EQ(output.markers[0].action,
     visualization_msgs::msg::Marker::ADD);
-  EXPECT_EQ(output.markers[1].action,
+  EXPECT_EQ(output.markers[2].action,
     visualization_msgs::msg::Marker::DELETE);
   EXPECT_THROW((void)registry.update(restarted), std::invalid_argument);
+}
+
+TEST(Visualization, AddsReadableStateLabelAndCalibratedWinnerHighlight)
+{
+  semantic_memory::MarkerRegistry registry(256U);
+  auto input = snapshot(10U, 1U);
+  auto candidate = object(10U, 1U);
+  candidate.support_state = interfaces::SemanticObject::SUPPORT_CAMERA_LIDAR;
+  candidate.active_query_id = 9U;
+  candidate.active_query_version = 2U;
+  candidate.task_relevance = 0.75F;
+  input.objects = {candidate};
+  registry.set_best_candidate(semantic_memory::GlobalObjectKey{10U, 1U});
+
+  const auto output = registry.update(input);
+
+  const auto * cube = find_marker(output, "semantic_memory_objects");
+  const auto * label = find_marker(output, "semantic_memory_labels");
+  const auto * halo = find_marker(
+    output, "semantic_memory_best_candidate");
+  const auto * winner_label = find_marker(
+    output, "semantic_memory_best_candidate_label");
+  ASSERT_NE(cube, nullptr);
+  ASSERT_NE(label, nullptr);
+  ASSERT_NE(halo, nullptr);
+  ASSERT_NE(winner_label, nullptr);
+  EXPECT_EQ(label->type, visualization_msgs::msg::Marker::TEXT_VIEW_FACING);
+  EXPECT_NE(label->text.find("object 1"), std::string::npos);
+  EXPECT_NE(label->text.find("confirmed"), std::string::npos);
+  EXPECT_NE(label->text.find("camera+lidar"), std::string::npos);
+  EXPECT_NE(label->text.find("relevance=0.750"), std::string::npos);
+  EXPECT_EQ(winner_label->text, "BEST CANDIDATE");
+  EXPECT_GT(halo->color.r, halo->color.g);
+  EXPECT_GT(halo->color.b, halo->color.g);
+}
+
+TEST(Visualization, ClearingWinnerAndRemovingObjectDeletesEveryMarker)
+{
+  semantic_memory::MarkerRegistry registry(256U);
+  auto first = snapshot(10U, 1U);
+  first.objects = {object(10U, 1U)};
+  registry.set_best_candidate(semantic_memory::GlobalObjectKey{10U, 1U});
+  EXPECT_NO_THROW((void)registry.update(first));
+
+  auto empty = snapshot(10U, 2U);
+  registry.set_best_candidate(std::nullopt);
+  const auto output = registry.update(empty);
+
+  EXPECT_NE(find_marker(
+    output, "semantic_memory_objects",
+    visualization_msgs::msg::Marker::DELETE), nullptr);
+  EXPECT_NE(find_marker(
+    output, "semantic_memory_labels",
+    visualization_msgs::msg::Marker::DELETE), nullptr);
+  EXPECT_NE(find_marker(
+    output, "semantic_memory_best_candidate",
+    visualization_msgs::msg::Marker::DELETE), nullptr);
+  EXPECT_NE(find_marker(
+    output, "semantic_memory_best_candidate_label",
+    visualization_msgs::msg::Marker::DELETE), nullptr);
 }
