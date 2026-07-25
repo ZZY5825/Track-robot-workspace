@@ -257,7 +257,13 @@ class SemanticSearchLiveOverlay:
         self._rclpy.spin(self.node)
 
     def destroy(self):
-        self.node.destroy_node()
+        try:
+            self.node.destroy_node()
+        except KeyboardInterrupt:
+            # A launch service can deliver a second SIGINT while rclpy is
+            # already tearing down entities. Cleanup is intentionally
+            # idempotent, so that repeated interrupt is safe to ignore.
+            pass
 
 
 def main(args=None):

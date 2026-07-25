@@ -6,6 +6,7 @@ import pytest
 from track_robot_semantic_search.live_overlay import (
     ExactStampBuffer,
     OverlayRegion,
+    SemanticSearchLiveOverlay,
     render_overlay,
 )
 
@@ -111,3 +112,14 @@ def test_ros_adapter_contract_is_bounded_exact_stamp_and_passive():
     assert 'semantic_search_live_overlay' in setup
     for forbidden in ('cmd_vel', 'SearchMotionIntent', 'Twist'):
         assert forbidden not in source
+
+
+def test_ros_adapter_destroy_tolerates_a_repeated_interrupt():
+    class InterruptedNode:
+        def destroy_node(self):
+            raise KeyboardInterrupt
+
+    adapter = SemanticSearchLiveOverlay.__new__(SemanticSearchLiveOverlay)
+    adapter.node = InterruptedNode()
+
+    adapter.destroy()
