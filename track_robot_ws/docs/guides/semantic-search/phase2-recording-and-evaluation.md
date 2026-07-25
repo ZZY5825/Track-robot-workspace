@@ -62,7 +62,9 @@ ros2 run track_robot_bringup semantic_search_ctl visualize phase1
 ```
 
 The image rectangles are candidates, not ground truth. Closing RViz stops only
-the visualization launch and its overlay node.
+the visualization launch and its overlay node. Cyan identifies the
+highest-scored image candidate and amber identifies the remaining candidates;
+the colours are ranks, not correctness labels.
 
 `test` normally reuses an already-ready stack. To make one command start a
 missing stack, wait for readiness, test, and clean up only what it owns:
@@ -109,6 +111,12 @@ ros2 run track_robot_bringup semantic_search_ctl test phase2 "blue chair" \
   --hardware external --extrinsic-mode measured --extrinsic-file "$EXTRINSIC"
 ros2 run track_robot_bringup semantic_search_ctl visualize phase2
 ```
+
+The Phase 2 RViz view adds `/rslidar_points`, TF and
+`/semantic_memory/markers`. Marker colours are yellow for tentative, orange for
+stale, blue for dynamic and green for confirmed static objects.
+Prediction-only objects are translucent. A magenta `BEST CANDIDATE` halo can
+appear only when the fail-closed calibrated-winner topic contains one object.
 
 Without a measured extrinsic, Phase 2 is `NOT READY`. Rough prototype geometry
 is available only for diagnostic work and must be selected explicitly:

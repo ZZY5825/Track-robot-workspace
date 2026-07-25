@@ -83,6 +83,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 install(DIRECTORY include/ DESTINATION include)
 install(FILES plugin_description.xml DESTINATION share/${PROJECT_NAME})
+install(FILES README.md DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)
 ament_export_dependencies(
@@ -94,4 +95,3 @@ ament_export_dependencies(
 )
 
 ament_package()
-

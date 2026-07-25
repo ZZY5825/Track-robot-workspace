@@ -15,6 +15,18 @@ The managed semantic-search tools use **ROS Domain 20**. The modular
 semantic-search bringup is passive: it does not authorize or start navigation,
 base control, motion controllers, or a `/cmd_vel` publisher.
 
+After starting a Phase 1 or Phase 2 semantic-search stack, open its passive
+live RViz console in another terminal:
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl visualize phase1
+ros2 run track_robot_bringup semantic_search_ctl visualize phase2
+```
+
+The console displays correlated image candidates, LiDAR and semantic-memory
+objects, and query/model state. Displayed candidates are review aids rather
+than ground truth.
+
 ## Workspace Layout
 
 | Path | Purpose |
