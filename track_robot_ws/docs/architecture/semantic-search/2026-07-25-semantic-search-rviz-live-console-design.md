@@ -164,4 +164,3 @@ externally owned sensors or the separately managed semantic-search stack.
 - accepting a candidate as ground truth;
 - changing model thresholds or association calibration;
 - replacing the formal JSON evidence and rosbag evaluation workflow.
-

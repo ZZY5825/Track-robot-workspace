@@ -319,4 +319,3 @@ void SemanticSearchPanel::save(rviz_common::Config config) const
 PLUGINLIB_EXPORT_CLASS(
   track_robot_semantic_search_rviz_plugins::SemanticSearchPanel,
   rviz_common::Panel)
-

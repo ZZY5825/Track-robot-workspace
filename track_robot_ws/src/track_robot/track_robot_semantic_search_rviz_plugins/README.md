@@ -25,4 +25,3 @@ ros2 run track_robot_bringup semantic_search_ctl visualize phase2
 The visualization runs in the foreground. Closing RViz also stops the
 visualization-owned image overlay node, while a separately running
 semantic-search stack and externally owned hardware remain untouched.
-

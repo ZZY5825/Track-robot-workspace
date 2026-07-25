@@ -52,4 +52,3 @@ def test_package_exports_pluginlib_metadata_and_installs_headers():
     export = package.find('export')
     assert export is not None
     assert export.find('build_type').text == 'ament_cmake'
-

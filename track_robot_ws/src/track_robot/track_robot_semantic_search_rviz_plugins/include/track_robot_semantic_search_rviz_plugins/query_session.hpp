@@ -51,4 +51,3 @@ private:
 };
 
 }  // namespace track_robot_semantic_search_rviz_plugins
-

@@ -101,4 +101,3 @@ TEST(QuerySession, RejectsIdentifierAndVersionOverflow)
     (void)session.new_query("person", 1U),
     std::overflow_error);
 }
-

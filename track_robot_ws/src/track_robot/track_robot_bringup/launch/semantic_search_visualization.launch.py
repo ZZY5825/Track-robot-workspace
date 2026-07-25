@@ -55,4 +55,3 @@ def generate_launch_description():
         DeclareLaunchArgument('stage', default_value='phase1'),
         OpaqueFunction(function=_launch_visualization),
     ])
-
