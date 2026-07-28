@@ -42,6 +42,12 @@ struct BestRuntimeCandidateResult
   std::optional<RuntimeObjectView> object;
 };
 
+struct DiagnosticRuntimeCandidate
+{
+  RuntimeObjectView view;
+  TaskRelevanceResult relevance;
+};
+
 class RuntimeTaskServiceCoordinator
 {
 public:
@@ -74,6 +80,8 @@ public:
     const GlobalObjectKey & key,
     InspectionState state);
   [[nodiscard]] BestRuntimeCandidateResult best_candidate() const;
+  [[nodiscard]] std::vector<DiagnosticRuntimeCandidate>
+  diagnostic_ranking() const;
   void reset_to_epoch(std::uint64_t new_epoch, std::string reason);
 
   [[nodiscard]] const std::optional<SemanticTaskKey> & active_task() const noexcept;

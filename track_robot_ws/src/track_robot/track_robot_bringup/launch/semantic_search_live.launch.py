@@ -48,45 +48,92 @@ def _sensor_arguments(stage):
 
 def _launch_stage(context):
     stage = LaunchConfiguration('stage').perform(context)
-    if stage not in {'sensors', 'phase1', 'phase2'}:
+    if stage not in {'sensors', 'phase0', 'phase1', 'phase2', 'phase3'}:
         raise RuntimeError(
-            'unknown semantic-search stage {!r}; expected sensors, phase1, '
-            'or phase2'.format(stage))
+            'unknown semantic-search stage {!r}; expected sensors or '
+            'phase0..phase3'.format(stage))
 
-    actions = [
-        _include(
+    actions = []
+    if stage != 'phase0':
+        actions.append(_include(
             'track_robot_bringup',
             'semantic_search_sensors.launch.py',
             _sensor_arguments(stage),
-        ),
-    ]
-    if stage == 'phase2':
+        ))
+    if stage in ('phase0', 'phase2', 'phase3'):
         actions.append(_include(
             'track_robot_semantic_search',
             'semantic_search_phase0.launch.py',
-            {'start_evaluator': 'false'},
-        ))
-    if stage in ('phase1', 'phase2'):
-        actions.append(_include(
-            'track_robot_semantic_search',
-            'semantic_search_phase1.launch.py',
             {
-                'start_perception': 'true',
-                'runtime_path': LaunchConfiguration('runtime_path'),
-                'checkpoint_path': LaunchConfiguration('checkpoint_path'),
+                'start_evaluator': 'false',
+                'config_file': PathJoinSubstitution([
+                    FindPackageShare('track_robot_semantic_search'),
+                    'config',
+                    'semantic_search_phase0.yaml',
+                ]),
             },
         ))
-    if stage == 'phase2':
+    if stage in ('phase1', 'phase2', 'phase3'):
+        actions.append(_include(
+            'track_robot_semantic_search',
+            'semantic_search_yolo_world.launch.py',
+            {
+                'config_file': PathJoinSubstitution([
+                    FindPackageShare('track_robot_semantic_search'),
+                    'config',
+                    'semantic_search_yolo_world.yaml',
+                ]),
+                'start_perception': 'true',
+                # Resolve model paths before entering the nested launch.
+                # ROS 2 Foxy may otherwise leak the child's ``runtime_path``
+                # value into its sibling ``clip_runtime_path`` argument.
+                'runtime_path':
+                    LaunchConfiguration('yolo_runtime_path').perform(context),
+                'clip_runtime_path':
+                    LaunchConfiguration('runtime_path').perform(context),
+                'world_checkpoint':
+                    LaunchConfiguration(
+                        'yolo_checkpoint_path').perform(context),
+                'clip_checkpoint':
+                    LaunchConfiguration('checkpoint_path').perform(context),
+                'dino_local_repo':
+                    LaunchConfiguration('dino_repo_path').perform(context),
+                'dino_checkpoint':
+                    LaunchConfiguration(
+                        'dino_checkpoint_path').perform(context),
+                'dino_enabled': 'true',
+            },
+        ))
+    if stage in ('phase2', 'phase3'):
+        memory_config = (
+            'phase123_test.yaml' if stage == 'phase3'
+            else 'semantic_memory.yaml')
         actions.extend([
             _include(
                 'track_robot_lidar_tracking',
                 'semantic_memory_lidar_tracklets.launch.py',
-                {},
+                {
+                    'config_file': PathJoinSubstitution([
+                        FindPackageShare('track_robot_lidar_tracking'),
+                        'config',
+                        'semantic_memory_lidar_tracklets.yaml',
+                    ]),
+                },
             ),
             _include(
                 'track_robot_semantic_memory',
                 'semantic_memory_phase2.launch.py',
-                {},
+                {
+                    'config_file': PathJoinSubstitution([
+                        FindPackageShare('track_robot_semantic_memory'),
+                        'config',
+                        memory_config,
+                    ]),
+                    'enable_test_camera_attachment':
+                        'true' if stage == 'phase3' else 'false',
+                    'allow_degraded_calibration':
+                        'true' if stage == 'phase3' else 'false',
+                },
             ),
         ])
     return actions
@@ -109,6 +156,26 @@ def generate_launch_description():
             default_value=(
                 '/home/track-robot/track_robot_ws/'
                 'models/phase1/ViT-B-32.pt')),
+        DeclareLaunchArgument(
+            'yolo_runtime_path',
+            default_value=(
+                '/home/track-robot/track_robot_ws/'
+                'models/r0c_runtime/python')),
+        DeclareLaunchArgument(
+            'yolo_checkpoint_path',
+            default_value=(
+                '/home/track-robot/track_robot_ws/'
+                'models/r0c/yolov8s-worldv2.pt')),
+        DeclareLaunchArgument(
+            'dino_repo_path',
+            default_value=(
+                '/home/track-robot/track_robot_ws/'
+                'src/track_robot_core/third_party/dinov3_py38')),
+        DeclareLaunchArgument(
+            'dino_checkpoint_path',
+            default_value=(
+                '/home/track-robot/track_robot_ws/'
+                'models/dinov3_vits16plus_pretrain_lvd1689m.pth')),
         DeclareLaunchArgument('extrinsic_mode', default_value='none'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),

@@ -36,6 +36,11 @@ LidarObservation lidar_observation_from_tracklet(
   std::uint64_t source_epoch_id,
   const geometry_msgs::msg::TransformStamped & transform);
 
+CameraObservation camera_observation_from_semantic_observation(
+  const track_robot_interfaces::msg::SemanticObservation & observation,
+  const VisualAssociationKey & visual_key,
+  bool appearance_memory_enabled);
+
 VisualMemorySupplement visual_supplement_from_semantic_observation(
   const track_robot_interfaces::msg::SemanticObservation & observation,
   const VisualAssociationKey & visual_key,

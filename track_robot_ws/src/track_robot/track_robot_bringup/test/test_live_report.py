@@ -100,6 +100,8 @@ def test_phase2_metrics_are_bounded_counts_not_message_history():
         'object_count': 6,
         'association_messages': 7,
         'association_matches': 2,
+        'diagnostic_ranking_messages': 0,
+        'diagnostic_candidate_count': 0,
         'latest_memory_mode': None,
         'latest_localization_reason': '',
     }
@@ -154,6 +156,24 @@ def test_phase2_association_may_be_absent_and_latest_localization_is_reported():
     assert report['metrics']['phase2']['latest_memory_mode'] == 2
     assert report['metrics']['phase2']['latest_localization_reason'] == (
         'world localization healthy')
+
+
+def test_phase3_requires_diagnostic_ranking_but_accepts_empty_abstention():
+    sample = Phase2Sample(
+        tracklet_messages=1,
+        localization_messages=1,
+        object_messages=1,
+        diagnostic_ranking_messages=1,
+        diagnostic_candidate_count=0,
+    )
+
+    report = build_report(summary(stage='phase3', phase2=sample))
+
+    assert report['pipeline']['status'] == 'PASS'
+    assert report['semantic_result']['status'] == 'REVIEW REQUIRED'
+    assert report['metrics']['phase2']['diagnostic_ranking_messages'] == 1
+    assert report['metrics']['phase2']['diagnostic_candidate_count'] == 0
+    assert report['calibration']['state'] == 'UNCALIBRATED'
 
 
 def test_write_report_is_strict_json_and_uses_explicit_output_directory(
@@ -339,6 +359,18 @@ def test_image_subscription_uses_sensor_data_qos_for_zed_best_effort():
     image_subscription = source.split(
         "Image,\n            '/zed/zed_node/left/image_rect_color',", 1)[1]
     assert 'qos_profile_sensor_data' in image_subscription.split(')', 1)[0]
+
+
+def test_private_ros_context_uses_an_executor_bound_to_the_same_context():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / 'track_robot_bringup'
+        / 'live_test.py'
+    ).read_text(encoding='utf-8')
+
+    assert 'SingleThreadedExecutor(context=context)' in source
+    assert 'executor.spin_once(' in source
+    assert 'rclpy.spin_once(node' not in source
 
 
 def test_stamp_ns_preserves_header_time_for_overlay_correlation():

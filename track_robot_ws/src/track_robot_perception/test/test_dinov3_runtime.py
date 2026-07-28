@@ -4,10 +4,26 @@ import torch
 from pathlib import Path
 
 from track_robot_perception.dinov3_runtime import (
+    extract_cls_batch,
     map_model_roi_to_source,
     patch_grid,
     preprocess_bgr_aspect_preserving,
 )
+
+
+def test_extract_cls_batch_accepts_multiple_images():
+    class Model:
+        def forward_features(self, tensor):
+            return {
+                'x_norm_clstoken': torch.ones((tensor.shape[0], 4)),
+                'x_norm_patchtokens': torch.ones((tensor.shape[0], 4, 4)),
+            }
+
+    values, details = extract_cls_batch(
+        Model(), torch.ones((3, 3, 32, 32)), 'official_local_repo')
+
+    assert tuple(values.shape) == (3, 4)
+    assert 'output_keys' in details
 
 
 def test_aspect_preserving_preprocess_centres_16_by_9_image():
@@ -109,3 +125,11 @@ def test_package_exposes_pytest_extra_for_colcon_discovery():
 
     assert "extras_require={'test': ['pytest']}" in setup_source
     assert 'tests_require=' not in setup_source
+
+
+def test_package_disables_incompatible_external_typeguard_plugin():
+    package_root = Path(__file__).resolve().parents[1]
+    setup_config = (package_root / 'setup.cfg').read_text(encoding='utf-8')
+
+    assert '[tool:pytest]' in setup_config
+    assert '-p no:typeguard' in setup_config

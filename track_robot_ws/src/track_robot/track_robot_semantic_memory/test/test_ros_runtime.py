@@ -222,6 +222,15 @@ def runtime_lidar_batch(stamp_ns, tracklet_id=None):
     return message
 
 
+def runtime_duplicate_lidar_batch(stamp_ns, tracklet_id):
+    message = runtime_lidar_batch(stamp_ns, tracklet_id)
+    duplicate = make_tracklet(tracklet_id, 0.2)
+    duplicate.position.z = 3.2
+    set_stamp(duplicate.last_measurement_stamp, stamp_ns)
+    message.tracklets.append(duplicate)
+    return message
+
+
 def runtime_camera_info(stamp_ns):
     message = CameraInfo()
     set_stamp(message.header.stamp, stamp_ns)
@@ -418,7 +427,7 @@ def write_stage2f_runtime_config(tmp_path, share):
     reason='requires local DDS interface access; set RUN_ROS_RUNTIME_TESTS=1',
 )
 def test_stage2b_nodes_publish_memory_events_and_bounded_markers(tmp_path):
-    os.environ['ROS_DOMAIN_ID'] = str(20 + os.getpid() % 180)
+    os.environ.setdefault('ROS_DOMAIN_ID', '20')
     ros_log_dir = tmp_path / 'ros-log'
     ros_log_dir.mkdir()
     os.environ['ROS_LOG_DIR'] = str(ros_log_dir)
@@ -480,7 +489,15 @@ def test_stage2b_nodes_publish_memory_events_and_bounded_markers(tmp_path):
             event.event_type == SemanticMemoryEvent.EVENT_OBJECT_CREATED
             for event in probe.events)
         marker_array = probe.markers[-1]
-        assert len(marker_array.markers) == 2
+        assert len(marker_array.markers) == 4
+        assert sum(
+            marker.ns == 'semantic_memory_objects'
+            for marker in marker_array.markers
+        ) == 2
+        assert sum(
+            marker.ns == 'semantic_memory_labels'
+            for marker in marker_array.markers
+        ) == 2
         assert len({marker.id for marker in marker_array.markers}) == 2
         assert all(process.poll() is None for process in processes)
     finally:
@@ -504,8 +521,96 @@ def test_stage2b_nodes_publish_memory_events_and_bounded_markers(tmp_path):
     os.environ.get('RUN_ROS_RUNTIME_TESTS') != '1',
     reason='requires local DDS interface access; set RUN_ROS_RUNTIME_TESTS=1',
 )
+def test_duplicate_lidar_ids_do_not_terminate_semantic_memory(tmp_path):
+    os.environ.setdefault('ROS_DOMAIN_ID', '20')
+    ros_log_dir = tmp_path / 'ros-log-duplicate-lidar'
+    ros_log_dir.mkdir()
+    os.environ['ROS_LOG_DIR'] = str(ros_log_dir)
+    probe = None
+    process = None
+    rclpy_initialized = False
+    try:
+        rclpy.init()
+        rclpy_initialized = True
+        probe = RuntimeProbe()
+        prefix = Path(get_package_prefix('track_robot_semantic_memory'))
+        share = Path(get_package_share_directory('track_robot_semantic_memory'))
+        config = write_stage2e_runtime_config(tmp_path, share)
+        command = (
+            prefix / 'lib' / 'track_robot_semantic_memory' /
+            'semantic_memory_node')
+        process = subprocess.Popen(
+            [str(command), '--ros-args', '--params-file', str(config)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        discovered = wait_until(
+            probe,
+            lambda: (
+                probe.localization.get_subscription_count() == 1 and
+                probe.lidar.get_subscription_count() == 1 and
+                probe.observations.get_subscription_count() == 1 and
+                probe.camera_info.get_subscription_count() == 1),
+        )
+        assert discovered, 'Phase 3 input subscriptions not discovered'
+
+        base = 100_000_000_000
+        camera_info = runtime_camera_info(base)
+        for _ in range(3):
+            probe.camera_info.publish(camera_info)
+            rclpy.spin_once(probe, timeout_sec=0.05)
+        probe.localization.publish(runtime_localization(base))
+        for _ in range(3):
+            rclpy.spin_once(probe, timeout_sec=0.05)
+
+        probe.lidar.publish(runtime_duplicate_lidar_batch(base, 1))
+        probe.observations.publish(
+            runtime_observations(base, 1, 101, 1001, 1))
+        alive_after_duplicate = wait_until(
+            probe,
+            lambda: bool(probe.snapshots),
+            timeout=2.0,
+        )
+        assert alive_after_duplicate
+        assert process.poll() is None, (
+            'duplicate LiDAR IDs terminated semantic memory')
+
+        valid_stamp = base + 50_000_000
+        snapshot_count = len(probe.snapshots)
+        probe.localization.publish(runtime_localization(valid_stamp))
+        for _ in range(3):
+            rclpy.spin_once(probe, timeout_sec=0.05)
+        probe.lidar.publish(runtime_lidar_batch(valid_stamp, 2))
+        probe.observations.publish(
+            runtime_observations(valid_stamp, 2, 102, 1002, 2))
+        assert wait_until(
+            probe,
+            lambda: (
+                len(probe.snapshots) > snapshot_count and
+                process.poll() is None),
+        ), 'semantic memory did not process valid input after duplicate IDs'
+    finally:
+        if probe is not None:
+            probe.destroy_node()
+        if rclpy_initialized:
+            rclpy.shutdown()
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+
+
+@pytest.mark.skipif(
+    os.environ.get('RUN_ROS_RUNTIME_TESTS') != '1',
+    reason='requires local DDS interface access; set RUN_ROS_RUNTIME_TESTS=1',
+)
 def test_stage2e_leave_and_reentry_preserves_one_global_identity(tmp_path):
-    os.environ['ROS_DOMAIN_ID'] = str(20 + os.getpid() % 180)
+    os.environ.setdefault('ROS_DOMAIN_ID', '20')
     ros_log_dir = tmp_path / 'ros-log-stage2e'
     ros_log_dir.mkdir()
     os.environ['ROS_LOG_DIR'] = str(ros_log_dir)
@@ -657,7 +762,7 @@ def test_stage2e_leave_and_reentry_preserves_one_global_identity(tmp_path):
     reason='requires local DDS interface access; set RUN_ROS_RUNTIME_TESTS=1',
 )
 def test_stage2f_task_services_inspection_and_reset_are_epoch_safe(tmp_path):
-    os.environ['ROS_DOMAIN_ID'] = str(20 + os.getpid() % 180)
+    os.environ.setdefault('ROS_DOMAIN_ID', '20')
     ros_log_dir = tmp_path / 'ros-log-stage2f'
     ros_log_dir.mkdir()
     os.environ['ROS_LOG_DIR'] = str(ros_log_dir)

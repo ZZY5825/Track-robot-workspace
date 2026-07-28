@@ -118,6 +118,8 @@ class Phase2Sample:
     object_count: int = 0
     association_messages: int = 0
     association_matches: int = 0
+    diagnostic_ranking_messages: int = 0
+    diagnostic_candidate_count: int = 0
     calibration_mode: str = 'none'
     latest_memory_mode: int = None
     latest_localization_reason: str = ''
@@ -241,7 +243,7 @@ def build_report(summary):
     """Build a strict-JSON-compatible report from bounded aggregate state."""
 
     failures = [str(value) for value in summary.failures]
-    if summary.stage not in ('phase1', 'phase2'):
+    if summary.stage not in ('phase1', 'phase2', 'phase3'):
         failures.append('unsupported live-test stage {!r}'.format(summary.stage))
     if int(summary.frames) <= 0:
         failures.append('no semantic region frames were collected')
@@ -262,7 +264,7 @@ def build_report(summary):
         if frames > 0 else 0.0
     )
     phase2 = summary.phase2
-    if summary.stage == 'phase2':
+    if summary.stage in ('phase2', 'phase3'):
         required_streams = (
             ('tracklet_messages', phase2.tracklet_messages, 'tracklet'),
             (
@@ -276,6 +278,10 @@ def build_report(summary):
             if int(count) <= 0:
                 failures.append(
                     'no Phase 2 {} messages were collected'.format(label))
+        if (summary.stage == 'phase3'
+                and int(phase2.diagnostic_ranking_messages) <= 0):
+            failures.append(
+                'no Phase 3 diagnostic ranking messages were collected')
     return {
         'schema_version': 1,
         'stage': summary.stage,
@@ -314,6 +320,10 @@ def build_report(summary):
                 'object_count': int(phase2.object_count),
                 'association_messages': int(phase2.association_messages),
                 'association_matches': int(phase2.association_matches),
+                'diagnostic_ranking_messages': int(
+                    phase2.diagnostic_ranking_messages),
+                'diagnostic_candidate_count': int(
+                    phase2.diagnostic_candidate_count),
                 'latest_memory_mode': phase2.latest_memory_mode,
                 'latest_localization_reason': (
                     phase2.latest_localization_reason),
@@ -321,6 +331,9 @@ def build_report(summary):
         },
         'calibration': {
             'mode': phase2.calibration_mode,
+            'state': (
+                'UNCALIBRATED'
+                if summary.stage == 'phase3' else 'NOT_APPLICABLE'),
         },
         'readiness': dict(summary.readiness_snapshot),
     }
@@ -550,6 +563,11 @@ class _BoundedCollector:
         if int(message.decision) == int(message.DECISION_MATCHED):
             sample.association_matches += 1
 
+    def diagnostic_ranking(self, message):
+        sample = self.summary.phase2
+        sample.diagnostic_ranking_messages += 1
+        sample.diagnostic_candidate_count += len(message.objects)
+
 
 def collect_live(
         stage,
@@ -583,6 +601,9 @@ def collect_live(
         rclpy,
         os.environ if environment is None else environment,
     )
+    from rclpy.executors import SingleThreadedExecutor
+    executor = SingleThreadedExecutor(context=context)
+    executor.add_node(node)
     try:
         node.create_subscription(
             Image,
@@ -596,7 +617,7 @@ def collect_live(
             collector.regions,
             10,
         )
-        if stage == 'phase2':
+        if stage in ('phase2', 'phase3'):
             from track_robot_interfaces.msg import (
                 AssociationDebug,
                 SemanticLidarTrackletArray,
@@ -627,18 +648,29 @@ def collect_live(
                 collector.association,
                 10,
             )
+            if stage == 'phase3':
+                node.create_subscription(
+                    SemanticObjectArray,
+                    '/semantic_memory/diagnostic_ranking',
+                    collector.diagnostic_ranking,
+                    10,
+                )
 
         deadline = monotonic() + float(duration_sec)
         while context.ok():
             remaining = deadline - monotonic()
             if remaining <= 0.0:
                 break
-            rclpy.spin_once(node, timeout_sec=min(0.1, remaining))
+            executor.spin_once(timeout_sec=min(0.1, remaining))
     finally:
         try:
-            node.destroy_node()
+            executor.remove_node(node)
+            executor.shutdown()
         finally:
-            context.try_shutdown()
+            try:
+                node.destroy_node()
+            finally:
+                context.try_shutdown()
     return collector.summary
 
 
@@ -672,8 +704,9 @@ def run_live_test(
         readiness_snapshot=None):
     """Submit one accepted query, collect bounded data, and write artifacts."""
 
-    if stage not in ('phase1', 'phase2'):
-        return LiveTestResult(4, error='stage must be phase1 or phase2')
+    if stage not in ('phase1', 'phase2', 'phase3'):
+        return LiveTestResult(
+            4, error='stage must be phase1, phase2, or phase3')
     try:
         duration = float(duration_sec)
     except (TypeError, ValueError):

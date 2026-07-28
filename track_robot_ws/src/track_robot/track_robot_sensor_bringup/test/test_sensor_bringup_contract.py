@@ -171,6 +171,16 @@ def test_sensor_package_owns_motion_free_lidar_behavior():
         assert forbidden not in source
 
 
+def test_lidar_network_setup_reuses_an_already_configured_interface_without_sudo():
+    source = _source(SENSOR_LAUNCH)
+
+    preflight = 'ip -4 addr show dev '
+    privileged_reconfigure = 'sudo -n ip addr flush dev '
+    assert preflight in source
+    assert 'already has expected LiDAR address' in source
+    assert source.index(preflight) < source.index(privileged_reconfigure)
+
+
 def test_sensor_contract_is_registered_with_ament():
     cmake_source = _source(SENSOR_PACKAGE / 'CMakeLists.txt')
     manifest_source = _source(SENSOR_PACKAGE / 'package.xml')

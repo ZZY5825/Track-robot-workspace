@@ -13,10 +13,11 @@ def _launch_visualization(context):
     configs = {
         'phase1': 'semantic_search_phase1.rviz',
         'phase2': 'semantic_search_phase2.rviz',
+        'phase3': 'semantic_search_phase3.rviz',
     }
     if stage not in configs:
         raise RuntimeError(
-            'visualization stage must be phase1 or phase2, got {!r}'.format(
+            'visualization stage must be phase1, phase2, or phase3; got {!r}'.format(
                 stage))
 
     overlay = Node(

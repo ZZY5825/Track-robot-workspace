@@ -61,6 +61,18 @@ bool active_lifecycle(LifecycleState lifecycle) noexcept
          lifecycle == LifecycleState::kStale;
 }
 
+double support_quality(SupportState support) noexcept
+{
+  switch (support) {
+    case SupportState::kCameraLidar: return 1.0;
+    case SupportState::kCameraOnly: return 0.9;
+    case SupportState::kLidarOnly: return 0.5;
+    case SupportState::kPredictionOnly: return 0.35;
+    case SupportState::kNone: return 0.0;
+  }
+  return 0.0;
+}
+
 }  // namespace
 
 RuntimeTaskServiceCoordinator::RuntimeTaskServiceCoordinator(
@@ -112,10 +124,18 @@ void RuntimeTaskServiceCoordinator::synchronize(
   auto previous_appearance = std::move(appearance_);
   objects_ = std::move(next_objects);
   appearance_ = std::move(next_appearance);
+  auto next_active_task = active_task_evidence_;
   try {
-    if (active_task_evidence_.has_value()) {
+    if (next_active_task.has_value()) {
+      next_active_task->evaluation_stamp_ns =
+        next_active_task->source_stamp_ns;
+      for (const auto & item : objects_) {
+        next_active_task->evaluation_stamp_ns = std::max(
+          next_active_task->evaluation_stamp_ns,
+          item.second.grounding_source_stamp_ns);
+      }
       (void)next_overlay.recompute(
-        *active_task_evidence_, task_evidence(active_query_text_));
+        *next_active_task, task_evidence(active_query_text_));
     } else {
       next_overlay.clear();
     }
@@ -128,6 +148,7 @@ void RuntimeTaskServiceCoordinator::synchronize(
   }
   store_ = std::move(next_store);
   overlay_ = std::move(next_overlay);
+  active_task_evidence_ = std::move(next_active_task);
 }
 
 bool RuntimeTaskServiceCoordinator::accept_task(
@@ -157,12 +178,22 @@ bool RuntimeTaskServiceCoordinator::accept_task(
     return false;
   }
 
+  SemanticTaskEvidence evaluated_task = task;
+  evaluated_task.producer_epoch_id = producer_epoch_id;
+  evaluated_task.source_stamp_ns = source_stamp_ns;
+  evaluated_task.evaluation_stamp_ns = source_stamp_ns;
+  for (const auto & item : objects_) {
+    evaluated_task.evaluation_stamp_ns = std::max(
+      evaluated_task.evaluation_stamp_ns,
+      item.second.grounding_source_stamp_ns);
+  }
   TaskRelevanceOverlay next_overlay(relevance_config_);
-  (void)next_overlay.recompute(task, task_evidence(*canonical_query));
+  (void)next_overlay.recompute(
+    evaluated_task, task_evidence(*canonical_query));
   auto next_store = store_;
   next_store.synchronize(
     store_.current_epoch(), records_for_overlay(next_overlay, false));
-  active_task_evidence_ = task;
+  active_task_evidence_ = evaluated_task;
   active_query_text_ = *canonical_query;
   task_producer_epoch_id_ = producer_epoch_id;
   last_task_source_stamp_ns_ = source_stamp_ns;
@@ -261,6 +292,37 @@ BestRuntimeCandidateResult RuntimeTaskServiceCoordinator::best_candidate() const
     view_from_record(*result.record, overlay_.active_task())};
 }
 
+std::vector<DiagnosticRuntimeCandidate>
+RuntimeTaskServiceCoordinator::diagnostic_ranking() const
+{
+  std::vector<DiagnosticRuntimeCandidate> output;
+  if (!overlay_.active_task().has_value()) {
+    return output;
+  }
+  for (const auto & item : objects_) {
+    if (!active_lifecycle(item.second.lifecycle)) {
+      continue;
+    }
+    const auto relevance = overlay_.result(item.first);
+    const auto record = store_.get(item.first);
+    if (!relevance.has_value() || !record.record.has_value()) {
+      continue;
+    }
+    output.push_back({
+        view_from_record(*record.record, overlay_.active_task()),
+        *relevance});
+  }
+  std::sort(
+    output.begin(), output.end(),
+    [](const auto & left, const auto & right) {
+      if (left.relevance.relevance != right.relevance.relevance) {
+        return left.relevance.relevance > right.relevance.relevance;
+      }
+      return left.view.object.key < right.view.object.key;
+    });
+  return output;
+}
+
 void RuntimeTaskServiceCoordinator::reset_to_epoch(
   std::uint64_t new_epoch,
   std::string reason)
@@ -327,6 +389,7 @@ RuntimeTaskServiceCoordinator::task_evidence(
     ObjectTaskEvidence evidence;
     evidence.key = item.first;
     evidence.lifecycle = item.second.lifecycle;
+    evidence.support_quality = support_quality(item.second.support);
     const auto prototypes = appearance_.find(item.first);
     if (prototypes != appearance_.end()) {
       evidence.prototypes = prototypes->second;
@@ -340,6 +403,19 @@ RuntimeTaskServiceCoordinator::task_evidence(
       }
       evidence.permanent_semantics.push_back({
           semantic.label, semantic.confidence, 1.0, true});
+    }
+    if (item.second.grounding_query_id != 0U &&
+      item.second.grounding_query_version != 0U &&
+      item.second.grounding_producer_epoch_id != 0U &&
+      item.second.grounding_source_stamp_ns >= 0)
+    {
+      evidence.active_grounding = TaskConditionedGroundingEvidence{
+        {item.second.grounding_query_id,
+          item.second.grounding_query_version},
+        item.second.grounding_producer_epoch_id,
+        item.second.grounding_source_stamp_ns,
+        item.second.grounding_confidence,
+        item.second.grounding_stability};
     }
     result.push_back(std::move(evidence));
   }

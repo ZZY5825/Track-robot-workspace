@@ -121,8 +121,10 @@ class StaticProbe:
         value = self.paths.get(name)
         return Path(value) if value not in (None, '') else None
 
-    def _checkpoint_sha256(self):
-        expected = self.paths.get('checkpoint_sha256')
+    def _expected_sha256(self, path_key, defaults_key):
+        expected = self.paths.get(
+            path_key[:-5] + '_sha256'
+            if path_key.endswith('_path') else path_key + '_sha256')
         if expected:
             return str(expected)
         defaults_path = self._path('defaults_path')
@@ -130,9 +132,34 @@ class StaticProbe:
             return ''
         try:
             defaults = yaml.safe_load(defaults_path.read_text(encoding='utf-8'))
-            return str(defaults['models']['checkpoint_sha256'])
+            return str(defaults['models'][defaults_key])
         except (KeyError, OSError, TypeError, yaml.YAMLError):
             return ''
+
+    def _directory(self, name, path_key, action):
+        path = self._path(path_key)
+        if path is not None and path.is_dir():
+            return CheckResult.pass_(name, str(path))
+        return CheckResult.not_ready(
+            name, 'directory is missing: {}'.format(path), action)
+
+    def _checkpoint(self, name, path_key, defaults_key, action):
+        path = self._path(path_key)
+        if path is None or not path.is_file():
+            return CheckResult.not_ready(
+                name, 'checkpoint is missing: {}'.format(path), action)
+        expected = self._expected_sha256(path_key, defaults_key)
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if not expected:
+            return CheckResult.fail(
+                name, 'expected SHA-256 is not configured',
+                'set {} in semantic_search_defaults.yaml'.format(
+                    defaults_key))
+        if actual != expected:
+            return CheckResult.fail(
+                name, 'SHA-256 mismatch for {}'.format(path),
+                'restore the expected checkpoint')
+        return CheckResult.pass_(name, 'SHA-256 verified')
 
     @staticmethod
     def _valid_measured_extrinsic(path):
@@ -191,36 +218,71 @@ class StaticProbe:
                 'use the required measured calibration schema with finite values')
         return CheckResult.pass_('calibration', 'measured calibration {}'.format(calibration_id))
 
+    def _phase3_safe_profile(self):
+        path = self._path('phase3_profile_path')
+        if path is None or not path.is_file():
+            return CheckResult.not_ready(
+                'phase3_safe_profile',
+                'Phase 3 test profile is missing: {}'.format(path),
+                'install phase123_test.yaml')
+        try:
+            parameters = yaml.safe_load(
+                path.read_text(encoding='utf-8')
+            )['semantic_memory']['ros__parameters']
+        except (KeyError, OSError, TypeError, yaml.YAMLError):
+            return CheckResult.fail(
+                'phase3_safe_profile',
+                'Phase 3 test profile is invalid: {}'.format(path),
+                'restore the bounded phase123_test.yaml profile')
+        required = {
+            'camera_only_memory_enabled': True,
+            'publish_diagnostic_ranking': True,
+            'best_candidate_threshold_calibrated': False,
+            'reidentification_mutation_enabled': False,
+        }
+        mismatches = [
+            name for name, expected in required.items()
+            if parameters.get(name) is not expected
+        ]
+        if mismatches:
+            return CheckResult.fail(
+                'phase3_safe_profile',
+                'unsafe or missing values: {}'.format(', '.join(mismatches)),
+                'restore the production-safe uncalibrated test profile')
+        return CheckResult.pass_(
+            'phase3_safe_profile',
+            'diagnostic ranking enabled; production winner and re-ID mutation disabled')
+
     def check(self, stage):
         spec = resolve_stage(stage)
         results = []
         if spec.phase1:
-            runtime_path = self._path('runtime_path')
-            if runtime_path is not None and runtime_path.is_dir():
-                results.append(CheckResult.pass_('runtime', str(runtime_path)))
-            else:
-                results.append(CheckResult.not_ready(
-                    'runtime', 'runtime directory is missing: {}'.format(runtime_path),
-                    'install the Phase 1 runtime'))
-
-            checkpoint_path = self._path('checkpoint_path')
-            if checkpoint_path is None or not checkpoint_path.is_file():
-                results.append(CheckResult.not_ready(
-                    'checkpoint', 'checkpoint is missing: {}'.format(checkpoint_path),
-                    'install the expected Phase 1 checkpoint'))
-            else:
-                expected = self._checkpoint_sha256()
-                actual = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
-                if expected and actual != expected:
-                    results.append(CheckResult.fail(
-                        'checkpoint', 'SHA-256 mismatch for {}'.format(checkpoint_path),
-                        'restore the expected checkpoint'))
-                elif expected:
-                    results.append(CheckResult.pass_('checkpoint', 'SHA-256 verified'))
-                else:
-                    results.append(CheckResult.fail(
-                        'checkpoint', 'expected SHA-256 is not configured',
-                        'set checkpoint_sha256 in defaults'))
+            results.extend((
+                self._directory(
+                    'yolo_runtime', 'yolo_runtime_path',
+                    'install the isolated YOLO-World runtime'),
+                self._checkpoint(
+                    'yolo_checkpoint', 'yolo_checkpoint_path',
+                    'yolo_checkpoint_sha256',
+                    'install yolov8s-worldv2.pt'),
+                self._directory(
+                    'clip_runtime', 'runtime_path',
+                    'install the isolated CLIP task runtime'),
+                self._checkpoint(
+                    'clip_checkpoint', 'checkpoint_path',
+                    'checkpoint_sha256',
+                    'install ViT-B-32.pt'),
+                self._directory(
+                    'dino_repo', 'dino_repo_path',
+                    'install the local DINOv3 Python source'),
+                self._checkpoint(
+                    'dino_checkpoint', 'dino_checkpoint_path',
+                    'dino_checkpoint_sha256',
+                    'install the DINOv3 checkpoint'),
+                self._directory(
+                    'cuda_runtime', 'cuda_runtime_path',
+                    'install the JetPack CUDA runtime'),
+            ))
 
         dds_profile = self._path('dds_profile')
         if dds_profile is not None and dds_profile.is_file():
@@ -232,13 +294,15 @@ class StaticProbe:
 
         if spec.memory:
             results.append(self._calibration())
+        if spec.diagnostic_ranking:
+            results.append(self._phase3_safe_profile())
         return tuple(results)
 
 
 class RosCliProbe:
     """Use bounded ROS CLI observations; no command starts a ROS node."""
 
-    _RATE = re.compile(r'average rate:\s*([0-9]+(?:\.[0-9]+)?)', re.IGNORECASE)
+    _MESSAGE_HEADER = re.compile(r'(?:^|\n)header:\s*(?:\n|$)', re.IGNORECASE)
     _PUBLISHERS = re.compile(r'Publisher count:\s*(\d+)', re.IGNORECASE)
     _TRANSFORM = re.compile(r'(?:^|\n)\s*(?:-\s*)?Translation:\s*\[', re.IGNORECASE)
     _TOPIC_ABSENT = re.compile(r'\bunknown\s+topic\b|\bnot\s+found\b', re.IGNORECASE)
@@ -249,6 +313,11 @@ class RosCliProbe:
         base_environment = os.environ if environment is None else environment
         self.environment = managed_environment(
             base_environment, dds_profile=dds_profile)
+        # Foxy's ``ros2 topic echo`` has no one-shot flag and buffers stdout
+        # when captured through a pipe. Readiness intentionally terminates the
+        # bounded echo after its timeout, so force each Python CLI subprocess
+        # to expose received message headers before that termination.
+        self.environment['PYTHONUNBUFFERED'] = '1'
         self.topic_timeout = float(topic_timeout)
         self.tf_timeout = float(tf_timeout)
 
@@ -293,22 +362,13 @@ class RosCliProbe:
     def publisher(self, name, topic):
         """Require a live publisher without waiting for the first message."""
 
-        code, output, stderr, _ = self._run(
-            ['ros2', 'topic', 'list', '-t'], self.topic_timeout)
-        if code != 0:
-            return CheckResult.fail(
-                name, 'topic list failed: {}'.format(
-                    self._command_detail(output, stderr)),
-                'verify ros2 topic list -t can reach the ROS graph')
-        known_topics = [line.split()[0] for line in output.splitlines() if line.split()]
-        if topic not in known_topics:
-            return CheckResult.not_ready(
-                name, 'topic {} is absent'.format(topic),
-                'start a publisher for {}'.format(topic))
-
-        code, output, stderr, _ = self._run(
+        code, output, stderr, timed_out = self._run(
             ['ros2', 'topic', 'info', topic], self.topic_timeout)
         if code != 0:
+            if timed_out:
+                return CheckResult.not_ready(
+                    name, 'timeout inspecting topic {}'.format(topic),
+                    'wait for DDS discovery of {}'.format(topic))
             if code is not None and self._topic_is_absent(output, stderr):
                 return CheckResult.not_ready(
                     name, 'topic {} is absent'.format(topic),
@@ -338,13 +398,16 @@ class RosCliProbe:
         if publisher.status is not CheckStatus.PASS:
             return publisher
 
-        _, output, stderr, _ = self._run(['ros2', 'topic', 'hz', topic], self.topic_timeout)
-        rate = self._RATE.search(output + '\n' + stderr)
-        if rate is None:
+        _, output, stderr, _ = self._run([
+            'ros2', 'topic', 'echo', topic,
+            '--qos-profile', 'sensor_data', '--no-arr', '--no-str',
+        ], self.topic_timeout)
+        if self._MESSAGE_HEADER.search(output + '\n' + stderr) is None:
             return CheckResult.not_ready(
                 name, 'timeout waiting for topic {}'.format(topic),
                 'confirm {} is publishing messages'.format(topic))
-        return CheckResult.pass_(name, '{} at {} Hz'.format(topic, rate.group(1)))
+        return CheckResult.pass_(
+            name, '{} is publishing sensor messages'.format(topic))
 
     def transform(self, name, target, source):
         _, output, stderr, _ = self._run([
@@ -388,6 +451,8 @@ _TOPICS = {
     'tracklets': '/semantic_memory/lidar_tracklets',
     'localization': '/semantic_memory/localization_state',
     'memory': '/semantic_memory/active_objects',
+    'diagnostic_ranking': '/semantic_memory/diagnostic_ranking',
+    'best_candidate': '/semantic_memory/best_candidate',
 }
 
 
@@ -420,6 +485,11 @@ def check_stage(stage, selection, paths, probe):
         checks.append(probe.transform(
             'tf_camera_optical', 'base_link', 'zed_left_camera_optical_frame'))
         checks.append(probe.transform('tf_lidar', 'base_link', 'rslidar'))
+    if spec.diagnostic_ranking:
+        checks.append(probe.publisher(
+            'diagnostic_ranking', _TOPICS['diagnostic_ranking']))
+        checks.append(probe.publisher(
+            'best_candidate', _TOPICS['best_candidate']))
     checks.append(probe.cmd_vel())
     environment = getattr(probe, 'environment', {})
     return ReadinessReport(

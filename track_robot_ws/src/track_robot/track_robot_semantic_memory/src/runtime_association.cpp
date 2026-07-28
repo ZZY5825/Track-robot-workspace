@@ -25,6 +25,52 @@ using PairKey = std::pair<std::uint64_t, std::int64_t>;
 
 }  // namespace
 
+std::vector<RuntimePairCandidate> shortlist_visual_pairs(
+  const std::vector<RuntimePairCandidate> & pairs,
+  std::uint64_t visual_candidate_id,
+  std::size_t maximum_lidar_candidates)
+{
+  if (visual_candidate_id == 0U || maximum_lidar_candidates == 0U ||
+    maximum_lidar_candidates > 256U)
+  {
+    throw std::invalid_argument("visual shortlist bounds are invalid");
+  }
+  std::set<LidarAssociationKey, bool (*)(
+      const LidarAssociationKey &, const LidarAssociationKey &)> unique(
+    [](const auto & left, const auto & right) {
+      return std::tie(left.source_epoch_id, left.tracklet_id) <
+             std::tie(right.source_epoch_id, right.tracklet_id);
+    });
+  std::vector<RuntimePairCandidate> output;
+  for (const auto & pair : pairs) {
+    if (pair.visual_candidate_id != visual_candidate_id) {
+      continue;
+    }
+    if (!valid_lidar(pair.lidar) || !std::isfinite(pair.score) ||
+      pair.score < 0.0 || pair.score > 1.0 ||
+      !unique.insert(pair.lidar).second)
+    {
+      throw std::invalid_argument("visual shortlist pair is invalid or duplicate");
+    }
+    if (pair.gates_passed) {
+      output.push_back(pair);
+    }
+  }
+  std::sort(
+    output.begin(), output.end(),
+    [](const auto & left, const auto & right) {
+      if (left.score != right.score) {
+        return left.score > right.score;
+      }
+      return std::tie(left.lidar.source_epoch_id, left.lidar.tracklet_id) <
+             std::tie(right.lidar.source_epoch_id, right.lidar.tracklet_id);
+    });
+  if (output.size() > maximum_lidar_candidates) {
+    output.resize(maximum_lidar_candidates);
+  }
+  return output;
+}
+
 void RuntimeAssociationConfig::validate() const
 {
   ConfirmationConfig checked = confirmation;

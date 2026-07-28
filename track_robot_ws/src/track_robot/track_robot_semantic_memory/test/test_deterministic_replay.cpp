@@ -103,8 +103,11 @@ std::string reidentification_snapshot()
 
   std::ostringstream output;
   for (const auto & object : result.snapshot.objects) {
+    if (!object.lidar_key.has_value()) {
+      throw std::runtime_error("deterministic LiDAR replay lost its source key");
+    }
     output << object.key.memory_epoch_id << ':' << object.key.global_object_id << ':' <<
-      object.lidar_key.producer_epoch_id << ':' << object.lidar_key.local_object_id << ':' <<
+      object.lidar_key->producer_epoch_id << ':' << object.lidar_key->local_object_id << ':' <<
       object.appearance_summary_id << ';';
   }
   for (const auto & event : result.snapshot.events) {

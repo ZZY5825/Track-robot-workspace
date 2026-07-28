@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Grounding Predictions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "candidate_id",
+    "model_identity",
+    "platform",
+    "input_size",
+    "incremental_cuda_reserved_mib",
+    "release_evidence",
+    "predictions"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "candidate_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "model_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "code_revision",
+        "checkpoint_id",
+        "checkpoint_sha256",
+        "licence"
+      ],
+      "properties": {
+        "implementation": {"type": "string", "minLength": 1, "maxLength": 256},
+        "code_revision": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "checkpoint_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(?![\\\\/])(?![A-Za-z]:[\\\\/]).+$"
+        },
+        "checkpoint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "licence": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "hardware", "os", "python", "pytorch", "device"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1, "maxLength": 256},
+        "hardware": {"type": "string", "minLength": 1, "maxLength": 256},
+        "os": {"type": "string", "minLength": 1, "maxLength": 256},
+        "python": {"type": "string", "minLength": 1, "maxLength": 256},
+        "pytorch": {"type": "string", "minLength": 1, "maxLength": 256},
+        "device": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "input_size": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1, "maximum": 16384}
+    },
+    "incremental_cuda_reserved_mib": {"type": "number", "minimum": 0},
+    "release_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtime_available",
+        "platform_compatible",
+        "licence_approved"
+      ],
+      "properties": {
+        "runtime_available": {"type": "boolean"},
+        "platform_compatible": {"type": "boolean"},
+        "licence_approved": {"type": "boolean"}
+      }
+    },
+    "predictions": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "complete_path_ms", "detections"],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "complete_path_ms": {"type": "number", "minimum": 0},
+          "detections": {
+            "type": "array",
+            "maxItems": 256,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["box_xywh", "score", "label"],
+              "properties": {
+                "box_xywh": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": [
+                    {"type": "number"},
+                    {"type": "number"},
+                    {"type": "number", "exclusiveMinimum": 0},
+                    {"type": "number", "exclusiveMinimum": 0}
+                  ],
+                  "additionalItems": false
+                },
+                "score": {"type": "number", "minimum": 0, "maximum": 1},
+                "label": {"type": "string", "minLength": 1, "maxLength": 4096}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

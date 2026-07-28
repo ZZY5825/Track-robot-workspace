@@ -34,7 +34,22 @@ struct RuntimePairCandidate
   LidarAssociationKey lidar;
   double score{0.0};
   bool gates_passed{false};
+
+  friend bool operator==(
+    const RuntimePairCandidate & left,
+    const RuntimePairCandidate & right) noexcept
+  {
+    return left.visual_candidate_id == right.visual_candidate_id &&
+           left.lidar == right.lidar &&
+           left.score == right.score &&
+           left.gates_passed == right.gates_passed;
+  }
 };
+
+std::vector<RuntimePairCandidate> shortlist_visual_pairs(
+  const std::vector<RuntimePairCandidate> & pairs,
+  std::uint64_t visual_candidate_id,
+  std::size_t maximum_lidar_candidates);
 
 struct RuntimeAssociationFrame
 {

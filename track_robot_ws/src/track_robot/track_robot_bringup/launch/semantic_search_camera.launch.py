@@ -3,13 +3,15 @@ from pathlib import Path
 
 import yaml
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction
+from launch.actions import IncludeLaunchDescription
 from launch.actions import OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch.substitutions import PythonExpression
 from launch_ros.actions import Node
+from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -128,6 +130,15 @@ def generate_launch_description():
         }.items(),
         condition=IfCondition(LaunchConfiguration('start_camera')),
     )
+    camera_only_zed = GroupAction(actions=[
+        SetParameter(name='depth.depth_mode', value='NONE'),
+        SetParameter(name='depth.depth_stabilization', value=0),
+        SetParameter(
+            name='pos_tracking.pos_tracking_enabled',
+            value=False,
+        ),
+        zed_camera,
+    ])
 
     return LaunchDescription([
         DeclareLaunchArgument('start_camera', default_value='true'),
@@ -135,5 +146,5 @@ def generate_launch_description():
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),
         OpaqueFunction(function=_launch_extrinsic),
-        zed_camera,
+        camera_only_zed,
     ])

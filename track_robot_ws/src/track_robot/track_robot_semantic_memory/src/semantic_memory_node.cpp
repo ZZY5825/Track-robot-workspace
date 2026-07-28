@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -145,6 +146,12 @@ public:
       "association_shadow_mode", true);
     camera_attachment_enabled_ = declare_parameter<bool>(
       "camera_attachment_enabled", false);
+    camera_only_memory_enabled_ = declare_parameter<bool>(
+      "camera_only_memory_enabled", false);
+    enable_test_camera_attachment_ = declare_parameter<bool>(
+      "enable_test_camera_attachment", false);
+    allow_degraded_calibration_ = declare_parameter<bool>(
+      "allow_degraded_calibration", false);
     appearance_memory_enabled_ = declare_parameter<bool>(
       "appearance_memory_enabled", true);
     reidentification_shadow_mode_ = declare_parameter<bool>(
@@ -167,11 +174,18 @@ public:
       "association_calibration_status", "not_calibrated");
     const auto calibration_report = declare_parameter<std::string>(
       "association_calibration_report", "");
+    const bool calibrated_attachment =
+      calibration_status == "calibrated";
+    const bool explicit_degraded_test =
+      enable_test_camera_attachment_ && allow_degraded_calibration_ &&
+      calibration_status == "test_only_uncalibrated";
     if (camera_attachment_enabled_ &&
-      (association_shadow_mode_ || calibration_status != "calibrated"))
+      (association_shadow_mode_ ||
+      (!calibrated_attachment && !explicit_degraded_test)))
     {
       throw std::invalid_argument(
-              "camera attachment requires calibrated non-shadow configuration");
+              "camera attachment requires calibrated production evidence or "
+              "explicit degraded test flags");
     }
     const auto diagnostics_topic = declare_parameter<std::string>(
       "diagnostics_topic", "/semantic_memory/diagnostics");
@@ -189,8 +203,12 @@ public:
       "tasks_topic", "/semantic_memory/tasks");
     const auto best_candidate_topic = declare_parameter<std::string>(
       "best_candidate_topic", "/semantic_memory/best_candidate");
+    const auto diagnostic_ranking_topic = declare_parameter<std::string>(
+      "diagnostic_ranking_topic", "/semantic_memory/diagnostic_ranking");
     publish_best_candidate_ = declare_parameter<bool>(
       "publish_best_candidate", true);
+    publish_diagnostic_ranking_ = declare_parameter<bool>(
+      "publish_diagnostic_ranking", true);
     camera_calibration_id_ = declare_parameter<std::string>(
       "camera_calibration_id", "zed_left_rectified_v1");
     if (camera_calibration_id_.empty() || camera_calibration_id_.size() > 128U) {
@@ -203,10 +221,18 @@ public:
     task_queue_depth_ = bounded_depth(
       declare_parameter<std::int64_t>("task_queue_depth", 1),
       "task_queue_depth");
-    task_relevance_config_.appearance_weight = declare_parameter<double>(
-      "task_appearance_weight", 0.75);
+    task_relevance_config_.appearance_weight = 0.0;
+    task_relevance_config_.grounding_weight = declare_parameter<double>(
+      "task_grounding_weight", 0.70);
+    task_relevance_config_.stability_weight = declare_parameter<double>(
+      "task_stability_weight", 0.10);
+    task_relevance_config_.support_weight = declare_parameter<double>(
+      "task_support_weight", 0.10);
     task_relevance_config_.semantic_weight = declare_parameter<double>(
-      "task_semantic_weight", 0.25);
+      "task_semantic_weight", 0.10);
+    task_relevance_config_.maximum_grounding_age_ns = seconds_to_nanoseconds(
+      declare_parameter<double>("task_grounding_maximum_age_sec", 1.0),
+      "task_grounding_maximum_age_sec");
     task_relevance_config_.validate();
     best_candidate_config_.threshold_calibrated = declare_parameter<bool>(
       "best_candidate_threshold_calibrated", false);
@@ -223,6 +249,10 @@ public:
       declare_parameter<std::int64_t>(
         "max_association_debug_pairs_per_batch", 1024),
       "max_association_debug_pairs_per_batch", 1024U);
+    maximum_lidar_candidates_per_visual_ = bounded_depth(
+      declare_parameter<std::int64_t>(
+        "maximum_lidar_candidates_per_visual", 8),
+      "maximum_lidar_candidates_per_visual", 64U);
 
     diagnostics_publisher_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>(
       diagnostics_topic, rclcpp::QoS(rclcpp::KeepLast(1)).reliable());
@@ -248,6 +278,12 @@ public:
         best_candidate_topic,
         rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
     }
+    if (publish_diagnostic_ranking_) {
+      diagnostic_ranking_publisher_ =
+        create_publisher<track_robot_interfaces::msg::SemanticObjectArray>(
+        diagnostic_ranking_topic,
+        rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local());
+    }
 
     const auto association_config = read_association_config();
     association_max_source_time_delta_ns_ = seconds_to_nanoseconds(
@@ -255,7 +291,7 @@ public:
       "association_max_source_time_delta_sec");
     associator_ = std::make_unique<CrossModalAssociator>(association_config);
     const auto runtime_association_config = read_runtime_association_config();
-    if (camera_attachment_enabled_) {
+    if (camera_attachment_enabled_ && calibrated_attachment) {
       validate_calibration_report(
         calibration_report, association_config, runtime_association_config,
         camera_calibration_id_);
@@ -707,6 +743,36 @@ private:
       }
       best_candidate_publisher_->publish(std::move(output));
       last_best_candidate_reason_ = service_reason_string(candidate.reason);
+    }
+    if (publish_diagnostic_ranking_ && diagnostic_ranking_publisher_) {
+      track_robot_interfaces::msg::SemanticObjectArray output;
+      output.header = header;
+      output.memory_epoch_id = epoch;
+      output.snapshot_sequence = ++diagnostic_ranking_sequence_;
+      const auto ranking = task_services_->diagnostic_ranking();
+      nlohmann::json diagnostics{
+        {"schema_version", "phase3_diagnostic_ranking/1.0.0"},
+        {"calibration_state", "UNCALIBRATED"},
+        {"memory_epoch_id", epoch},
+        {"objects", nlohmann::json::array()}};
+      for (const auto & candidate : ranking) {
+        output.objects.push_back(semantic_object_from_runtime_view(
+            candidate.view, *current_domain_));
+        diagnostics["objects"].push_back({
+            {"global_object_id",
+              candidate.view.object.key.global_object_id},
+            {"score", candidate.relevance.relevance},
+            {"grounding_confidence",
+              candidate.relevance.grounding_confidence},
+            {"stability", candidate.relevance.stability},
+            {"support_quality", candidate.relevance.support_quality},
+            {"permanent_semantic",
+              candidate.relevance.semantic_similarity},
+            {"evidence_mode", "YOLO_WORLD_GROUNDING"},
+            {"rejection_reason", ""}});
+      }
+      last_diagnostic_ranking_json_ = diagnostics.dump();
+      diagnostic_ranking_publisher_->publish(std::move(output));
     }
   }
 
@@ -1350,6 +1416,104 @@ private:
     return pairs;
   }
 
+  std::size_t ingest_camera_only_observations(
+    const track_robot_interfaces::msg::SemanticObservationArray & message,
+    const std::vector<
+      const track_robot_interfaces::msg::SemanticObservation *> & observations)
+  {
+    if (!camera_only_memory_enabled_ || observations.empty() || !current_domain_) {
+      return 0U;
+    }
+    if (!memory_core_) {
+      const auto epoch = initial_memory_epoch_override_ != 0U ?
+        initial_memory_epoch_override_ :
+        derive_memory_epoch_seed(*current_domain_, message.producer_epoch_id);
+      memory_core_ = std::make_unique<MemoryCore>(core_config_, epoch);
+      current_memory_epoch_id_ = epoch;
+    }
+
+    auto next_memory_core = *memory_core_;
+    std::optional<MemoryUpdateResult> latest;
+    std::vector<MemoryEvent> events;
+    std::size_t accepted = 0U;
+    for (const auto * observation : observations) {
+      const auto visual_key = stable_visual_key(*observation);
+      if (!visual_key.has_value()) {
+        ++rejected_visual_observation_count_;
+        continue;
+      }
+      try {
+        const auto camera = camera_observation_from_semantic_observation(
+          *observation, *visual_key, appearance_memory_enabled_);
+        auto result = next_memory_core.update_camera(*current_domain_, camera);
+        rejected_observation_count_ += result.rejected_observations;
+        if (result.rejected_observations == 0U) {
+          ++accepted;
+        }
+        events.insert(events.end(), result.events.begin(), result.events.end());
+        latest = std::move(result);
+      } catch (const std::exception & error) {
+        ++rejected_visual_observation_count_;
+        last_association_reason_ = bounded_reason(
+          std::string("camera_only_observation_rejected:") + error.what());
+      }
+    }
+    if (!latest.has_value()) {
+      return 0U;
+    }
+
+    auto next_task_services = synchronized_task_services(
+      *latest, next_memory_core);
+    const bool had_pending_task = pending_task_.has_value();
+    const bool had_pending_clear = pending_task_clear_requested_;
+    bool pending_task_accepted = true;
+    if (had_pending_clear) {
+      next_task_services.clear_task();
+    } else if (had_pending_task) {
+      pending_task_accepted = accept_task_message(
+        *pending_task_, next_task_services);
+    }
+    const auto previous_memory_epoch = current_memory_epoch_id_;
+    *memory_core_ = std::move(next_memory_core);
+    if (!task_services_) {
+      task_services_ = std::make_unique<RuntimeTaskServiceCoordinator>(
+        std::move(next_task_services));
+    } else {
+      *task_services_ = std::move(next_task_services);
+    }
+    runtime_view_domain_ = *current_domain_;
+    current_memory_epoch_id_ = latest->memory_epoch_id;
+    if (previous_memory_epoch != 0U &&
+      previous_memory_epoch != current_memory_epoch_id_)
+    {
+      reset_runtime_association("camera_source_time_or_domain_changed");
+    }
+    if (had_pending_task || had_pending_clear) {
+      pending_task_.reset();
+      pending_task_clear_requested_ = false;
+      pending_task_producer_epoch_id_ = 0U;
+      pending_task_source_stamp_ns_.reset();
+      if (had_pending_clear) {
+        last_task_reason_ = "rolled_back_pending_task_cleared";
+      } else if (pending_task_accepted) {
+        last_task_reason_ = "accepted_after_camera_memory_snapshot";
+      } else {
+        ++rejected_task_count_;
+        last_task_reason_ = "invalid_or_rolled_back_task";
+      }
+    }
+    auto header = message.header;
+    header.frame_id = current_domain_->canonical_frame_id();
+    if (publish_events_ && events_publisher_) {
+      for (const auto & event : events) {
+        events_publisher_->publish(semantic_event_from_memory(
+            event, header, ++event_sequence_, current_memory_epoch_id_));
+      }
+    }
+    publish_runtime_snapshots(header);
+    return accepted;
+  }
+
   void on_observations(
     track_robot_interfaces::msg::SemanticObservationArray::ConstSharedPtr message)
   {
@@ -1357,20 +1521,15 @@ private:
     const auto evaluation_stamp_ns = latest_lidar_batch_.has_value() ?
       rclcpp::Time(latest_lidar_batch_->header.stamp).nanoseconds() :
       now().nanoseconds();
-    if (!association_shadow_mode_ && !camera_attachment_enabled_) {
-      last_association_reason_ = "association_outputs_disabled";
-      return;
-    }
     if (association_shadow_mode_ && camera_attachment_enabled_) {
       ++rejected_observation_batch_count_;
       last_association_reason_ = "invalid_shadow_attachment_configuration";
       return;
     }
-    if (!current_domain_ || !memory_core_ || !association_lidar_batches_ ||
-      association_lidar_batches_->entries().empty())
+    if (!current_domain_)
     {
       ++rejected_observation_batch_count_;
-      last_association_reason_ = "waiting_for_domain_and_lidar_evidence";
+      last_association_reason_ = "waiting_for_valid_localization_domain";
       return;
     }
     if (last_visual_producer_epoch_id_ != 0U &&
@@ -1415,6 +1574,22 @@ private:
         return left->visual_candidate_id < right->visual_candidate_id;
       });
 
+    const auto camera_only_accepted =
+      ingest_camera_only_observations(*message, observations);
+    if (!association_shadow_mode_ && !camera_attachment_enabled_) {
+      last_association_reason_ = camera_only_accepted > 0U ?
+        "camera_only_memory_updated" : "association_outputs_disabled";
+      return;
+    }
+    if (!memory_core_ || !association_lidar_batches_ ||
+      association_lidar_batches_->entries().empty())
+    {
+      last_association_reason_ = camera_only_accepted > 0U ?
+        "camera_only_memory_updated_without_lidar" :
+        "waiting_for_domain_and_lidar_evidence";
+      return;
+    }
+
     std::vector<ScoredVisualObservation> scored_visuals;
     scored_visuals.reserve(observations.size());
     std::size_t possible = 0U;
@@ -1431,8 +1606,17 @@ private:
       }
       const auto & lidar_batch = buffered->value;
       std::vector<const track_robot_interfaces::msg::LidarTracklet *> tracklets;
+      std::map<std::int64_t, std::size_t> active_tracklet_id_counts;
       for (const auto & tracklet : lidar_batch.tracklets) {
         if (tracklet.active && tracklet.tracklet_id >= 0) {
+          ++active_tracklet_id_counts[tracklet.tracklet_id];
+        }
+      }
+      for (const auto & tracklet : lidar_batch.tracklets) {
+        if (
+          tracklet.active && tracklet.tracklet_id >= 0 &&
+          active_tracklet_id_counts.at(tracklet.tracklet_id) == 1U)
+        {
           tracklets.push_back(&tracklet);
         }
       }
@@ -1440,13 +1624,47 @@ private:
         [](const auto * left, const auto * right) {
           return left->tracklet_id < right->tracklet_id;
         });
-      possible += tracklets.size();
+      auto pairs = score_visual_pairs(
+        *observation, lidar_batch, tracklets, evaluation_stamp_ns);
+      if (!association_shadow_mode_) {
+        std::vector<RuntimePairCandidate> candidates;
+        candidates.reserve(pairs.size());
+        for (const auto & pair : pairs) {
+          candidates.push_back({
+              observation->visual_candidate_id,
+              {lidar_batch.source_epoch_id, pair.tracklet->tracklet_id},
+              pair.score.total_score,
+              pair.score.accepted_by_gates});
+        }
+        std::vector<RuntimePairCandidate> shortlist;
+        try {
+          shortlist = shortlist_visual_pairs(
+            candidates,
+            observation->visual_candidate_id,
+            maximum_lidar_candidates_per_visual_);
+        } catch (const std::exception & error) {
+          ++rejected_visual_observation_count_;
+          last_association_reason_ = bounded_reason(
+            std::string("visual_shortlist_rejected:") + error.what());
+          continue;
+        }
+        std::set<std::int64_t> retained;
+        for (const auto & candidate : shortlist) {
+          retained.insert(candidate.lidar.tracklet_id);
+        }
+        pairs.erase(
+          std::remove_if(
+            pairs.begin(), pairs.end(),
+            [&retained](const auto & pair) {
+              return retained.count(pair.tracklet->tracklet_id) == 0U;
+            }),
+          pairs.end());
+      }
+      possible += association_shadow_mode_ ? tracklets.size() : pairs.size();
       if (camera_attachment_enabled_ && possible > max_association_debug_pairs_) {
         oversized = true;
         break;
       }
-      auto pairs = score_visual_pairs(
-        *observation, lidar_batch, tracklets, evaluation_stamp_ns);
       if (association_shadow_mode_ &&
         possible > max_association_debug_pairs_)
       {
@@ -1572,12 +1790,14 @@ private:
     auto next_reidentification = *reidentification_;
     auto next_memory_core = *memory_core_;
     try {
-      for (const auto & scored : scored_visuals) {
-        const auto visual_key = stable_visual_key(*scored.observation);
-        if (visual_key.has_value()) {
-          (void)make_visual_supplement(
-            *scored.observation, *visual_key,
-            {common_lidar_epoch, 0}, 0.0, appearance_memory_enabled_);
+      if (!camera_only_memory_enabled_) {
+        for (const auto & scored : scored_visuals) {
+          const auto visual_key = stable_visual_key(*scored.observation);
+          if (visual_key.has_value()) {
+            (void)make_visual_supplement(
+              *scored.observation, *visual_key,
+              {common_lidar_epoch, 0}, 0.0, appearance_memory_enabled_);
+          }
         }
       }
       runtime_result = next_runtime_association.process(runtime_frame);
@@ -1611,6 +1831,28 @@ private:
         const auto visual_key = stable_visual_key(*scored.observation);
         if (visual_key.has_value()) {
           try {
+            if (camera_only_memory_enabled_) {
+              const ProducerObjectKey lidar_key{
+                decision.attached_lidar->source_epoch_id,
+                decision.attached_lidar->tracklet_id};
+              auto attached = next_memory_core.attach_lidar_geometry(
+                *current_domain_, *visual_key, lidar_key,
+                decision.best_score);
+              if (!attached.accepted) {
+                throw std::invalid_argument(attached.reason);
+              }
+              attached_global_ids[
+                scored.observation->visual_candidate_id] =
+                attached.preserved_key.global_object_id;
+              auto event_header = scored.observation->header;
+              event_header.frame_id = current_domain_->canonical_frame_id();
+              for (const auto & event : attached.snapshot.events) {
+                pending_events.emplace_back(event_header, event);
+              }
+              latest_snapshot = std::move(attached.snapshot);
+              ++accepted_in_batch;
+              continue;
+            }
             const auto supplement = make_visual_supplement(
               *scored.observation, *visual_key,
               *decision.attached_lidar, decision.best_score,
@@ -1866,6 +2108,8 @@ private:
     status.values.push_back(make_value("task_reason", last_task_reason_));
     status.values.push_back(make_value(
         "best_candidate_reason", last_best_candidate_reason_));
+    status.values.push_back(make_value(
+        "diagnostic_ranking", last_diagnostic_ranking_json_));
     output.status.push_back(status);
     diagnostics_publisher_->publish(output);
   }
@@ -1891,13 +2135,18 @@ private:
   bool publish_association_debug_{true};
   bool association_shadow_mode_{true};
   bool camera_attachment_enabled_{false};
+  bool camera_only_memory_enabled_{false};
+  bool enable_test_camera_attachment_{false};
+  bool allow_degraded_calibration_{false};
   bool appearance_memory_enabled_{true};
   bool reidentification_shadow_mode_{true};
   bool reidentification_mutation_enabled_{false};
   bool publish_best_candidate_{true};
+  bool publish_diagnostic_ranking_{true};
   std::size_t observation_queue_depth_{1U};
   std::size_t task_queue_depth_{1U};
   std::size_t max_association_debug_pairs_{1024U};
+  std::size_t maximum_lidar_candidates_per_visual_{8U};
   std::string observations_topic_;
   std::string association_debug_topic_;
   std::string camera_info_topic_;
@@ -1928,6 +2177,7 @@ private:
   std::uint64_t snapshot_sequence_{0U};
   std::uint64_t event_sequence_{0U};
   std::uint64_t best_candidate_sequence_{0U};
+  std::uint64_t diagnostic_ranking_sequence_{0U};
   std::uint64_t task_message_count_{0U};
   std::uint64_t rejected_task_count_{0U};
   std::uint64_t service_call_count_{0U};
@@ -1937,6 +2187,8 @@ private:
   std::string last_association_reason_{"not_received"};
   std::string last_task_reason_{"not_received"};
   std::string last_best_candidate_reason_{"not_published"};
+  std::string last_diagnostic_ranking_json_{
+    "{\"calibration_state\":\"UNCALIBRATED\",\"objects\":[]}"};
   std::chrono::nanoseconds tf_lookup_timeout_{30000000};
   std::int64_t localization_state_timeout_ns_{500000000};
   std::int64_t association_max_source_time_delta_ns_{100000000};
@@ -1977,6 +2229,8 @@ private:
     association_debug_publisher_;
   rclcpp::Publisher<track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
     best_candidate_publisher_;
+  rclcpp::Publisher<track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
+    diagnostic_ranking_publisher_;
   rclcpp::Subscription<
     track_robot_interfaces::msg::SemanticLocalizationState>::SharedPtr
     localization_subscription_;

@@ -8,9 +8,14 @@ semantic_memory:
     tasks_topic: /semantic_memory/tasks
     task_queue_depth: 1
     best_candidate_topic: /semantic_memory/best_candidate
+    diagnostic_ranking_topic: /semantic_memory/diagnostic_ranking
     publish_best_candidate: true
-    task_appearance_weight: 0.75
-    task_semantic_weight: 0.25
+    publish_diagnostic_ranking: true
+    task_grounding_weight: 0.70
+    task_stability_weight: 0.10
+    task_support_weight: 0.10
+    task_semantic_weight: 0.10
+    task_grounding_maximum_age_sec: 1.0
     best_candidate_threshold_calibrated: false
     best_candidate_minimum_relevance: 1.0
     events_topic: /semantic_memory/events
@@ -24,6 +29,10 @@ semantic_memory:
     publish_association_debug: true
     association_shadow_mode: true
     camera_attachment_enabled: false
+    camera_only_memory_enabled: false
+    enable_test_camera_attachment: false
+    allow_degraded_calibration: false
+    maximum_lidar_candidates_per_visual: 8
     appearance_memory_enabled: true
     appearance_maximum_prototypes: 4
     appearance_minimum_quality: 0.5

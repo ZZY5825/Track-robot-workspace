@@ -33,6 +33,23 @@ bool contains_key(
   return std::binary_search(keys.begin(), keys.end(), key);
 }
 
+void validate_semantic_labels(
+  const std::vector<MemorySemanticEvidence> & labels)
+{
+  if (labels.size() > 16U) {
+    throw std::invalid_argument("visual semantic evidence exceeds its bound");
+  }
+  for (const auto & label : labels) {
+    if (label.label.empty() || label.label.size() > 128U ||
+      label.provenance.empty() || label.provenance.size() > 128U ||
+      !std::isfinite(label.confidence) || label.confidence < 0.0 ||
+      label.confidence > 1.0 || label.evidence_kind > 3U)
+    {
+      throw std::invalid_argument("visual semantic evidence is invalid");
+    }
+  }
+}
+
 void increment_saturating(std::uint32_t * value) noexcept
 {
   if (*value != std::numeric_limits<std::uint32_t>::max()) {
@@ -120,25 +137,45 @@ void LidarObservation::validate() const
   }
 }
 
+void CameraObservation::validate() const
+{
+  if (!visual_key.valid() || observation_producer_epoch_id == 0U ||
+    observation_id == 0U || visual_candidate_id == 0U ||
+    query_id == 0U || query_version == 0U || camera_stamp_ns < 0 ||
+    !std::isfinite(semantic_confidence) || semantic_confidence < 0.0 ||
+    semantic_confidence > 1.0 || image_width == 0U || image_height == 0U ||
+    roi_width == 0U || roi_height == 0U || roi_x > image_width ||
+    roi_y > image_height || roi_width > image_width - roi_x ||
+    roi_height > image_height - roi_y)
+  {
+    throw std::invalid_argument("camera observation identity or ROI is invalid");
+  }
+  if (appearance_descriptor.has_value()) {
+    const auto gate = descriptor_compatibility_gate(
+      *appearance_descriptor, *appearance_descriptor, 1e-4);
+    if (!gate.gate_passed || !std::isfinite(appearance_quality) ||
+      appearance_quality < 0.0 || appearance_quality > 1.0)
+    {
+      throw std::invalid_argument("camera appearance evidence is invalid");
+    }
+  } else if (!std::isfinite(appearance_quality) || appearance_quality != 0.0) {
+    throw std::invalid_argument(
+            "camera appearance quality requires a descriptor");
+  }
+  validate_semantic_labels(semantic_labels);
+}
+
 void VisualMemorySupplement::validate() const
 {
   if (!lidar_key.valid() || !visual_key.valid() ||
     observation_producer_epoch_id == 0U || observation_id == 0U ||
     visual_candidate_id == 0U || camera_stamp_ns < 0 ||
     !std::isfinite(association_confidence) || association_confidence < 0.0 ||
-    association_confidence > 1.0 || semantic_labels.size() > 16U)
+    association_confidence > 1.0)
   {
     throw std::invalid_argument("visual memory supplement identity is invalid");
   }
-  for (const auto & label : semantic_labels) {
-    if (label.label.empty() || label.label.size() > 128U ||
-      label.provenance.empty() || label.provenance.size() > 128U ||
-      !std::isfinite(label.confidence) || label.confidence < 0.0 ||
-      label.confidence > 1.0 || label.evidence_kind > 3U)
-    {
-      throw std::invalid_argument("visual semantic evidence is invalid");
-    }
-  }
+  validate_semantic_labels(semantic_labels);
 }
 
 void MemoryCoreConfig::validate() const
@@ -172,6 +209,7 @@ MemoryCore::MemoryCore(
 : config_(config),
   domain_tracker_(initial_memory_epoch_id),
   clock_(config.rollback_tolerance_ns),
+  camera_clock_(config.rollback_tolerance_ns),
   static_lifecycle_(config.static_lifecycle),
   dynamic_lifecycle_(config.dynamic_lifecycle),
   motion_classifier_(config.static_max_speed_mps, config.dynamic_min_speed_mps)
@@ -198,18 +236,24 @@ MemoryUpdateResult MemoryCore::update(
   if (domain_transition.changed) {
     clear_for_new_epoch();
     clock_.reset(batch_stamp_ns);
+    lidar_clock_initialized_ = true;
     result.events.push_back({MemoryEventType::kDomainChanged, {}});
   } else if (domain.mode() == MemoryMode::kObservationOnly) {
     (void)domain_tracker_.advance_epoch();
     clear_for_new_epoch();
     clock_.reset(batch_stamp_ns);
+    lidar_clock_initialized_ = true;
     result.events.push_back({MemoryEventType::kMemoryReset, {}});
+  } else if (!lidar_clock_initialized_) {
+    clock_.reset(batch_stamp_ns);
+    lidar_clock_initialized_ = true;
   } else {
     const auto clock_result = clock_.observe(batch_stamp_ns);
     if (clock_result == ClockObservation::kRollback) {
       (void)domain_tracker_.advance_epoch();
       clear_for_new_epoch();
       clock_.reset(batch_stamp_ns);
+      lidar_clock_initialized_ = true;
       result.events.push_back({MemoryEventType::kDomainChanged, {}});
     } else if (clock_result == ClockObservation::kOutOfOrder) {
       result.rejected_observations = static_cast<std::uint32_t>(observations.size());
@@ -260,6 +304,74 @@ MemoryUpdateResult MemoryCore::update(
     begin = end;
   }
   advance_unobserved(batch_stamp_ns, observed_keys, result);
+  return finish_result(std::move(result));
+}
+
+MemoryUpdateResult MemoryCore::update_camera(
+  const MemoryDomainKey & domain,
+  const CameraObservation & observation)
+{
+  observation.validate();
+  MemoryUpdateResult result;
+  const auto domain_transition = domain_tracker_.update(domain);
+  if (domain_transition.changed) {
+    clear_for_new_epoch();
+    camera_clock_.reset(observation.camera_stamp_ns);
+    camera_clock_initialized_ = true;
+    result.events.push_back({MemoryEventType::kDomainChanged, {}});
+  } else if (domain.mode() == MemoryMode::kObservationOnly) {
+    (void)domain_tracker_.advance_epoch();
+    clear_for_new_epoch();
+    camera_clock_.reset(observation.camera_stamp_ns);
+    camera_clock_initialized_ = true;
+    result.events.push_back({MemoryEventType::kMemoryReset, {}});
+  } else if (!camera_clock_initialized_) {
+    camera_clock_.reset(observation.camera_stamp_ns);
+    camera_clock_initialized_ = true;
+  } else {
+    const auto clock_result = camera_clock_.observe(
+      observation.camera_stamp_ns);
+    if (clock_result == ClockObservation::kRollback) {
+      (void)domain_tracker_.advance_epoch();
+      clear_for_new_epoch();
+      camera_clock_.reset(observation.camera_stamp_ns);
+      camera_clock_initialized_ = true;
+      result.events.push_back({MemoryEventType::kDomainChanged, {}});
+    } else if (clock_result == ClockObservation::kOutOfOrder) {
+      result.rejected_observations = 1U;
+      result.events.push_back({MemoryEventType::kObservationRejected, {}});
+      return finish_result(std::move(result));
+    }
+  }
+
+  auto * object = find_by_visual(observation.visual_key);
+  if (object != nullptr &&
+    object->visual_observation_producer_epoch_id ==
+    observation.observation_producer_epoch_id &&
+    object->visual_observation_id == observation.observation_id)
+  {
+    result.rejected_observations = 1U;
+    result.events.push_back({MemoryEventType::kObservationRejected, object->key});
+    return finish_result(std::move(result));
+  }
+  if (object != nullptr && object->last_camera_seen_ns >= 0 &&
+    observation.camera_stamp_ns <= object->last_camera_seen_ns)
+  {
+    result.rejected_observations = 1U;
+    result.events.push_back({MemoryEventType::kObservationRejected, object->key});
+    return finish_result(std::move(result));
+  }
+  if (object == nullptr) {
+    if (!make_capacity(result)) {
+      result.rejected_observations = 1U;
+      result.events.push_back({MemoryEventType::kObservationRejected, {}});
+      return finish_result(std::move(result));
+    }
+    object = &create_camera_object(observation, result);
+  }
+  apply_camera_observation(*object, observation, result);
+  advance_unobserved_camera(
+    observation.camera_stamp_ns, observation.visual_key, result);
   return finish_result(std::move(result));
 }
 
@@ -327,8 +439,12 @@ VisualSupplementResult MemoryCore::supplement_visual(
     object->lifecycle, SupportState::kCameraLidar);
   const bool attachment_changed = !object->attached_visual_key.has_value() ||
     *object->attached_visual_key != supplement.visual_key;
+  if (attachment_changed && object->attached_visual_key.has_value()) {
+    camera_index_.erase(*object->attached_visual_key);
+  }
   auto * previous_owner = find_by_visual(supplement.visual_key);
   if (previous_owner != nullptr && previous_owner != object) {
+    camera_index_.erase(supplement.visual_key);
     previous_owner->attached_visual_key.reset();
     previous_owner->association_confidence = 0.0;
     previous_owner->visibility = VisibilityState::kUnknown;
@@ -342,6 +458,7 @@ VisualSupplementResult MemoryCore::supplement_visual(
         previous_owner->lifecycle, previous_owner->lifecycle});
   }
   object->attached_visual_key = supplement.visual_key;
+  camera_index_[supplement.visual_key] = object->key;
   object->visual_observation_producer_epoch_id =
     supplement.observation_producer_epoch_id;
   object->visual_observation_id = supplement.observation_id;
@@ -430,6 +547,107 @@ VisualSupplementResult MemoryCore::supplement_visual(
   return finish(true, "confirmed delayed visual supplement applied");
 }
 
+LidarGeometryAttachmentResult MemoryCore::attach_lidar_geometry(
+  const MemoryDomainKey & domain,
+  const VisualAssociationKey & visual_key,
+  const ProducerObjectKey & lidar_key,
+  double association_confidence)
+{
+  MemoryUpdateResult result;
+  auto reject = [this, &result](std::string reason) mutable {
+      return LidarGeometryAttachmentResult{
+        false, std::move(reason), {}, finish_result(std::move(result))};
+    };
+  if (!visual_key.valid() || !lidar_key.valid() ||
+    !std::isfinite(association_confidence) ||
+    association_confidence < 0.0 || association_confidence > 1.0)
+  {
+    return reject("LiDAR geometry attachment identity is invalid");
+  }
+  if (!domain_tracker_.domain().has_value() ||
+    *domain_tracker_.domain() != domain)
+  {
+    return reject("LiDAR geometry attachment domain is not current");
+  }
+  auto * camera_object = find_by_visual(visual_key);
+  auto * lidar_object = find_by_source(lidar_key);
+  if (camera_object == nullptr || lidar_object == nullptr ||
+    !domain_tracker_.accepts(camera_object->key) ||
+    !domain_tracker_.accepts(lidar_object->key) ||
+    camera_object->lifecycle == LifecycleState::kLost ||
+    camera_object->lifecycle == LifecycleState::kArchived ||
+    lidar_object->lifecycle == LifecycleState::kLost ||
+    lidar_object->lifecycle == LifecycleState::kArchived)
+  {
+    return reject("camera identity or LiDAR geometry object is not active");
+  }
+  if (camera_object == lidar_object) {
+    camera_object->association_confidence = association_confidence;
+    camera_object->support = SupportState::kCameraLidar;
+    return LidarGeometryAttachmentResult{
+      true, "LiDAR geometry attachment refreshed", camera_object->key,
+      finish_result(std::move(result))};
+  }
+
+  const auto preserved_key = camera_object->key;
+  const auto duplicate_key = lidar_object->key;
+  const auto camera_lifecycle = camera_object->lifecycle;
+  const auto lidar_lifecycle = lidar_object->lifecycle;
+  MemoryObject merged = *camera_object;
+  merged.lidar_key = lidar_key;
+  merged.position = lidar_object->position;
+  merged.velocity = lidar_object->velocity;
+  merged.extent = lidar_object->extent;
+  merged.position_covariance = lidar_object->position_covariance;
+  merged.motion = lidar_object->motion;
+  merged.last_seen_ns = lidar_object->last_seen_ns;
+  merged.state_stamp_ns = std::max(
+    merged.state_stamp_ns, lidar_object->state_stamp_ns);
+  merged.first_seen_ns = std::min(
+    merged.first_seen_ns, lidar_object->first_seen_ns);
+  merged.observation_count = saturating_sum(
+    merged.observation_count, lidar_object->observation_count);
+  merged.compatible_hit_count = saturating_sum(
+    merged.compatible_hit_count, lidar_object->compatible_hit_count);
+  merged.confidence = std::clamp(
+    0.5 * merged.confidence + 0.5 * lidar_object->confidence,
+    0.0, 1.0);
+  merged.association_confidence = association_confidence;
+  merged.support = SupportState::kCameraLidar;
+  merged.visibility = VisibilityState::kVisible;
+  for (const auto & sample : lidar_object->short_history) {
+    merged.short_history.push_back(sample);
+    if (merged.short_history.size() > config_.max_history) {
+      merged.short_history.erase(merged.short_history.begin());
+    }
+  }
+
+  source_index_.erase(lidar_key);
+  if (lidar_object->attached_visual_key.has_value()) {
+    camera_index_.erase(*lidar_object->attached_visual_key);
+  }
+  appearance_banks_.erase(duplicate_key);
+  objects_.erase(
+    std::remove_if(
+      objects_.begin(), objects_.end(),
+      [&preserved_key, &duplicate_key](const auto & object) {
+        return object.key == preserved_key || object.key == duplicate_key;
+      }),
+    objects_.end());
+  objects_.push_back(std::move(merged));
+  source_index_[lidar_key] = preserved_key;
+  camera_index_[visual_key] = preserved_key;
+  result.events.push_back({
+      MemoryEventType::kArchived, duplicate_key,
+      lidar_lifecycle, LifecycleState::kArchived});
+  result.events.push_back({
+      MemoryEventType::kAssociationAttached, preserved_key,
+      camera_lifecycle, camera_lifecycle});
+  return LidarGeometryAttachmentResult{
+    true, "LiDAR geometry merged into camera-owned identity",
+    preserved_key, finish_result(std::move(result))};
+}
+
 RuntimeReidentificationFrame MemoryCore::make_reidentification_frame(
   const MemoryDomainKey & domain,
   std::uint64_t frame_index,
@@ -470,6 +688,7 @@ RuntimeReidentificationFrame MemoryCore::make_reidentification_frame(
       found->lifecycle == LifecycleState::kLost ||
       found->lifecycle == LifecycleState::kArchived ||
       found->support == SupportState::kPredictionOnly ||
+      !found->lidar_key.has_value() ||
       !found->attached_visual_key.has_value() ||
       found->last_camera_seen_ns != evidence.camera_stamp_ns ||
       found->visual_observation_producer_epoch_id !=
@@ -528,7 +747,7 @@ RuntimeReidentificationFrame MemoryCore::make_reidentification_frame(
       frame.pairs.push_back(RuntimeReidentificationPair{
           target->key,
           candidate->key,
-          candidate->lidar_key,
+          *candidate->lidar_key,
           candidate->attached_visual_key,
           target->lifecycle,
           target->key.memory_epoch_id == frame.memory_epoch_id &&
@@ -608,7 +827,8 @@ ReidentificationTransferResult MemoryCore::reidentify(
   {
     return reject("reidentification lifecycle preconditions failed");
   }
-  if (replacement->lidar_key != expected_replacement_lidar_key ||
+  if (!replacement->lidar_key.has_value() ||
+    *replacement->lidar_key != expected_replacement_lidar_key ||
     replacement->attached_visual_key != expected_replacement_visual_key ||
     !expected_replacement_lidar_key.valid() ||
     !expected_replacement_visual_key.has_value() ||
@@ -681,8 +901,16 @@ ReidentificationTransferResult MemoryCore::reidentify(
 
   const auto old_lidar_key = old_object->lidar_key;
   const auto replacement_lidar_key = replacement->lidar_key;
-  source_index_.erase(old_lidar_key);
-  source_index_.erase(replacement_lidar_key);
+  if (old_lidar_key.has_value()) {
+    source_index_.erase(*old_lidar_key);
+  }
+  source_index_.erase(*replacement_lidar_key);
+  if (old_object->attached_visual_key.has_value()) {
+    camera_index_.erase(*old_object->attached_visual_key);
+  }
+  if (replacement->attached_visual_key.has_value()) {
+    camera_index_.erase(*replacement->attached_visual_key);
+  }
   appearance_banks_.erase(old_key);
   appearance_banks_.erase(replacement_key);
   objects_.erase(std::remove_if(
@@ -691,7 +919,10 @@ ReidentificationTransferResult MemoryCore::reidentify(
         return object.key == old_key || object.key == replacement_key;
       }), objects_.end());
   objects_.push_back(std::move(merged));
-  source_index_[replacement_lidar_key] = old_key;
+  source_index_[*replacement_lidar_key] = old_key;
+  if (objects_.back().attached_visual_key.has_value()) {
+    camera_index_[*objects_.back().attached_visual_key] = old_key;
+  }
   if (!merged_bank.prototypes().empty()) {
     appearance_banks_.emplace(old_key, std::move(merged_bank));
   }
@@ -709,7 +940,10 @@ void MemoryCore::clear_for_new_epoch()
 {
   objects_.clear();
   source_index_.clear();
+  camera_index_.clear();
   appearance_banks_.clear();
+  lidar_clock_initialized_ = false;
+  camera_clock_initialized_ = false;
   next_global_object_id_ = 1U;
 }
 
@@ -728,12 +962,8 @@ MemoryObject * MemoryCore::find_by_source(const ProducerObjectKey & key)
 
 MemoryObject * MemoryCore::find_by_visual(const VisualAssociationKey & key)
 {
-  const auto found = std::find_if(objects_.begin(), objects_.end(),
-    [&key](const auto & object) {
-      return object.attached_visual_key.has_value() &&
-             *object.attached_visual_key == key;
-    });
-  return found == objects_.end() ? nullptr : &*found;
+  const auto indexed = camera_index_.find(key);
+  return indexed == camera_index_.end() ? nullptr : find_by_key(indexed->second);
 }
 
 bool MemoryCore::make_capacity(MemoryUpdateResult & result)
@@ -764,7 +994,12 @@ bool MemoryCore::make_capacity(MemoryUpdateResult & result)
   if (candidate == objects_.end()) {
     return false;
   }
-  source_index_.erase(candidate->lidar_key);
+  if (candidate->lidar_key.has_value()) {
+    source_index_.erase(*candidate->lidar_key);
+  }
+  if (candidate->attached_visual_key.has_value()) {
+    camera_index_.erase(*candidate->attached_visual_key);
+  }
   appearance_banks_.erase(candidate->key);
   result.events.push_back({MemoryEventType::kCapacityEvicted, candidate->key});
   objects_.erase(candidate);
@@ -791,6 +1026,26 @@ MemoryObject & MemoryCore::create_object(
   return objects_.back();
 }
 
+MemoryObject & MemoryCore::create_camera_object(
+  const CameraObservation & observation, MemoryUpdateResult & result)
+{
+  if (next_global_object_id_ == 0U ||
+    next_global_object_id_ == std::numeric_limits<std::uint64_t>::max())
+  {
+    throw std::overflow_error("global object ID space exhausted");
+  }
+  MemoryObject object;
+  object.key = {domain_tracker_.memory_epoch_id(), next_global_object_id_++};
+  object.attached_visual_key = observation.visual_key;
+  object.first_seen_ns = observation.camera_stamp_ns;
+  object.last_seen_ns = observation.camera_stamp_ns;
+  object.state_stamp_ns = observation.camera_stamp_ns;
+  objects_.push_back(object);
+  camera_index_[observation.visual_key] = object.key;
+  result.events.push_back({MemoryEventType::kCreated, object.key});
+  return objects_.back();
+}
+
 void MemoryCore::apply_observation(
   MemoryObject & object, const LidarObservation & observation,
   MemoryUpdateResult & result)
@@ -811,7 +1066,8 @@ void MemoryCore::apply_observation(
   if (object.motion == MotionState::kStatic) {
     object.velocity = {0.0, 0.0, 0.0};
   }
-  object.support = SupportState::kLidarOnly;
+  object.support = object.attached_visual_key.has_value() ?
+    SupportState::kCameraLidar : SupportState::kLidarOnly;
   object.last_seen_ns = observation.source_stamp_ns;
   object.state_stamp_ns = observation.source_stamp_ns;
   object.confidence = observation.confidence;
@@ -824,13 +1080,116 @@ void MemoryCore::apply_observation(
   append_history(object);
 }
 
+void MemoryCore::apply_camera_observation(
+  MemoryObject & object, const CameraObservation & observation,
+  MemoryUpdateResult & result)
+{
+  object.attached_visual_key = observation.visual_key;
+  camera_index_[observation.visual_key] = object.key;
+  object.visual_observation_producer_epoch_id =
+    observation.observation_producer_epoch_id;
+  object.visual_observation_id = observation.observation_id;
+  object.visual_candidate_id = observation.visual_candidate_id;
+  object.last_camera_seen_ns = observation.camera_stamp_ns;
+  object.state_stamp_ns = std::max(
+    object.state_stamp_ns, observation.camera_stamp_ns);
+  object.support = object.lidar_key.has_value() ?
+    SupportState::kCameraLidar : SupportState::kCameraOnly;
+  object.visibility = VisibilityState::kVisible;
+  object.association_confidence = 0.0;
+  object.confidence = object.camera_observation_count == 0U ?
+    observation.semantic_confidence :
+    std::clamp(
+    0.75 * object.confidence + 0.25 * observation.semantic_confidence,
+    0.0, 1.0);
+  increment_saturating(&object.compatible_hit_count);
+  increment_saturating(&object.camera_observation_count);
+  const bool same_grounding_task =
+    object.grounding_query_id == observation.query_id &&
+    object.grounding_query_version == observation.query_version &&
+    object.grounding_producer_epoch_id ==
+    observation.observation_producer_epoch_id;
+  object.grounding_query_id = observation.query_id;
+  object.grounding_query_version = observation.query_version;
+  object.grounding_producer_epoch_id =
+    observation.observation_producer_epoch_id;
+  object.grounding_source_stamp_ns = observation.camera_stamp_ns;
+  object.grounding_confidence = observation.semantic_confidence;
+  object.grounding_stability = same_grounding_task ?
+    std::min(1.0, object.grounding_stability + 0.25) : 0.25;
+
+  bool semantic_changed = false;
+  for (const auto & label : observation.semantic_labels) {
+    if (label.evidence_kind == 1U) {
+      continue;
+    }
+    const auto found = std::find_if(
+      object.semantic_labels.begin(), object.semantic_labels.end(),
+      [&label](const auto & existing) {
+        return existing.label == label.label &&
+               existing.provenance == label.provenance &&
+               existing.evidence_kind == label.evidence_kind;
+      });
+    if (found != object.semantic_labels.end()) {
+      if (label.confidence >= found->confidence) {
+        *found = label;
+        semantic_changed = true;
+      }
+    } else if (object.semantic_labels.size() < 16U) {
+      object.semantic_labels.push_back(label);
+      semantic_changed = true;
+    }
+  }
+  if (semantic_changed) {
+    std::sort(
+      object.semantic_labels.begin(), object.semantic_labels.end(),
+      [](const auto & left, const auto & right) {
+        return std::tie(left.label, left.provenance, left.evidence_kind) <
+               std::tie(right.label, right.provenance, right.evidence_kind);
+      });
+    increment_saturating(&object.semantic_update_count);
+  }
+
+  if (observation.appearance_descriptor.has_value()) {
+    const AppearanceMemoryConfig appearance_config{
+      config_.max_feature_prototypes,
+      config_.appearance_minimum_quality,
+      config_.appearance_new_prototype_similarity_threshold,
+      config_.appearance_normalization_tolerance};
+    auto found = appearance_banks_.find(object.key);
+    AppearanceMemory pending = found == appearance_banks_.end() ?
+      AppearanceMemory(appearance_config) : found->second;
+    const auto appearance_result = pending.update(AppearanceObservation{
+        *observation.appearance_descriptor,
+        observation.appearance_quality,
+        true,
+        false,
+        false});
+    if (appearance_result.decision != AppearanceUpdateDecision::kRejected) {
+      if (found == appearance_banks_.end()) {
+        appearance_banks_.emplace(object.key, std::move(pending));
+      } else {
+        found->second = std::move(pending);
+      }
+      increment_saturating(&object.appearance_update_count);
+      refresh_appearance_summary(object);
+    }
+  }
+  transition_lifecycle(
+    object,
+    static_lifecycle_.evaluate(
+      object.lifecycle, object.compatible_hit_count, 0),
+    result);
+}
+
 void MemoryCore::advance_unobserved(
   std::int64_t batch_stamp_ns,
   const std::vector<ProducerObjectKey> & observed_keys,
   MemoryUpdateResult & result)
 {
   for (auto & object : objects_) {
-    if (contains_key(observed_keys, object.lidar_key) ||
+    if (!object.lidar_key.has_value() ||
+      contains_key(observed_keys, *object.lidar_key) ||
       object.lifecycle == LifecycleState::kArchived)
     {
       continue;
@@ -852,10 +1211,66 @@ void MemoryCore::advance_unobserved(
     const auto age = std::max<std::int64_t>(0, batch_stamp_ns - object.last_seen_ns);
     const auto & policy = object.motion == MotionState::kDynamic ?
       dynamic_lifecycle_ : static_lifecycle_;
-    transition_lifecycle(object,
-      policy.evaluate(object.lifecycle, object.compatible_hit_count, age), result);
+    const auto lidar_lifecycle = policy.evaluate(
+      object.lifecycle, object.compatible_hit_count, age);
+    if ((lidar_lifecycle == LifecycleState::kLost ||
+      lidar_lifecycle == LifecycleState::kArchived) &&
+      object.attached_visual_key.has_value() &&
+      object.last_camera_seen_ns >= 0)
+    {
+      const auto detached_key = *object.lidar_key;
+      source_index_.erase(detached_key);
+      object.lidar_key.reset();
+      const auto camera_age = std::max<std::int64_t>(
+        0, batch_stamp_ns - object.last_camera_seen_ns);
+      transition_lifecycle(
+        object,
+        static_lifecycle_.evaluate(
+          object.lifecycle, object.compatible_hit_count, camera_age),
+        result);
+      object.support =
+        object.lifecycle == LifecycleState::kLost ?
+        SupportState::kNone :
+        (object.lifecycle == LifecycleState::kTentative ||
+        object.lifecycle == LifecycleState::kConfirmed ?
+        SupportState::kCameraOnly : SupportState::kPredictionOnly);
+      result.events.push_back({
+          MemoryEventType::kAssociationDetached, object.key,
+          object.lifecycle, object.lifecycle});
+      continue;
+    }
+    transition_lifecycle(object, lidar_lifecycle, result);
     object.support = object.lifecycle == LifecycleState::kLost ?
       SupportState::kNone : SupportState::kPredictionOnly;
+  }
+}
+
+void MemoryCore::advance_unobserved_camera(
+  std::int64_t camera_stamp_ns,
+  const VisualAssociationKey & observed_key,
+  MemoryUpdateResult & result)
+{
+  for (auto & object : objects_) {
+    if (object.lidar_key.has_value() ||
+      !object.attached_visual_key.has_value() ||
+      *object.attached_visual_key == observed_key ||
+      object.lifecycle == LifecycleState::kArchived)
+    {
+      continue;
+    }
+    object.state_stamp_ns = std::max(object.state_stamp_ns, camera_stamp_ns);
+    const auto age = std::max<std::int64_t>(
+      0, camera_stamp_ns - object.last_camera_seen_ns);
+    transition_lifecycle(
+      object,
+      static_lifecycle_.evaluate(
+        object.lifecycle, object.compatible_hit_count, age),
+      result);
+    object.support = object.lifecycle == LifecycleState::kLost ?
+      SupportState::kNone : SupportState::kPredictionOnly;
+    if (object.lifecycle == LifecycleState::kLost) {
+      object.visibility = VisibilityState::kUnknown;
+    }
   }
 }
 
@@ -874,7 +1289,12 @@ void MemoryCore::transition_lifecycle(
   } else if (next == LifecycleState::kLost) {
     result.events.push_back({MemoryEventType::kLost, object.key, previous, next});
   } else if (next == LifecycleState::kArchived) {
-    source_index_.erase(object.lidar_key);
+    if (object.lidar_key.has_value()) {
+      source_index_.erase(*object.lidar_key);
+    }
+    if (object.attached_visual_key.has_value()) {
+      camera_index_.erase(*object.attached_visual_key);
+    }
     result.events.push_back({MemoryEventType::kArchived, object.key, previous, next});
   }
 }

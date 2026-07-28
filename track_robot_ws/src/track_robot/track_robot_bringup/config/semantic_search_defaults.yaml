@@ -5,6 +5,12 @@ models:
   runtime_path: models/phase1_runtime/python
   checkpoint_path: models/phase1/ViT-B-32.pt
   checkpoint_sha256: 40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af
+  yolo_runtime_path: models/r0c_runtime/python
+  yolo_checkpoint_path: models/r0c/yolov8s-worldv2.pt
+  yolo_checkpoint_sha256: 9b2c17ab6124a913e9b3a5c170617920d91b0f01111a8479da69f00e2cf27792
+  dino_repo_path: src/track_robot_core/third_party/dinov3_py38
+  dino_checkpoint_path: models/dinov3_vits16plus_pretrain_lvd1689m.pth
+  dino_checkpoint_sha256: 4057cbaaad8c16657adb09d6815f28d4164eeba30532fde23f0d17313124caea
 
 topics:
   image: /zed/zed_node/left/image_rect_color

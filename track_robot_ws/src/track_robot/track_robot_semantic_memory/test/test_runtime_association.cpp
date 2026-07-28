@@ -163,3 +163,42 @@ TEST(RuntimeAssociation, DuplicateStableVisualKeyIsRejectedWithoutAdvancingConfi
   EXPECT_EQ(third.decisions[0].decision,
     semantic_memory::ConfirmationDecision::kMatched);
 }
+
+TEST(RuntimeAssociation, ShortlistDropsRejectedPairsAndIsDeterministic)
+{
+  std::vector<semantic_memory::RuntimePairCandidate> pairs{
+    {10U, {9U, 30}, 0.95, false},
+    {10U, {9U, 20}, 0.80, true},
+    {10U, {9U, 10}, 0.80, true},
+    {10U, {9U, 40}, 0.70, true},
+    {11U, {9U, 50}, 0.99, true}};
+  auto reversed = pairs;
+  std::reverse(reversed.begin(), reversed.end());
+
+  const auto first = semantic_memory::shortlist_visual_pairs(
+    pairs, 10U, 2U);
+  const auto second = semantic_memory::shortlist_visual_pairs(
+    reversed, 10U, 2U);
+
+  ASSERT_EQ(first.size(), 2U);
+  EXPECT_EQ(first, second);
+  EXPECT_EQ(first[0].lidar.tracklet_id, 10);
+  EXPECT_EQ(first[1].lidar.tracklet_id, 20);
+  EXPECT_TRUE(std::all_of(
+    first.begin(), first.end(),
+    [](const auto & pair) {return pair.gates_passed;}));
+}
+
+TEST(RuntimeAssociation, ShortlistRejectsInvalidBoundsAndDuplicateLidar)
+{
+  const std::vector<semantic_memory::RuntimePairCandidate> pairs{
+    {10U, {9U, 10}, 0.80, true},
+    {10U, {9U, 10}, 0.70, true}};
+
+  EXPECT_THROW(
+    semantic_memory::shortlist_visual_pairs(pairs, 10U, 0U),
+    std::invalid_argument);
+  EXPECT_THROW(
+    semantic_memory::shortlist_visual_pairs(pairs, 10U, 2U),
+    std::invalid_argument);
+}

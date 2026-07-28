@@ -268,6 +268,18 @@ def extract_features(
     return cls_token, patch_tokens, details
 
 
+def extract_cls_batch(
+        model,
+        input_tensor: torch.Tensor,
+        backend: str) -> Tuple[torch.Tensor, Dict[str, str]]:
+    if input_tensor.ndim != 4 or input_tensor.shape[0] <= 0:
+        raise ValueError('input_tensor must be a non-empty N,C,H,W batch')
+    cls_token, _, details = extract_features(model, input_tensor, backend)
+    if cls_token.ndim != 2 or cls_token.shape[0] != input_tensor.shape[0]:
+        raise RuntimeError('DINO batch class-token shape is invalid')
+    return cls_token, details
+
+
 def patch_grid(
         patch_tokens: torch.Tensor,
         grid_height: int,

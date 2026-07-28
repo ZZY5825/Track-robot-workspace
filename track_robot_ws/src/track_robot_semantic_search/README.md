@@ -8,6 +8,19 @@ It deliberately contains no action server, controller, planner, or cmd_vel
 publisher. See the approved design and the semantic-search rosbag guide before
 enabling later phases.
 
+## Grounding Benchmark Artifacts
+
+R0A provides model-independent dataset, prediction, evaluation, and candidate
+selection contracts. It installs no grounding model or checkpoint and does not
+run model inference. Follow the
+[grounding model evaluation guide](../../docs/guides/semantic-search/grounding-model-evaluation.md)
+to produce evaluation and selection artifacts with the installed
+`semantic_search_grounding_evaluate` and
+`semantic_search_grounding_select` commands.
+
+Model-specific desktop RTX and Jetson runners belong to separately planned R0B
+and R0C work. They must emit the portable R0A prediction artifact.
+
 ## Phase 1 Passive Language Baseline
 
 Phase 1 adds a default-off perception worker that accepts a compact query event,

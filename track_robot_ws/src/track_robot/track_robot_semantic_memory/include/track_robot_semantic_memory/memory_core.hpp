@@ -34,14 +34,6 @@ struct LidarObservation
   void validate() const;
 };
 
-struct MemoryHistorySample
-{
-  std::int64_t source_stamp_ns{0};
-  std::array<double, 3> position{};
-  SupportState support{SupportState::kNone};
-  LifecycleState lifecycle{LifecycleState::kTentative};
-};
-
 struct MemorySemanticEvidence
 {
   std::string label;
@@ -49,6 +41,37 @@ struct MemorySemanticEvidence
   std::string provenance;
   std::uint8_t evidence_kind{0U};
   std::uint64_t source_observation_id{0U};
+};
+
+struct CameraObservation
+{
+  VisualAssociationKey visual_key;
+  std::uint64_t observation_producer_epoch_id{0U};
+  std::uint64_t observation_id{0U};
+  std::uint64_t visual_candidate_id{0U};
+  std::uint64_t query_id{0U};
+  std::uint64_t query_version{0U};
+  std::int64_t camera_stamp_ns{0};
+  double semantic_confidence{0.0};
+  std::uint32_t image_width{0U};
+  std::uint32_t image_height{0U};
+  std::uint32_t roi_x{0U};
+  std::uint32_t roi_y{0U};
+  std::uint32_t roi_width{0U};
+  std::uint32_t roi_height{0U};
+  std::optional<AppearanceDescriptor> appearance_descriptor;
+  double appearance_quality{0.0};
+  std::vector<MemorySemanticEvidence> semantic_labels;
+
+  void validate() const;
+};
+
+struct MemoryHistorySample
+{
+  std::int64_t source_stamp_ns{0};
+  std::array<double, 3> position{};
+  SupportState support{SupportState::kNone};
+  LifecycleState lifecycle{LifecycleState::kTentative};
 };
 
 struct VisualMemorySupplement
@@ -75,7 +98,7 @@ struct VisualMemorySupplement
 struct MemoryObject
 {
   GlobalObjectKey key;
-  ProducerObjectKey lidar_key;
+  std::optional<ProducerObjectKey> lidar_key;
   std::array<double, 3> position{};
   std::array<double, 3> velocity{};
   std::array<double, 3> extent{};
@@ -98,6 +121,12 @@ struct MemoryObject
   std::uint32_t camera_observation_count{0U};
   std::uint32_t semantic_update_count{0U};
   std::uint32_t appearance_update_count{0U};
+  std::uint64_t grounding_query_id{0U};
+  std::uint64_t grounding_query_version{0U};
+  std::uint64_t grounding_producer_epoch_id{0U};
+  std::int64_t grounding_source_stamp_ns{-1};
+  double grounding_confidence{0.0};
+  double grounding_stability{0.0};
   std::string appearance_summary_id;
   std::uint8_t appearance_prototype_count{0U};
   std::string appearance_encoder_id;
@@ -182,6 +211,14 @@ struct VisualSupplementResult
   MemoryUpdateResult snapshot;
 };
 
+struct LidarGeometryAttachmentResult
+{
+  bool accepted{false};
+  std::string reason;
+  GlobalObjectKey preserved_key;
+  MemoryUpdateResult snapshot;
+};
+
 struct ReidentificationStateUpdate
 {
   GlobalObjectKey key;
@@ -206,11 +243,21 @@ public:
     std::int64_t batch_stamp_ns,
     std::vector<LidarObservation> observations);
 
+  MemoryUpdateResult update_camera(
+    const MemoryDomainKey & domain,
+    const CameraObservation & observation);
+
   MemoryUpdateResult reset(const MemoryDomainKey & domain);
 
   VisualSupplementResult supplement_visual(
     const MemoryDomainKey & domain,
     const VisualMemorySupplement & supplement);
+
+  LidarGeometryAttachmentResult attach_lidar_geometry(
+    const MemoryDomainKey & domain,
+    const VisualAssociationKey & visual_key,
+    const ProducerObjectKey & lidar_key,
+    double association_confidence);
 
   [[nodiscard]] RuntimeReidentificationFrame make_reidentification_frame(
     const MemoryDomainKey & domain,
@@ -240,12 +287,21 @@ private:
   bool make_capacity(MemoryUpdateResult & result);
   MemoryObject & create_object(
     const LidarObservation & observation, MemoryUpdateResult & result);
+  MemoryObject & create_camera_object(
+    const CameraObservation & observation, MemoryUpdateResult & result);
   void apply_observation(
     MemoryObject & object, const LidarObservation & observation,
+    MemoryUpdateResult & result);
+  void apply_camera_observation(
+    MemoryObject & object, const CameraObservation & observation,
     MemoryUpdateResult & result);
   void advance_unobserved(
     std::int64_t batch_stamp_ns,
     const std::vector<ProducerObjectKey> & observed_keys,
+    MemoryUpdateResult & result);
+  void advance_unobserved_camera(
+    std::int64_t camera_stamp_ns,
+    const VisualAssociationKey & observed_key,
     MemoryUpdateResult & result);
   void transition_lifecycle(
     MemoryObject & object, LifecycleState next, MemoryUpdateResult & result);
@@ -256,13 +312,17 @@ private:
   MemoryCoreConfig config_;
   MemoryDomainTracker domain_tracker_;
   MemoryClock clock_;
+  MemoryClock camera_clock_;
   LifecyclePolicy static_lifecycle_;
   LifecyclePolicy dynamic_lifecycle_;
   MotionClassifier motion_classifier_;
   std::uint64_t next_global_object_id_{1U};
   std::vector<MemoryObject> objects_;
   std::map<ProducerObjectKey, GlobalObjectKey> source_index_;
+  std::map<VisualAssociationKey, GlobalObjectKey> camera_index_;
   std::map<GlobalObjectKey, AppearanceMemory> appearance_banks_;
+  bool lidar_clock_initialized_{false};
+  bool camera_clock_initialized_{false};
 };
 
 }  // namespace track_robot_semantic_memory

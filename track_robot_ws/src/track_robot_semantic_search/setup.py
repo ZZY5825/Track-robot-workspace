@@ -38,6 +38,8 @@ setup(
             'track_robot_semantic_search.model_selection_cli:main',
             'semantic_search_perception = '
             'track_robot_semantic_search.perception_node:main',
+            'semantic_search_yolo_world_perception = '
+            'track_robot_semantic_search.yolo_world_perception_node:main',
             'semantic_search_query = '
             'track_robot_semantic_search.query_cli:main',
             'semantic_search_live_overlay = '
@@ -48,8 +50,14 @@ setup(
             'track_robot_semantic_search.phase2_evaluation_cli:main',
             'semantic_search_phase2_replay = '
             'track_robot_semantic_search.phase2_replay:main',
+            'semantic_search_phase123_replay = '
+            'track_robot_semantic_search.phase123_replay:main',
             'semantic_search_phase2_calibrate_task_threshold = '
             'track_robot_semantic_search.task_threshold_calibration_cli:main',
+            'semantic_search_grounding_evaluate = '
+            'track_robot_semantic_search.grounding_evaluation_cli:main',
+            'semantic_search_grounding_select = '
+            'track_robot_semantic_search.grounding_selection_cli:main',
         ],
     },
 )
