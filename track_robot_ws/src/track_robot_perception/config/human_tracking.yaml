@@ -19,6 +19,7 @@ gesture_trigger_node:
     detections_topic: /human_tracking/detections
     image_topic: /zed/zed_node/left/image_rect_color
     output_topic: /human_tracking/gesture_state
+    camera_target_topic: /human_tracking/camera_target
     overlay_topic: /human_tracking/gesture_overlay
     min_keypoint_confidence: 0.35
     trigger_hold_frames: 5
@@ -42,10 +43,17 @@ camera_target_lock_node:
     output_topic: /human_tracking/camera_target
     overlay_topic: /human_tracking/target_overlay
     debug_topic: /human_tracking/camera_target_debug
+    identity_debug_topic: /human_tracking/camera_identity_debug
+    reset_service: /human_tracking/reset_target
     max_camera_dropout_sec: 2.0
     target_memory_sec: 8.0
     min_lock_confidence: 0.35
     track_id_reacquire_iou: 0.2
     reacquire_max_center_distance_px: 160.0
     reacquire_min_score: 0.35
+    identity_min_score: 0.65
+    identity_min_margin: 0.15
+    identity_switch_confirm_frames: 2
+    identity_profile_update_confidence: 0.75
+    image_sync_tolerance_sec: 0.08
     publish_overlay: true

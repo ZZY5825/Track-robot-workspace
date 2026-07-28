@@ -1,0 +1,19 @@
+uint8 STATE_DISABLED=0
+uint8 STATE_WAITING_FOR_DATA=1
+uint8 STATE_DIRECT_CLEAR=2
+uint8 STATE_AVOIDING=3
+uint8 STATE_NO_SAFE_TRAJECTORY=4
+uint8 STATE_STALE=5
+
+std_msgs/Header header
+uint8 state
+bool desired_command_fresh
+bool obstacle_grid_fresh
+bool target_fresh
+int32 candidate_count
+int32 feasible_candidate_count
+float32 selected_score
+float32 selected_clearance
+geometry_msgs/Twist desired_cmd
+geometry_msgs/Twist selected_cmd
+string reason

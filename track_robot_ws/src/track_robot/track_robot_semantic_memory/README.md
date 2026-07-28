@@ -53,7 +53,9 @@ Outputs:
 - `/semantic_memory/diagnostics` — readiness, counts and rejection reasons;
 - `/semantic_memory/association_debug` — reliable bounded per-pair hard gates,
   soft terms, total score, margin and shadow decision;
-- `/semantic_memory/markers` — reliable transient-local bounded RViz cubes.
+- `/semantic_memory/markers` — reliable transient-local bounded RViz cubes,
+  readable object/state labels, and a magenta highlight only when the
+  fail-closed best-candidate topic contains a calibrated winner.
 
 Every public object key is `(memory_epoch_id, global_object_id)`. LiDAR source
 epoch and tracklet ID remain separate producer identifiers.

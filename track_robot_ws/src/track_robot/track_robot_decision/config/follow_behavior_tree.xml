@@ -1,0 +1,14 @@
+<root main_tree_to_execute="FollowDecisionTree">
+  <BehaviorTree ID="FollowDecisionTree">
+    <ReactiveFallback>
+      <Sequence><HardStopRequired/><SetHardStop/></Sequence>
+      <Sequence><BlockedRequired/><SetBlockedHold/></Sequence>
+      <Sequence><ConfirmedFollowReady/><SetConfirmedFollow/></Sequence>
+      <Sequence><LidarFollowReady/><SetLidarFollow/></Sequence>
+      <Sequence><UncertainTarget/><SetUncertainHold/></Sequence>
+      <Sequence><SearchAllowed/><SetSearchRotate/></Sequence>
+      <Sequence><HasLogicalTarget/><SetTargetLost/></Sequence>
+      <SetWaitingForTarget/>
+    </ReactiveFallback>
+  </BehaviorTree>
+</root>

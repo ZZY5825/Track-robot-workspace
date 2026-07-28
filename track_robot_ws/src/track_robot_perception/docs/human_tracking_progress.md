@@ -1,6 +1,6 @@
 # Human Tracking Progress
 
-Last updated: 2026-07-02
+Last updated: 2026-07-09
 
 > Historical status: the LiDAR association sections below describe the earlier
 > Python implementation. The active C++ fusion architecture, exact algorithms,
@@ -59,34 +59,37 @@ Main topics:
 
 ### Camera-Initialized LiDAR Target Tracking
 
-Implemented in `lidar_human_cluster_node`.
+The active path is now the C++ tracklet architecture:
 
-The old Phase 4 global LiDAR-only human classification approach was dropped
-because it was unreliable in the lab. The current node uses camera identity
-first, then LiDAR geometry:
+- `lidar_tracklet_manager_node`
+  - builds generic LiDAR candidate clusters and persistent tracklets
+  - does not decide human identity
+- `selected_human_target_tracker_node`
+  - binds the camera-locked target to one LiDAR tracklet
+  - uses camera-guided LiDAR anchor points for 3D initialization
+  - maintains selected target state with a constant-velocity Kalman filter
+  - continues the selected LiDAR tracklet after the camera loses sight
 
-1. Wait for `/human_tracking/camera_target` with `lock_state == 2`.
-2. Project RoboSense LiDAR points into the ZED image.
-3. Select LiDAR points inside the locked target bbox.
-4. Use foreground depth filtering and local clustering to estimate the target
-   3D position.
-5. Publish target point cloud, fused state, search gate marker, and fused marker.
-6. When camera visibility is lost, continue tracking locally around the
-   predicted target position using LiDAR-only candidate association.
+The older Python `lidar_human_cluster_node`, `target_fusion_node`, and Python
+camera-LiDAR association node were removed from the human-tracking source path
+after the C++ tracklet pipeline became stable on rosbag `145900`.
 
 Main topics:
 
 ```text
 /rslidar_points
 /zed/zed_node/left/camera_info
-/human_tracking/target_lidar_points
+/human_tracking/lidar_candidate_clusters
+/human_tracking/lidar_tracklets
+/human_tracking/selected_lidar_tracklet
+/human_tracking/camera_guided_target_points
 /human_tracking/fused_target_state
 /human_tracking/target_state
 /human_tracking/fused_target_marker
-/human_tracking/target_search_gate_marker
-/human_tracking/lidar_target_debug
-/human_tracking/lidar_clusters
-/human_tracking/lidar_human_candidates
+/human_tracking/selected_tracklet_marker
+/human_tracking/selected_target_marker
+/human_tracking/target_prediction_gate_marker
+/human_tracking/target_tracker_debug
 ```
 
 ## Important LiDAR Fixes Already Made
@@ -119,28 +122,23 @@ yaw=0.0, pitch=0.0, roll=0.0
 
 ## LiDAR-Only Continuation Status
 
-LiDAR-only continuation is implemented as a first usable version.
+LiDAR-only continuation is implemented in the C++ selected-target tracker.
 
 When the camera loses the target, the tracker:
 
-- predicts target position with a constant-velocity alpha-beta filter
-- searches LiDAR points near the predicted position
-- gates candidates by distance from last LiDAR measurement
-- limits max jump and max target speed
-- uses last target z range and rough size similarity
-- applies softer LiDAR-only filter gains than camera-LiDAR updates
-- keeps the last target cloud visible during short prediction-only gaps
+- keeps the logical camera target ID alive until stop gesture or reset
+- continues only the previously selected LiDAR tracklet ID
+- uses a linear constant-velocity Kalman filter with state
+  `[x, y, z, vx, vy, vz]`
+- rejects large inconsistent jumps using NIS gating
+- allows strict local relinking only after consecutive compatible observations
+- decays to prediction-only and then lost instead of globally picking a new
+  cluster
 
-Relevant parameters in `config/lidar_human_candidates.yaml`:
+Relevant parameters are in:
 
 ```text
-lidar_only_alpha_position: 0.35
-lidar_only_beta_velocity: 0.08
-max_target_speed_mps: 2.0
-lidar_only_min_score: 0.32
-lidar_only_max_jump_m: 0.85
-lidar_only_z_margin: 0.45
-lidar_only_keep_last_points: true
+src/track_robot/track_robot_lidar_tracking/config/selected_target_tracker.yaml
 ```
 
 Expected state flow:
@@ -163,21 +161,22 @@ Confirmed by user testing:
 If LiDAR-only continuation fails, inspect:
 
 ```bash
-ros2 topic echo /human_tracking/lidar_target_debug --full-length
+ros2 topic echo /human_tracking/target_tracker_debug --full-length
 ```
 
 Key fields:
 
 ```text
-source
-track_state
-camera_visible
-lidar_only_candidate_count
-lidar_only_selected_score
-lidar_only_reject_reason
-allowed_lidar_only_jump
-last_measurement_base
-last_target_z_range
+state
+selected_lidar_tracklet_id
+selected_tracklet_present
+selected_tracklet_score
+switch_failure_count
+switch_reject_reason
+target_clear_reason
+camera_guided_status
+camera_guided_points
+kalman_nis_xy
 ```
 
 ## Run Command
@@ -202,9 +201,11 @@ Displays:
 
 ```text
 PointCloud2: /rslidar_points
-PointCloud2: /human_tracking/target_lidar_points
+PointCloud2: /human_tracking/camera_guided_target_points
 MarkerArray: /human_tracking/fused_target_marker
-MarkerArray: /human_tracking/target_search_gate_marker
+MarkerArray: /human_tracking/selected_tracklet_marker
+MarkerArray: /human_tracking/selected_target_marker
+MarkerArray: /human_tracking/target_prediction_gate_marker
 ```
 
 ## Not Done Yet
@@ -216,3 +217,37 @@ MarkerArray: /human_tracking/target_search_gate_marker
   parameter tuning.
 - Static background subtraction is available as a config option but not tuned
   for the lab yet.
+
+## Early-Phase Reinforcement Update
+
+The active camera/LiDAR path now includes the following completed changes:
+
+- `CameraTarget` separates logical human identity from the current ByteTrack ID.
+- Camera reacquisition uses torso HSV appearance, normalized torso pose, bbox
+  motion, and size with a top-two ambiguity margin.
+- The exact selected pose keypoints are carried into LiDAR fusion.
+- Generic LiDAR tracklets and selected-target prediction use sensor timestamps.
+- Live tracking uses `track_robot_center`; fused control-facing output is
+  transformed to `base_link` at the measurement timestamp.
+- Stationary bag replay uses `human_tracking_rosbag_replay.launch.py` with
+  `base_link` tracking.
+- Camera and cloud inputs use bounded nearest-timestamp queues with an 80 ms
+  correction limit and 200 ms queue-age limit.
+- Camera-guided geometry uses torso depth modes and a local 3D component rather
+  than a fixed depth percentile over the complete bbox.
+- Association retains three hypotheses and rejects low-margin initial binding,
+  visible switching, and LiDAR-only relinking.
+- Horizontal target motion uses a three-model IMM. Height uses a separate
+  robust scalar filter.
+- PointCloud2 parse, transform, crop, and voxelization use one traversal.
+- Rosbag timestamp rollback clears gesture, camera identity, generic tracklet,
+  and selected-target temporal state before the next loop.
+- Regression tools report rates, synchronization, identity changes, physical
+  tracklet switches, ambiguity, position jumps, and deterministic sensor hashes.
+
+Still requiring robot-side execution:
+
+- Replay all four bags at normal rate and inspect the regression reports.
+- Replay one representative bag at 0.5x, 1x, and 2x and compare the reports.
+- Confirm the optimized LiDAR manager sustains at least 15 Hz on the Jetson.
+- Record and validate the planned 2/4/6/8/10 m long-range sequence.

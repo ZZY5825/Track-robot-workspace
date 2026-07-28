@@ -62,6 +62,8 @@ def test_stage2d_keeps_bounded_safe_off_default_configuration():
     visualizer = config['semantic_memory_visualizer']['ros__parameters']
     assert visualizer['enabled'] is True
     assert visualizer['active_objects_topic'] == '/semantic_memory/active_objects'
+    assert visualizer['best_candidate_topic'] == (
+        '/semantic_memory/best_candidate')
     assert visualizer['markers_topic'] == '/semantic_memory/markers'
     assert visualizer['max_objects'] == 256
 
@@ -207,12 +209,14 @@ def test_stage2d_installs_and_resolves_the_calibration_report_from_package_share
     assert 'get_package_share_directory' in node
 
 
-def test_visualizer_consumes_only_active_snapshots():
+def test_visualizer_consumes_only_active_and_fail_closed_winner_snapshots():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_memory_visualizer_node.cpp'
     ).read_text()
 
     assert 'SemanticObjectArray' in source
     assert 'MarkerArray' in source
+    assert 'best_candidate_topic' in source
+    assert '/semantic_memory/best_candidate' in source
     assert 'SemanticLocalizationState' not in source
     assert 'SemanticLidarTrackletArray' not in source

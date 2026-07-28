@@ -24,21 +24,63 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: Target Search Gate
+      Name: LiDAR Candidate Clusters
       Topic:
-        Value: /human_tracking/target_search_gate_marker
+        Value: /human_tracking/lidar_candidate_cluster_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: LiDAR Tracklets
+      Topic:
+        Value: /human_tracking/lidar_tracklet_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Selected Tracklet
+      Topic:
+        Value: /human_tracking/selected_tracklet_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Selected Target
+      Topic:
+        Value: /human_tracking/selected_target_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Prediction Gate
+      Topic:
+        Value: /human_tracking/target_prediction_gate_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Association Hypotheses
+      Topic:
+        Value: /human_tracking/association_hypothesis_markers
       Value: true
     - Class: rviz_default_plugins/PointCloud2
       Enabled: true
-      Name: Target LiDAR Points
+      Name: Camera Guided Target Points
       Topic:
-        Value: /human_tracking/target_lidar_points
+        Value: /human_tracking/camera_guided_target_points
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Target Marker
       Topic:
         Value: /human_tracking/fused_target_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Follow Decision
+      Topic:
+        Value: /follow/decision_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Follow Controller
+      Topic:
+        Value: /follow/controller_markers
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true

@@ -618,7 +618,8 @@ def test_manifest_builder_rejects_heterogeneous_topic_scalars(
 
 def test_build_field_manifest_requires_declared_split_and_calibration(tmp_path):
     bag, _ = write_closed_bag(
-        tmp_path / 'rosbags' / 'semantic_search' / 'raw', 'field_bag')
+        tmp_path / 'rosbags' / 'semantic_search' / 'recordings',
+        'field_bag')
     metadata_path = bag / 'metadata.yaml'
     metadata = yaml.safe_load(metadata_path.read_text(encoding='utf-8'))
     metadata['rosbag2_bagfile_information']['topics_with_message_count'] = [{
@@ -658,7 +659,7 @@ def test_build_field_manifest_requires_declared_split_and_calibration(tmp_path):
     )
     assert payload['split'] == 'validation'
     assert payload['bag']['relative_path'] == (
-        'rosbags/semantic_search/raw/field_bag')
+        'rosbags/semantic_search/recordings/field_bag')
     assert payload['capabilities']['imu'] is True
     assert payload['capabilities']['local_pose'] is True
 

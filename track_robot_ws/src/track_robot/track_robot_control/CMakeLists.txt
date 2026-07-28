@@ -9,13 +9,31 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(track_robot_interfaces REQUIRED)
+find_package(bunker_msgs REQUIRED)
 
-# 先不加可执行文件（我们暂时不写 node）
-# 后面加 node 时，大概是这样：
-# add_executable(track_robot_control_node src/xxx.cpp)
-# ament_target_dependencies(track_robot_control_node rclcpp std_msgs geometry_msgs track_robot_interfaces)
-# install(TARGETS track_robot_control_node DESTINATION lib/${PROJECT_NAME})
+add_executable(target_follow_controller_node src/target_follow_controller.cpp)
+ament_target_dependencies(
+  target_follow_controller_node
+  rclcpp
+  std_msgs
+  std_srvs
+  geometry_msgs
+  visualization_msgs
+  track_robot_interfaces
+  bunker_msgs
+)
+
+install(TARGETS
+  target_follow_controller_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_package()

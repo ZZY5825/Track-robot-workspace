@@ -18,7 +18,8 @@
   <exec_depend>rslidar_sdk</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>track_robot_bringup</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>track_robot_sensor_bringup</exec_depend>
   <exec_depend>track_robot_interfaces</exec_depend>
   <exec_depend>track_robot_lidar_tracking</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>

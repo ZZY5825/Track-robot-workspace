@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -23,6 +24,8 @@ public:
     const bool enabled = declare_parameter<bool>("enabled", true);
     const auto input_topic = declare_parameter<std::string>(
       "active_objects_topic", "/semantic_memory/active_objects");
+    const auto best_candidate_topic = declare_parameter<std::string>(
+      "best_candidate_topic", "/semantic_memory/best_candidate");
     const auto output_topic = declare_parameter<std::string>(
       "markers_topic", "/semantic_memory/markers");
     marker_publisher_ = create_publisher<visualization_msgs::msg::MarkerArray>(
@@ -33,8 +36,15 @@ public:
         track_robot_interfaces::msg::SemanticObjectArray>(
         input_topic,
         rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
-        std::bind(
+          std::bind(
           &SemanticMemoryVisualizerNode::on_snapshot, this,
+          std::placeholders::_1));
+      best_candidate_subscription_ = create_subscription<
+        track_robot_interfaces::msg::SemanticObjectArray>(
+        best_candidate_topic,
+        rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local(),
+        std::bind(
+          &SemanticMemoryVisualizerNode::on_best_candidate, this,
           std::placeholders::_1));
     }
   }
@@ -61,12 +71,42 @@ private:
     }
   }
 
+  void on_best_candidate(
+    track_robot_interfaces::msg::SemanticObjectArray::ConstSharedPtr snapshot)
+  {
+    try {
+      if (snapshot->objects.empty()) {
+        registry_.set_best_candidate(std::nullopt);
+        return;
+      }
+      if (snapshot->objects.size() != 1U ||
+        snapshot->memory_epoch_id == 0U ||
+        snapshot->objects.front().memory_epoch_id != snapshot->memory_epoch_id ||
+        snapshot->objects.front().global_object_id == 0U)
+      {
+        throw std::invalid_argument(
+                "best-candidate snapshot must contain zero or one valid object");
+      }
+      registry_.set_best_candidate(GlobalObjectKey{
+        snapshot->memory_epoch_id,
+        snapshot->objects.front().global_object_id});
+    } catch (const std::exception & error) {
+      registry_.set_best_candidate(std::nullopt);
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), 2000,
+        "Rejected semantic-memory best candidate: %s", error.what());
+    }
+  }
+
   MarkerRegistry registry_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
     marker_publisher_;
   rclcpp::Subscription<
     track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
     snapshot_subscription_;
+  rclcpp::Subscription<
+    track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
+    best_candidate_subscription_;
 };
 
 }  // namespace track_robot_semantic_memory

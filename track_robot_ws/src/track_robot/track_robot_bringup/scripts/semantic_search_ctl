@@ -1,0 +1,4 @@
+#!/usr/bin/env python3
+from track_robot_bringup.control_cli import main
+
+raise SystemExit(main())

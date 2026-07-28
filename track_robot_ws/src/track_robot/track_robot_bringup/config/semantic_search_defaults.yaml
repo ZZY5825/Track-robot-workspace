@@ -1,0 +1,27 @@
+# Paths are relative to the workspace root supplied to semantic_search_ctl.
+ros_domain_id: 20
+
+models:
+  runtime_path: models/phase1_runtime/python
+  checkpoint_path: models/phase1/ViT-B-32.pt
+  checkpoint_sha256: 40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af
+
+topics:
+  image: /zed/zed_node/left/image_rect_color
+  camera_info: /zed/zed_node/left/camera_info
+  lidar: /rslidar_points
+  imu: /imu/data_raw
+  odometry: /odom
+  query: /semantic_search/query
+  semantic_regions: /semantic_search/regions
+  perception_diagnostics: /semantic_search/perception_diagnostics
+  localization_state: /semantic_memory/localization_state
+  lidar_tracklets: /semantic_memory/lidar_tracklets
+  semantic_memory_diagnostics: /semantic_memory/diagnostics
+
+timeouts:
+  static_preflight_sec: 15.0
+  topic_readiness_sec: 20.0
+  stage_readiness_sec: 30.0
+  topic_freshness_sec: 1.0
+  tf_lookup_sec: 0.03

@@ -1,0 +1,77 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /RoboSense Points1
+        - /Semantic Memory Objects1
+        - /Semantic Candidate Overlay1
+      Splitter Ratio: 0.5
+    Tree Height: 520
+  - Class: track_robot_semantic_search_rviz_plugins/SemanticSearchPanel
+    Name: Semantic Search
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Ground Grid
+      Plane: XY
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Name: TF
+      Show Axes: true
+      Show Names: true
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: RoboSense Points
+      Queue Size: 2
+      Selectable: true
+      Size (Pixels): 2
+      Style: Points
+      Topic:
+        Value: /rslidar_points
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Semantic Memory Objects
+      Topic:
+        Value: /semantic_memory/markers
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Semantic Candidate Overlay
+      Normalize Range: true
+      Topic:
+        Value: /semantic_search/overlay_image
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 32; 34; 38
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 10
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.65
+      Target Frame: base_link
+      Yaw: 0.75
+Window Geometry:
+  Height: 950
+  Width: 1600

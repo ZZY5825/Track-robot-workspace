@@ -98,6 +98,34 @@ quality has not been validated. This portal performs passive observation only:
 it is not a `SearchForObject` action client and never publishes motion intent,
 `Twist`, or `cmd_vel`.
 
+## Live RViz Console
+
+`semantic_search_live_overlay` keeps at most eight images and eight region
+arrays and combines them only when their source timestamps match exactly. It
+publishes `/semantic_search/overlay_image` with every valid candidate,
+descending score rank, query ID/version, and the permanent warning
+`CANDIDATES - NOT GROUND TRUTH`. It never falls back to drawing current boxes
+on the latest unrelated image.
+
+The normal operator entry point starts the overlay together with a saved RViz
+view:
+
+```bash
+export ROS_DOMAIN_ID=20
+ros2 run track_robot_bringup semantic_search_ctl visualize phase1
+ros2 run track_robot_bringup semantic_search_ctl visualize phase2
+```
+
+Use the RViz **Semantic Search** panel to enter an English description. **New
+Query** allocates a new positive query ID and **Revise** keeps the ID while
+incrementing its version. The panel shows correlated acknowledgement/model
+state, image candidate count, active 3D object count, and the fail-closed best
+candidate. Cyan marks the highest-scored 2D candidate and amber marks the
+remaining candidates; neither colour asserts semantic correctness.
+
+Closing RViz stops the visualization launch and overlay node. It does not stop
+the semantic-search stack or externally owned hardware in another terminal.
+
 ## Formal Legacy Replay Evidence
 
 Formal legacy evidence uses evaluation report schema `1.1.0` and exactly three
@@ -111,7 +139,7 @@ cover at least `0.90` of the 45.0-second source-time target.
 Compare the three reports against the one immutable manifest they reference:
 
     ros2 run track_robot_semantic_search semantic_search_compare_reports \
-      --manifest rosbags/semantic_search/manifests/legacy/human_tracking_lidar_20260706_150711.json \
+      --manifest artifacts/semantic_search/manifests/legacy/human_tracking_lidar_20260706_150711.json \
       /tmp/semantic_search_rate_05.json \
       /tmp/semantic_search_rate_10.json \
       /tmp/semantic_search_rate_20.json
@@ -145,4 +173,4 @@ that exact threshold; uncalibrated production profiles stay fail-closed.
 and requires byte-equivalent canonical JSON. The checked synthetic fixture
 proves deterministic ID, lifecycle, assignment and task-overlay mechanics; it
 does not replace the annotated pilot bag or physical resource evidence. Follow
-`rosbags/semantic_search/phase2_recording_guide.md` for field collection.
+`docs/guides/semantic-search/phase2-recording-and-evaluation.md` for field collection.

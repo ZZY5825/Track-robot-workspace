@@ -12,10 +12,10 @@ SCHEMA_PATH = (
     PACKAGE_ROOT / 'schemas' / 'phase2_association_samples.schema.json')
 WORKSPACE_ROOT = PACKAGE_ROOT.parents[1]
 CALIBRATION_REPORT = (
-    WORKSPACE_ROOT / 'rosbags' / 'semantic_search' / 'reports' /
+    WORKSPACE_ROOT / 'artifacts' / 'semantic_search' / 'reports' /
     'phase2_association_calibration_2026-07-16.json')
 CALIBRATION_REVIEW = (
-    WORKSPACE_ROOT / 'rosbags' / 'semantic_search' / 'calibration' /
+    WORKSPACE_ROOT / 'artifacts' / 'semantic_search' / 'calibration' /
     'phase2c_manual_pilot_review.json')
 ASSOCIATION_BASELINE = (
     WORKSPACE_ROOT / 'src' / 'track_robot' /

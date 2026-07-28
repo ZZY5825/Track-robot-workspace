@@ -62,8 +62,8 @@ ros2 launch track_robot_perception point_lio_rshelios.launch.py \
 ```
 
 With `start_lidar:=true`, this launch includes
-`track_robot_bringup/rslidar_with_tf.launch.py`. Network setup defaults to true
-and performs the proven sequence `ip addr flush`, `ip addr add
+`track_robot_sensor_bringup/rslidar_with_tf.launch.py`. Network setup defaults
+to true and performs the proven sequence `ip addr flush`, `ip addr add
 192.168.1.102/24`, then `ip link set eth0 up` before starting the SDK. Pass
 `configure_network:=false` only when the interface has already been prepared.
 
@@ -73,6 +73,18 @@ into the LiDAR/body frame, publishes `/imu/data_lio`, and applies the convention
 ```text
 corrected IMU stamp = raw IMU stamp - imu_time_offset_sec
 ```
+
+The adapter also applies the first-pass Point-LIO noise gate from stationary
+observations:
+
+```text
+angular_velocity_deadband_radps: 0.015
+linear_acceleration_deadband_mps2: 0.02
+```
+
+This zeros per-axis values inside those intervals on `/imu/data_lio` only.
+It does not alter `/imu/data_raw`, and it does not remove gravity or larger
+static accelerometer offsets caused by sensor tilt/bias.
 
 For a quick time-offset test:
 

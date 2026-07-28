@@ -16,6 +16,12 @@ uint8 TRACK_LIDAR_ONLY_TRACKING=3
 uint8 TRACK_PREDICTION_ONLY=4
 uint8 TRACK_TARGET_LOST=5
 
+uint8 ASSOCIATION_UNBOUND=0
+uint8 ASSOCIATION_CONFIRMED=1
+uint8 ASSOCIATION_AMBIGUOUS=2
+uint8 ASSOCIATION_PREDICTED=3
+uint8 ASSOCIATION_LOST=4
+
 std_msgs/Header header
 int32 target_id
 uint8 lock_state
@@ -26,6 +32,7 @@ float32 confidence
 bool camera_visible
 bool lidar_visible
 geometry_msgs/Point position_base
+bool position_base_valid
 bool position_map_valid
 geometry_msgs/Point position_map
 float32 distance
@@ -33,3 +40,11 @@ float32 bearing
 geometry_msgs/Vector3 velocity
 float32 time_since_camera_seen
 float32 time_since_lidar_seen
+int32 selected_tracklet_id
+uint8 association_state
+float32 identity_confidence
+float32 geometry_confidence
+float32 overall_confidence
+float32[9] position_covariance
+float32 measurement_age
+string tracking_frame

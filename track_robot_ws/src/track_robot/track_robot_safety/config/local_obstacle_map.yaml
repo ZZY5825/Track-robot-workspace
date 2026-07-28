@@ -1,0 +1,37 @@
+local_obstacle_map_node:
+  ros__parameters:
+    lidar_topic: /rslidar_points
+    base_frame: base_link
+    grid_topic: /safety/local_obstacle_grid
+    filtered_cloud_topic: /safety/filtered_obstacle_points
+    marker_topic: /safety/obstacle_markers
+    debug_topic: /safety/obstacle_map_debug
+    lidar_qos_reliability: reliable
+
+    min_range: 0.20
+    max_range: 8.0
+    # Points are transformed into base_link, whose ground plane should be near z=0.
+    ground_z: 0.0
+    estimate_ground_plane: true
+    ground_search_tolerance: 0.30
+    ground_inlier_tolerance: 0.06
+    ground_histogram_bin: 0.03
+    ground_min_range: 0.8
+    ground_max_range: 6.0
+    min_ground_inliers: 100
+    max_ground_slope: 0.35
+    min_obstacle_height: 0.08
+    max_obstacle_height: 1.80
+    voxel_leaf_size: 0.07
+
+    # Conservative effective envelope from bag 150711. It includes observed
+    # chassis/mount returns outside the catalog 1.064 x 0.845 m body dimensions.
+    footprint_length: 1.20
+    footprint_width: 1.00
+    self_filter_margin: 0.03
+    safety_inflation: 0.20
+
+    grid_size: 12.0
+    grid_resolution: 0.05
+    tf_timeout_sec: 0.05
+    allow_latest_tf_fallback: false
