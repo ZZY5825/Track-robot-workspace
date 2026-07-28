@@ -1,0 +1,73 @@
+semantic_memory:
+  ros__parameters:
+    enabled: true
+    observations_topic: /semantic_memory/observations
+    lidar_tracklets_topic: /semantic_memory/lidar_tracklets
+    localization_topic: /semantic_search/phase4a/localization_state
+    localization_state_timeout_sec: 0.5
+    active_objects_topic: /semantic_memory/active_objects
+    tasks_topic: /semantic_memory/tasks
+    best_candidate_topic: /semantic_memory/best_candidate
+    diagnostic_ranking_topic: /semantic_memory/diagnostic_ranking
+    association_debug_topic: /semantic_memory/association_debug
+    diagnostics_topic: /semantic_memory/diagnostics
+    camera_info_topic: /zed/zed_node/left/camera_info
+    camera_calibration_id: zed_left_rectified_v1
+    camera_only_memory_enabled: true
+    association_shadow_mode: false
+    camera_attachment_enabled: true
+    enable_test_camera_attachment: true
+    allow_degraded_calibration: true
+    association_calibration_status: test_only_uncalibrated
+    association_calibration_report: ""
+    maximum_lidar_candidates_per_visual: 8
+    # Fixed-base, planning-only validation can tolerate two LiDAR periods of
+    # callback skew. Production/mobile association remains at 0.10 s.
+    association_max_source_time_delta_sec: 0.20
+    # Test-only coarse-projection gates. The prototype extrinsic and LiDAR
+    # boxes yield ~0.18 for the best projected candidate versus ~0.11 for the
+    # next candidate; three-frame confirmation remains mandatory.
+    association_match_threshold: 0.15
+    association_ambiguity_margin: 0.03
+    association_confirmation_frames: 3
+    association_detach_after_misses: 2
+    association_cooldown_frames: 2
+    # Keep the calibrated geometric score normalized to [0, 1]. Omitting
+    # these values falls back to twelve unit weights and violates the runtime
+    # shortlist score contract.
+    association_weight_position_consistency: 0.0
+    association_weight_projected_centroid: 0.30158573654673776
+    association_weight_inside_fraction: 0.4029907984248159
+    association_weight_projected_iou: 0.14277659906937346
+    association_weight_visual_cosine: 0.0
+    association_weight_extent_consistency: 0.15264686595907273
+    association_weight_point_count_consistency: 0.0
+    association_weight_motion_continuity: 0.0
+    association_weight_previous_association: 0.0
+    association_weight_detector_confidence: 0.0
+    association_weight_geometry_confidence: 0.0
+    association_weight_sensor_confidence: 0.0
+    appearance_memory_enabled: true
+    reidentification_shadow_mode: true
+    reidentification_mutation_enabled: false
+    reidentification_calibration_status: uncalibrated
+    # Production selection remains fail-closed. Phase 4A consumes the
+    # diagnostic ranking through its own conservative test-only selector.
+    best_candidate_threshold_calibrated: false
+    publish_best_candidate: true
+    publish_diagnostic_ranking: true
+    task_grounding_weight: 0.70
+    task_stability_weight: 0.10
+    task_support_weight: 0.10
+    task_semantic_weight: 0.10
+    task_grounding_maximum_age_sec: 1.0
+    max_objects: 256
+    max_history: 16
+
+semantic_memory_visualizer:
+  ros__parameters:
+    enabled: true
+    active_objects_topic: /semantic_memory/active_objects
+    best_candidate_topic: /semantic_memory/best_candidate
+    markers_topic: /semantic_memory/markers
+    max_objects: 256

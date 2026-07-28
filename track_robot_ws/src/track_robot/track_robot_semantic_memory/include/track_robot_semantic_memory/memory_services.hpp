@@ -121,6 +121,8 @@ public:
   ResetMemoryResult reset(
     std::uint64_t expected_epoch, bool require_epoch_match,
     std::string reason);
+  ResetMemoryResult reset_to_epoch(
+    std::uint64_t new_epoch, std::string reason);
   [[nodiscard]] BestCandidateResult best_candidate(
     const BestCandidateConfig & config) const;
 

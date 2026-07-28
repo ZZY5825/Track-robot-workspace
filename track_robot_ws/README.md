@@ -7,6 +7,7 @@ memory, safety components, simulation support, and recorded validation data.
 ## Start Here
 
 - [Workspace documentation](docs/README.md)
+- [Semantic-search Phase 0–4 planning-only integration test](docs/guides/semantic-search/phase0-4-planning-only-test.md)
 - [Semantic-search Phase 0–3 YOLO-World test guide](docs/guides/semantic-search/phase0-3-yolo-world-test.md)
 - [Semantic-search Phase 1 and Phase 2 live test guide](docs/guides/semantic-search/phase2-recording-and-evaluation.md)
 - [Semantic-search rosbag workflow](docs/guides/semantic-search/rosbag-workflow.md)
@@ -29,6 +30,12 @@ The console displays correlated image candidates, LiDAR and semantic-memory
 objects, query/model state, and the Phase 3 uncalibrated diagnostic ranking.
 Displayed candidates are review aids rather than ground truth; the production
 winner remains fail-closed until a separate calibration gate is satisfied.
+
+Phase 4 adds a separate planning-only RViz view for a calibrated Phase 3
+winner. It visualizes the target, standoff candidates, selected goal, local
+costmap, and path, but owns no navigation action client or `cmd_vel` publisher.
+Follow the Phase 0–4 guide; do not treat the deterministic planner fixture as
+evidence that the live upstream chain passed.
 
 ## Workspace Layout
 

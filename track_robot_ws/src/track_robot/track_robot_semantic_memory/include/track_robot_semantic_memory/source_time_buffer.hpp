@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -134,6 +135,32 @@ public:
     return nearest_entry;
   }
 
+  [[nodiscard]] std::optional<std::int64_t> nearest_delta_ns(
+    const std::int64_t source_stamp_ns) const
+  {
+    if (source_stamp_ns < 0) {
+      throw std::invalid_argument(
+              "nearest source-time query parameters must be non-negative");
+    }
+    return nearest_delta_ns_if(
+      source_stamp_ns, [](const auto &) {return true;});
+  }
+
+  [[nodiscard]] std::optional<std::int64_t> nearest_delta_ns(
+    const std::int64_t source_stamp_ns,
+    const std::uint64_t producer_epoch_id) const
+  {
+    if (source_stamp_ns < 0 || producer_epoch_id == 0U) {
+      throw std::invalid_argument(
+              "epoch-restricted source-time query parameters are invalid");
+    }
+    return nearest_delta_ns_if(
+      source_stamp_ns,
+      [producer_epoch_id](const auto & entry) {
+        return entry.key.producer_epoch_id == producer_epoch_id;
+      });
+  }
+
   [[nodiscard]] const SourceTimeEntry<ValueT> * nearest(
     const std::int64_t source_stamp_ns,
     const std::int64_t max_delta_ns,
@@ -171,6 +198,26 @@ public:
   void clear() noexcept {entries_.clear();}
 
 private:
+  template<typename PredicateT>
+  [[nodiscard]] std::optional<std::int64_t> nearest_delta_ns_if(
+    const std::int64_t source_stamp_ns,
+    PredicateT predicate) const
+  {
+    std::optional<std::int64_t> nearest_delta;
+    for (const auto & entry : entries_) {
+      if (!predicate(entry)) {
+        continue;
+      }
+      const auto delta_ns = source_stamp_ns >= entry.key.source_stamp_ns ?
+        source_stamp_ns - entry.key.source_stamp_ns :
+        entry.key.source_stamp_ns - source_stamp_ns;
+      if (!nearest_delta.has_value() || delta_ns < *nearest_delta) {
+        nearest_delta = delta_ns;
+      }
+    }
+    return nearest_delta;
+  }
+
   void evict_expired()
   {
     const auto latest = clock_.latest_stamp_ns();

@@ -328,8 +328,8 @@ void RuntimeTaskServiceCoordinator::reset_to_epoch(
   std::string reason)
 {
   auto next_store = store_;
-  const auto reset = next_store.reset(store_.current_epoch(), true, std::move(reason));
-  if (!reset.reset || reset.new_epoch != new_epoch) {
+  const auto reset = next_store.reset_to_epoch(new_epoch, std::move(reason));
+  if (!reset.reset) {
     throw std::invalid_argument("runtime task reset epoch does not match memory core");
   }
   objects_.clear();

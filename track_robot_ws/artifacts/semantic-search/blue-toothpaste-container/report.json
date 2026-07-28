@@ -1,0 +1,106 @@
+{
+  "calibration": {
+    "mode": "none"
+  },
+  "collection": {
+    "duration_sec": 20.0,
+    "timestamp": "2026-07-25T15:15:37Z"
+  },
+  "metrics": {
+    "frame_rate_hz": 4.2,
+    "frames": 84,
+    "nonempty_frame_ratio": 0.0,
+    "nonempty_frames": 0,
+    "phase2": {
+      "association_matches": 0,
+      "association_messages": 0,
+      "latest_localization_reason": "",
+      "latest_memory_mode": null,
+      "localization_messages": 0,
+      "object_count": 0,
+      "object_messages": 0,
+      "tracklet_count": 0,
+      "tracklet_messages": 0
+    },
+    "score": {
+      "count": 0,
+      "maximum": null,
+      "mean": null,
+      "minimum": null
+    }
+  },
+  "pipeline": {
+    "failures": [],
+    "status": "PASS",
+    "warnings": [
+      "overlay not written: no scored semantic region was collected"
+    ]
+  },
+  "query": {
+    "accepted_query_id": 1784992536876495,
+    "accepted_query_version": 1,
+    "observed_query_ids": [
+      1784992536876495
+    ],
+    "observed_query_versions": [
+      1
+    ],
+    "text": "a blue toothpaste container"
+  },
+  "readiness": {
+    "checks": [
+      {
+        "action": "",
+        "detail": "/home/track-robot/track_robot_ws/models/phase1_runtime/python",
+        "name": "runtime",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "SHA-256 verified",
+        "name": "checkpoint",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "/home/track-robot/track_robot_ws/src/track_robot/track_robot_bringup/config/fastdds_semantic_search.xml",
+        "name": "dds_profile",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "/zed/zed_node/left/image_rect_color is publishing sensor messages",
+        "name": "camera",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "/zed/zed_node/left/camera_info is publishing sensor messages",
+        "name": "camera_info",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "/semantic_search/regions has 1 publisher",
+        "name": "regions",
+        "status": "PASS"
+      },
+      {
+        "action": "",
+        "detail": "topic absent; zero publishers",
+        "name": "cmd_vel",
+        "status": "PASS"
+      }
+    ],
+    "overall": "PASS",
+    "ros_domain_id": "20",
+    "stage": "phase1",
+    "timestamp": "2026-07-25T15:15:36Z"
+  },
+  "schema_version": 1,
+  "semantic_result": {
+    "ground_truth_available": false,
+    "status": "REVIEW REQUIRED"
+  },
+  "stage": "phase1"
+}

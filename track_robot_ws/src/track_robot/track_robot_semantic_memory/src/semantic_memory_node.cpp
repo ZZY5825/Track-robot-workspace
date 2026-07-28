@@ -1573,6 +1573,7 @@ private:
       [](const auto * left, const auto * right) {
         return left->visual_candidate_id < right->visual_candidate_id;
       });
+    last_valid_visual_count_ = observations.size();
 
     const auto camera_only_accepted =
       ingest_camera_only_observations(*message, observations);
@@ -1597,14 +1598,24 @@ private:
     for (const auto * observation : observations) {
       const auto visual_stamp_ns = rclcpp::Time(
         observation->camera_stamp).nanoseconds();
+      last_visual_probe_stamp_ns_ = visual_stamp_ns;
+      last_visual_unrestricted_lidar_delta_ns_ =
+        association_lidar_batches_->nearest_delta_ns(visual_stamp_ns);
+      last_visual_epoch_lidar_delta_ns_ =
+        association_lidar_batches_->nearest_delta_ns(
+        visual_stamp_ns, last_lidar_source_epoch_id_);
       const auto * buffered = association_lidar_batches_->nearest(
         visual_stamp_ns, association_max_source_time_delta_ns_,
         last_lidar_source_epoch_id_);
       if (buffered == nullptr) {
+        ++association_source_time_miss_count_;
         ++rejected_visual_observation_count_;
         continue;
       }
+      ++association_source_time_match_count_;
+      last_source_time_matched_outcome_ = "source_time_matched";
       const auto & lidar_batch = buffered->value;
+      last_matched_lidar_tracklet_count_ = lidar_batch.tracklets.size();
       std::vector<const track_robot_interfaces::msg::LidarTracklet *> tracklets;
       std::map<std::int64_t, std::size_t> active_tracklet_id_counts;
       for (const auto & tracklet : lidar_batch.tracklets) {
@@ -1626,6 +1637,8 @@ private:
         });
       auto pairs = score_visual_pairs(
         *observation, lidar_batch, tracklets, evaluation_stamp_ns);
+      last_active_unique_lidar_tracklet_count_ = tracklets.size();
+      last_scored_pair_count_ = pairs.size();
       if (!association_shadow_mode_) {
         std::vector<RuntimePairCandidate> candidates;
         candidates.reserve(pairs.size());
@@ -1644,8 +1657,9 @@ private:
             maximum_lidar_candidates_per_visual_);
         } catch (const std::exception & error) {
           ++rejected_visual_observation_count_;
-          last_association_reason_ = bounded_reason(
+          last_source_time_matched_outcome_ = bounded_reason(
             std::string("visual_shortlist_rejected:") + error.what());
+          last_association_reason_ = last_source_time_matched_outcome_;
           continue;
         }
         std::set<std::int64_t> retained;
@@ -1738,7 +1752,9 @@ private:
 
     if (scored_visuals.empty()) {
       ++rejected_observation_batch_count_;
-      last_association_reason_ = "no_visuals_have_source_time_lidar_evidence";
+      last_association_reason_ = observations.empty() ?
+        "no_valid_visual_observations" :
+        "no_visuals_have_source_time_lidar_evidence";
       return;
     }
     const auto common_stamp = scored_visuals.front().visual_stamp_ns;
@@ -1803,8 +1819,9 @@ private:
       runtime_result = next_runtime_association.process(runtime_frame);
     } catch (const std::exception & error) {
       ++rejected_observation_batch_count_;
-      last_association_reason_ = bounded_reason(
+      last_source_time_matched_outcome_ = bounded_reason(
         std::string("runtime_association_rejected:") + error.what());
+      last_association_reason_ = last_source_time_matched_outcome_;
       return;
     }
     std::map<std::uint64_t, RuntimeAssociationDecision> decisions;
@@ -1886,8 +1903,9 @@ private:
             ++accepted_in_batch;
           } catch (const std::exception & error) {
             ++rejected_visual_observation_count_;
-            last_association_reason_ = bounded_reason(
+            last_source_time_matched_outcome_ = bounded_reason(
               std::string("visual_supplement_rejected:") + error.what());
+            last_association_reason_ = last_source_time_matched_outcome_;
             supplement_failed = true;
             break;
           }
@@ -1953,8 +1971,9 @@ private:
       }
     } catch (const std::exception & error) {
       ++rejected_observation_batch_count_;
-      last_association_reason_ = bounded_reason(
+      last_source_time_matched_outcome_ = bounded_reason(
         std::string("runtime_reidentification_rejected:") + error.what());
+      last_association_reason_ = last_source_time_matched_outcome_;
       return;
     }
 
@@ -1965,8 +1984,9 @@ private:
             *latest_snapshot, next_memory_core));
       } catch (const std::exception & error) {
         ++rejected_observation_batch_count_;
-        last_association_reason_ = bounded_reason(
+        last_source_time_matched_outcome_ = bounded_reason(
           std::string("runtime_task_sync_rejected:") + error.what());
+        last_association_reason_ = last_source_time_matched_outcome_;
         return;
       }
     }
@@ -2040,8 +2060,9 @@ private:
       }
     }
     association_debug_pair_count_ += emitted;
-    last_association_reason_ = accepted_in_batch > 0U ?
+    last_source_time_matched_outcome_ = accepted_in_batch > 0U ?
       "runtime_attachment_evaluated" : "runtime_association_no_attachment";
+    last_association_reason_ = last_source_time_matched_outcome_;
   }
 
   void publish_rejection_event(
@@ -2110,8 +2131,74 @@ private:
         "best_candidate_reason", last_best_candidate_reason_));
     status.values.push_back(make_value(
         "diagnostic_ranking", last_diagnostic_ranking_json_));
+    const auto buffer_size = association_lidar_batches_ ?
+      association_lidar_batches_->entries().size() : 0U;
+    std::size_t current_epoch_entries = 0U;
+    SourceTimeBufferStats buffer_stats;
+    if (association_lidar_batches_) {
+      buffer_stats = association_lidar_batches_->stats();
+      current_epoch_entries = static_cast<std::size_t>(std::count_if(
+          association_lidar_batches_->entries().begin(),
+          association_lidar_batches_->entries().end(),
+          [this](const auto & entry) {
+            return entry.key.producer_epoch_id == last_lidar_source_epoch_id_;
+          }));
+    }
+    status.values.push_back(make_value(
+        "association_lidar_buffer_entries",
+        static_cast<std::uint64_t>(buffer_size)));
+    status.values.push_back(make_value(
+        "association_lidar_current_epoch_entries",
+        static_cast<std::uint64_t>(current_epoch_entries)));
+    status.values.push_back(make_value(
+        "association_lidar_last_source_epoch_id", last_lidar_source_epoch_id_));
+    status.values.push_back(make_value(
+        "association_max_source_time_delta_ns",
+        std::to_string(association_max_source_time_delta_ns_)));
+    status.values.push_back(make_value(
+        "association_last_visual_probe_stamp_ns",
+        optional_nanoseconds(last_visual_probe_stamp_ns_)));
+    status.values.push_back(make_value(
+        "association_nearest_lidar_delta_ns",
+        optional_nanoseconds(last_visual_unrestricted_lidar_delta_ns_)));
+    status.values.push_back(make_value(
+        "association_nearest_current_epoch_lidar_delta_ns",
+        optional_nanoseconds(last_visual_epoch_lidar_delta_ns_)));
+    status.values.push_back(make_value(
+        "association_lidar_buffer_rollbacks", buffer_stats.rollback_count));
+    status.values.push_back(make_value(
+        "association_lidar_buffer_rollback_drops", buffer_stats.rollback_drops));
+    status.values.push_back(make_value(
+        "association_lidar_buffer_age_evictions", buffer_stats.age_evictions));
+    status.values.push_back(make_value(
+        "association_lidar_buffer_count_evictions", buffer_stats.count_evictions));
+    status.values.push_back(make_value(
+        "association_valid_visuals_in_last_batch",
+        static_cast<std::uint64_t>(last_valid_visual_count_)));
+    status.values.push_back(make_value(
+        "association_source_time_matches", association_source_time_match_count_));
+    status.values.push_back(make_value(
+        "association_source_time_misses", association_source_time_miss_count_));
+    status.values.push_back(make_value(
+        "association_last_matched_lidar_tracklets",
+        static_cast<std::uint64_t>(last_matched_lidar_tracklet_count_)));
+    status.values.push_back(make_value(
+        "association_last_active_unique_lidar_tracklets",
+        static_cast<std::uint64_t>(last_active_unique_lidar_tracklet_count_)));
+    status.values.push_back(make_value(
+        "association_last_scored_pairs",
+        static_cast<std::uint64_t>(last_scored_pair_count_)));
+    status.values.push_back(make_value(
+        "association_last_source_time_matched_outcome",
+        last_source_time_matched_outcome_));
     output.status.push_back(status);
     diagnostics_publisher_->publish(output);
+  }
+
+  static std::string optional_nanoseconds(
+    const std::optional<std::int64_t> & value)
+  {
+    return value.has_value() ? std::to_string(*value) : "none";
   }
 
   static diagnostic_msgs::msg::KeyValue make_value(
@@ -2193,6 +2280,16 @@ private:
   std::int64_t localization_state_timeout_ns_{500000000};
   std::int64_t association_max_source_time_delta_ns_{100000000};
   std::optional<std::int64_t> last_visual_source_stamp_ns_;
+  std::optional<std::int64_t> last_visual_probe_stamp_ns_;
+  std::optional<std::int64_t> last_visual_unrestricted_lidar_delta_ns_;
+  std::optional<std::int64_t> last_visual_epoch_lidar_delta_ns_;
+  std::size_t last_valid_visual_count_{0U};
+  std::size_t last_matched_lidar_tracklet_count_{0U};
+  std::size_t last_active_unique_lidar_tracklet_count_{0U};
+  std::size_t last_scored_pair_count_{0U};
+  std::uint64_t association_source_time_match_count_{0U};
+  std::uint64_t association_source_time_miss_count_{0U};
+  std::string last_source_time_matched_outcome_{"not_evaluated"};
   MemoryCoreConfig core_config_;
   ReidentificationConfig reidentification_config_;
   TaskRelevanceConfig task_relevance_config_;

@@ -52,6 +52,20 @@ setup(
             'track_robot_semantic_search.phase2_replay:main',
             'semantic_search_phase123_replay = '
             'track_robot_semantic_search.phase123_replay:main',
+            'semantic_search_phase4_planner = '
+            'track_robot_semantic_search.approach_planner_node:main',
+            'semantic_search_phase4_validate = '
+            'track_robot_semantic_search.phase04_validation:main',
+            'semantic_search_phase04_live_validate = '
+            'track_robot_semantic_search.phase04_live_validation:main',
+            'semantic_search_phase4a_fixed_base = '
+            'track_robot_semantic_search.fixed_base_session_node:main',
+            'semantic_search_phase4a_selector = '
+            'track_robot_semantic_search.phase4a_selector_node:main',
+            'semantic_search_phase4a_advisor = '
+            'track_robot_semantic_search.phase4a_advisor_node:main',
+            'semantic_search_phase4a_validate = '
+            'track_robot_semantic_search.phase4a_live_validation:main',
             'semantic_search_phase2_calibrate_task_threshold = '
             'track_robot_semantic_search.task_threshold_calibration_cli:main',
             'semantic_search_grounding_evaluate = '

@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -125,4 +126,18 @@ TEST(SourceTimeBuffer, NearestCanBeRestrictedToOneProducerEpoch)
   EXPECT_EQ(epoch_two->value, 2);
   EXPECT_EQ(buffer.nearest(100, 10, 3U), nullptr);
   EXPECT_THROW((void)buffer.nearest(100, 10, 0U), std::invalid_argument);
+}
+
+TEST(SourceTimeBuffer, ReportsNearestDeltaWithAndWithoutEpochRestriction)
+{
+  semantic_memory::SourceTimeBuffer<int> buffer({8U, 1000, 10});
+  buffer.push({100, 1U, 1}, 1);
+  buffer.push({135, 2U, 1}, 2);
+
+  EXPECT_EQ(buffer.nearest_delta_ns(130), std::optional<std::int64_t>{5});
+  EXPECT_EQ(buffer.nearest_delta_ns(130, 1U), std::optional<std::int64_t>{30});
+  EXPECT_EQ(buffer.nearest_delta_ns(130, 2U), std::optional<std::int64_t>{5});
+  EXPECT_EQ(buffer.nearest_delta_ns(130, 3U), std::nullopt);
+  EXPECT_THROW((void)buffer.nearest_delta_ns(-1), std::invalid_argument);
+  EXPECT_THROW((void)buffer.nearest_delta_ns(1, 0U), std::invalid_argument);
 }
