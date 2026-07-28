@@ -56,7 +56,7 @@ def _default_workspace_root():
 def _add_stage_options(
         parser,
         hardware=False,
-        stages=('sensors', 'phase1', 'phase2')):
+        stages=('sensors', 'phase0', 'phase1', 'phase2', 'phase3')):
     parser.add_argument('stage', choices=stages)
     if hardware:
         parser.add_argument(
@@ -117,14 +117,15 @@ def build_parser():
 
     visualize = commands.add_parser(
         'visualize', help='open the passive RViz test console in foreground')
-    visualize.add_argument('stage', choices=('phase1', 'phase2'))
+    visualize.add_argument('stage', choices=('phase1', 'phase2', 'phase3'))
     visualize.add_argument(
         '--workspace-root', default=_default_workspace_root(),
         help=argparse.SUPPRESS)
 
     test = commands.add_parser(
         'test', help='delegate a bounded live test to Task 5 support')
-    _add_stage_options(test, hardware=True, stages=('phase1', 'phase2'))
+    _add_stage_options(
+        test, hardware=True, stages=('phase1', 'phase2', 'phase3'))
     test.add_argument('query')
     test.add_argument('--start-stack', action='store_true')
     test.add_argument('--duration-sec', type=float, default=10.0)
@@ -264,6 +265,14 @@ def build_launch_argv(args, selection, paths):
         'start_imu:={}'.format(str(selection.imu).lower()),
         'runtime_path:={}'.format(paths['runtime_path']),
         'checkpoint_path:={}'.format(paths['checkpoint_path']),
+        'yolo_runtime_path:={}'.format(
+            paths.get('yolo_runtime_path', paths['runtime_path'])),
+        'yolo_checkpoint_path:={}'.format(
+            paths.get('yolo_checkpoint_path', paths['checkpoint_path'])),
+        'dino_repo_path:={}'.format(
+            paths.get('dino_repo_path', paths['runtime_path'])),
+        'dino_checkpoint_path:={}'.format(
+            paths.get('dino_checkpoint_path', paths['checkpoint_path'])),
         'extrinsic_mode:={}'.format(args.extrinsic_mode),
         'allow_degraded:={}'.format(str(args.allow_degraded).lower()),
     ]
@@ -752,6 +761,11 @@ def main(
                 stderr.write('Live test failed: {}\n'.format(error))
                 return 4
 
+        # The pre-start graph snapshot answers only whether an external stack
+        # can be reused. It must not consume the budget intended for hardware
+        # startup, model loading, and post-launch readiness.
+        start_deadline = (
+            monotonic() + max(0.0, float(args.readiness_timeout)))
         process_manager = _manager(manager, popen_factory, os_api)
         result_code = 4
         owns_stack = False

@@ -7,6 +7,7 @@ memory, safety components, simulation support, and recorded validation data.
 ## Start Here
 
 - [Workspace documentation](docs/README.md)
+- [Semantic-search Phase 0–3 YOLO-World test guide](docs/guides/semantic-search/phase0-3-yolo-world-test.md)
 - [Semantic-search Phase 1 and Phase 2 live test guide](docs/guides/semantic-search/phase2-recording-and-evaluation.md)
 - [Semantic-search rosbag workflow](docs/guides/semantic-search/rosbag-workflow.md)
 - [Human-tracking rosbag replay guide](docs/guides/human-tracking/rosbag-replay.md)
@@ -15,17 +16,19 @@ The managed semantic-search tools use **ROS Domain 20**. The modular
 semantic-search bringup is passive: it does not authorize or start navigation,
 base control, motion controllers, or a `/cmd_vel` publisher.
 
-After starting a Phase 1 or Phase 2 semantic-search stack, open its passive
+After starting a Phase 1, Phase 2, or Phase 3 semantic-search stack, open its passive
 live RViz console in another terminal:
 
 ```bash
 ros2 run track_robot_bringup semantic_search_ctl visualize phase1
 ros2 run track_robot_bringup semantic_search_ctl visualize phase2
+ros2 run track_robot_bringup semantic_search_ctl visualize phase3
 ```
 
 The console displays correlated image candidates, LiDAR and semantic-memory
-objects, and query/model state. Displayed candidates are review aids rather
-than ground truth.
+objects, query/model state, and the Phase 3 uncalibrated diagnostic ranking.
+Displayed candidates are review aids rather than ground truth; the production
+winner remains fail-closed until a separate calibration gate is satisfied.
 
 ## Workspace Layout
 

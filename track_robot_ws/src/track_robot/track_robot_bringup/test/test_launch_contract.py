@@ -18,6 +18,7 @@ VISUALIZATION_LAUNCH = (
 RVIZ_ROOT = PACKAGE_ROOT / 'rviz'
 PHASE1_RVIZ = RVIZ_ROOT / 'semantic_search_phase1.rviz'
 PHASE2_RVIZ = RVIZ_ROOT / 'semantic_search_phase2.rviz'
+PHASE3_RVIZ = RVIZ_ROOT / 'semantic_search_phase3.rviz'
 RSLIDAR_IMPLEMENTATION = (
     PACKAGE_ROOT.parent
     / 'track_robot_sensor_bringup'
@@ -136,6 +137,28 @@ def _forwards_launch_configuration(path, name):
     return False
 
 
+def _forwards_resolved_launch_configuration(path, key_name, argument_name):
+    for item in ast.walk(_tree(path)):
+        if not isinstance(item, ast.Dict):
+            continue
+        for key, value in zip(item.keys, item.values):
+            if not isinstance(key, ast.Constant) or key.value != key_name:
+                continue
+            if (
+                    isinstance(value, ast.Call)
+                    and isinstance(value.func, ast.Attribute)
+                    and value.func.attr == 'perform'
+                    and isinstance(value.func.value, ast.Call)
+                    and isinstance(value.func.value.func, ast.Name)
+                    and value.func.value.func.id == 'LaunchConfiguration'
+                    and _contains_string(value.func.value, argument_name)
+                    and any(
+                        isinstance(node, ast.Name) and node.id == 'context'
+                        for node in ast.walk(value))):
+                return True
+    return False
+
+
 def _assert_if_condition(call, launch_argument):
     condition = _keyword(call, 'condition')
     assert isinstance(condition, ast.Call)
@@ -168,7 +191,8 @@ def test_live_launch_exposes_public_contract_and_composes_all_phases():
     source = _source(LIVE_LAUNCH)
 
     assert required_live_arguments <= _declared_arguments(LIVE_LAUNCH)
-    assert 'semantic_search_phase1.launch.py' in source
+    assert 'semantic_search_yolo_world.launch.py' in source
+    assert 'semantic_search_phase1.launch.py' not in source
     assert 'semantic_search_phase0.launch.py' in source
     assert 'semantic_memory_lidar_tracklets.launch.py' in source
     assert 'semantic_memory_phase2.launch.py' in source
@@ -180,17 +204,46 @@ def test_live_launch_exposes_public_contract_and_composes_all_phases():
     assert defaults['checkpoint_path'] == (
         '/home/track-robot/track_robot_ws/models/phase1/ViT-B-32.pt')
     assert _calls(LIVE_LAUNCH, 'OpaqueFunction')
-    for stage in ('sensors', 'phase1', 'phase2'):
+    for stage in ('sensors', 'phase0', 'phase1', 'phase2', 'phase3'):
         assert stage in source
     assert _included_launch_files_in_source_order(LIVE_LAUNCH) == [
         'semantic_search_sensors.launch.py',
         'semantic_search_phase0.launch.py',
-        'semantic_search_phase1.launch.py',
+        'semantic_search_yolo_world.launch.py',
         'semantic_memory_lidar_tracklets.launch.py',
         'semantic_memory_phase2.launch.py',
     ]
-    assert source.index("if stage == 'phase2':") < source.index(
-        "if stage in ('phase1', 'phase2'):")
+    assert 'phase123_test.yaml' in source
+    assert "'enable_test_camera_attachment':" in source
+    assert "'allow_degraded_calibration':" in source
+    assert "'true' if stage == 'phase3' else 'false'" in source
+    assert "'start_perception': 'true'" in source
+    assert "'dino_enabled': 'true'" in source
+
+
+def test_live_launch_pins_each_sibling_config_against_foxy_argument_leakage():
+    source = _source(LIVE_LAUNCH)
+
+    for package, filename in (
+            ('track_robot_semantic_search', 'semantic_search_phase0.yaml'),
+            ('track_robot_semantic_search', 'semantic_search_yolo_world.yaml'),
+            ('track_robot_lidar_tracking',
+             'semantic_memory_lidar_tracklets.yaml'),
+            ('track_robot_semantic_memory', 'semantic_memory.yaml')):
+        assert "FindPackageShare('{}')".format(package) in source
+        assert "'config_file': PathJoinSubstitution([" in source
+        assert "'{}'".format(filename) in source
+
+
+def test_live_launch_resolves_distinct_model_paths_before_nested_include():
+    assert _forwards_resolved_launch_configuration(
+        LIVE_LAUNCH, 'runtime_path', 'yolo_runtime_path')
+    assert _forwards_resolved_launch_configuration(
+        LIVE_LAUNCH, 'clip_runtime_path', 'runtime_path')
+    assert _forwards_resolved_launch_configuration(
+        LIVE_LAUNCH, 'world_checkpoint', 'yolo_checkpoint_path')
+    assert _forwards_resolved_launch_configuration(
+        LIVE_LAUNCH, 'clip_checkpoint', 'checkpoint_path')
 
 
 def test_visualization_launch_is_foreground_passive_and_closes_with_rviz():
@@ -201,6 +254,7 @@ def test_visualization_launch_is_foreground_passive_and_closes_with_rviz():
     assert "executable='rviz2'" in source
     assert 'semantic_search_phase1.rviz' in source
     assert 'semantic_search_phase2.rviz' in source
+    assert 'semantic_search_phase3.rviz' in source
     assert 'OnProcessExit' in source
     assert 'EmitEvent' in source
     assert 'Shutdown' in source
@@ -211,6 +265,7 @@ def test_visualization_launch_is_foreground_passive_and_closes_with_rviz():
 def test_saved_rviz_views_use_live_topics_and_custom_panel():
     phase1 = _source(PHASE1_RVIZ)
     phase2 = _source(PHASE2_RVIZ)
+    phase3 = _source(PHASE3_RVIZ)
     panel = (
         'track_robot_semantic_search_rviz_plugins/'
         'SemanticSearchPanel'
@@ -218,12 +273,15 @@ def test_saved_rviz_views_use_live_topics_and_custom_panel():
 
     assert panel in phase1
     assert panel in phase2
+    assert panel in phase3
     assert '/semantic_search/overlay_image' in phase1
     assert 'zed_left_camera_optical_frame' in phase1
     assert '/semantic_search/overlay_image' in phase2
     assert '/rslidar_points' in phase2
     assert '/semantic_memory/markers' in phase2
     assert 'Fixed Frame: odom' in phase2
+    assert '/semantic_memory/diagnostic_ranking' in phase3
+    assert 'Fixed Frame: odom' in phase3
 
 
 def test_camera_launch_is_opt_in_and_disables_zed_owned_tf_edges():
@@ -239,6 +297,22 @@ def test_camera_launch_is_opt_in_and_disables_zed_owned_tf_edges():
     _assert_if_condition(includes[0], 'start_camera')
 
 
+def test_camera_launch_disables_unused_zed_depth_and_positional_tracking():
+    settings = {}
+    for call in _calls(CAMERA_LAUNCH, 'SetParameter'):
+        name = _keyword(call, 'name')
+        value = _keyword(call, 'value')
+        if isinstance(name, ast.Constant) and isinstance(value, ast.Constant):
+            settings[name.value] = value.value
+
+    assert settings == {
+        'depth.depth_mode': 'NONE',
+        'depth.depth_stabilization': 0,
+        'pos_tracking.pos_tracking_enabled': False,
+    }
+    assert _calls(CAMERA_LAUNCH, 'GroupAction')
+
+
 def test_camera_extrinsic_policy_is_fail_closed_and_tf_is_conditional(
         tmp_path, monkeypatch):
     source = _source(CAMERA_LAUNCH)
@@ -246,7 +320,7 @@ def test_camera_extrinsic_policy_is_fail_closed_and_tf_is_conditional(
     assert _calls(CAMERA_LAUNCH, 'OpaqueFunction')
     assert source.index(
         'OpaqueFunction(function=_launch_extrinsic)'
-    ) < source.index('        zed_camera,')
+    ) < source.index('        camera_only_zed,')
     assert 'prototype camera extrinsic requires allow_degraded:=true' in source
     assert 'measured camera extrinsic file does not exist:' in source
     assert 'extrinsic_mode' in _declared_arguments(CAMERA_LAUNCH)
@@ -351,6 +425,14 @@ def test_platform_directly_and_independently_gates_base_and_imu():
     )
     assert '<exec_depend>track_robot_perception</exec_depend>' in _source(
         PACKAGE_ROOT / 'package.xml')
+
+
+def test_platform_pins_phidget_config_against_lidar_argument_leakage():
+    source = _source(PLATFORM_LAUNCH)
+
+    assert "FindPackageShare('track_robot_perception')" in source
+    assert "'config_path': PathJoinSubstitution([" in source
+    assert "'phidget_imu.yaml'" in source
 
 
 def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():

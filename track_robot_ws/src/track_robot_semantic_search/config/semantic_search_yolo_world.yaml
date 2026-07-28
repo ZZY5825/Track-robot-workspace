@@ -1,0 +1,33 @@
+semantic_search_yolo_world_perception:
+  ros__parameters:
+    image_topic: /zed/zed_node/left/image_rect_color
+    query_topic: /semantic_search/query
+    regions_topic: /semantic_search/regions
+    observations_topic: /semantic_memory/observations
+    task_topic: /semantic_memory/tasks
+    diagnostics_topic: /semantic_search/perception_diagnostics
+    target_rate_hz: 2.0
+    runtime_path: ''
+    clip_runtime_path: ''
+    world_checkpoint: ''
+    clip_checkpoint: ''
+    device: 0
+    half: true
+    input_size: 640
+    confidence_floor: 0.05
+    iou_threshold: 0.70
+    max_detections: 64
+    calibration_id: zed_left_rectified_v1
+    task_descriptor_version: 1
+    tracking_minimum_iou: 0.20
+    tracking_maximum_center_distance: 0.30
+    tracking_ambiguity_margin: 0.05
+    tracking_maximum_missed_frames: 2
+    dino_enabled: true
+    dino_local_repo: ''
+    dino_checkpoint: ''
+    dino_input_size: 224
+    dino_context_margin: 0.10
+    dino_maximum_crops: 3
+    dino_encoder_id: dinov3:vits16plus
+    dino_descriptor_version: 1

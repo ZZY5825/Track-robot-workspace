@@ -1,0 +1,155 @@
+{
+  "schema_version": "phase123_yolo_world/1.0.0",
+  "initial_memory_epoch_id": 17,
+  "domain": {
+    "mode": "LOCAL_SESSION",
+    "localization_epoch_id": 4,
+    "frame_id": "odom"
+  },
+  "query": {
+    "text": "blue toothpaste container",
+    "query_id": 501,
+    "query_version": 1,
+    "producer_epoch_id": 51,
+    "source_stamp_ns": 1000000000,
+    "descriptor": {
+      "encoder_id": "openai_clip:ViT-B/32",
+      "checkpoint_id": "ViT-B-32.pt",
+      "version": 1,
+      "dimension": 2,
+      "l2_normalized": true,
+      "values": [1.0, 0.0]
+    }
+  },
+  "visual_producer_epoch_id": 1,
+  "image_width": 1280,
+  "image_height": 720,
+  "frames": [
+    {
+      "source_stamp_ns": 1000000000,
+      "camera_candidates": [
+        {
+          "observation_id": 1,
+          "candidate_id": 1,
+          "camera_track_id": 1,
+          "label": "blue toothpaste container",
+          "confidence": 0.82,
+          "box": [400.0, 200.0, 520.0, 480.0],
+          "appearance": {
+            "encoder_id": "dinov3:vits16plus",
+            "checkpoint_id": "dinov3_vits16plus_pretrain_lvd1689m.pth",
+            "version": 1,
+            "dimension": 4,
+            "l2_normalized": true,
+            "values": [1.0, 0.0, 0.0, 0.0],
+            "quality": 0.90
+          }
+        }
+      ],
+      "lidar_observations": [],
+      "attachments": []
+    },
+    {
+      "source_stamp_ns": 1200000000,
+      "camera_candidates": [
+        {
+          "observation_id": 2,
+          "candidate_id": 2,
+          "camera_track_id": 1,
+          "label": "blue toothpaste container",
+          "confidence": 0.86,
+          "box": [404.0, 202.0, 524.0, 482.0],
+          "appearance": {
+            "encoder_id": "dinov3:vits16plus",
+            "checkpoint_id": "dinov3_vits16plus_pretrain_lvd1689m.pth",
+            "version": 1,
+            "dimension": 4,
+            "l2_normalized": true,
+            "values": [0.9998, 0.019998, 0.0, 0.0],
+            "quality": 0.92
+          }
+        }
+      ],
+      "lidar_observations": [
+        {
+          "source_epoch_id": 9,
+          "tracklet_id": 44,
+          "source_stamp_ns": 1200000000,
+          "position": [1.5, 0.1, 0.2],
+          "velocity": [0.0, 0.0, 0.0],
+          "extent": [0.08, 0.08, 0.22],
+          "position_covariance": [
+            0.04, 0.0, 0.0,
+            0.0, 0.04, 0.0,
+            0.0, 0.0, 0.09
+          ],
+          "confidence": 0.78
+        }
+      ],
+      "attachments": [
+        {
+          "camera_track_id": 1,
+          "lidar_source_epoch_id": 9,
+          "lidar_tracklet_id": 44,
+          "association_confidence": 0.88
+        }
+      ]
+    },
+    {
+      "source_stamp_ns": 1400000000,
+      "camera_candidates": [
+        {
+          "observation_id": 3,
+          "candidate_id": 3,
+          "camera_track_id": 1,
+          "label": "blue toothpaste container",
+          "confidence": 0.88,
+          "box": [408.0, 204.0, 528.0, 484.0],
+          "appearance": {
+            "encoder_id": "dinov3:vits16plus",
+            "checkpoint_id": "dinov3_vits16plus_pretrain_lvd1689m.pth",
+            "version": 1,
+            "dimension": 4,
+            "l2_normalized": true,
+            "values": [0.9992, 0.039968, 0.0, 0.0],
+            "quality": 0.93
+          }
+        },
+        {
+          "observation_id": 4,
+          "candidate_id": 4,
+          "camera_track_id": 2,
+          "label": "blue toothpaste container",
+          "confidence": 0.35,
+          "box": [900.0, 250.0, 1010.0, 470.0],
+          "appearance": {
+            "encoder_id": "dinov3:vits16plus",
+            "checkpoint_id": "dinov3_vits16plus_pretrain_lvd1689m.pth",
+            "version": 1,
+            "dimension": 4,
+            "l2_normalized": true,
+            "values": [0.0, 1.0, 0.0, 0.0],
+            "quality": 0.85
+          }
+        }
+      ],
+      "lidar_observations": [
+        {
+          "source_epoch_id": 9,
+          "tracklet_id": 44,
+          "source_stamp_ns": 1400000000,
+          "position": [1.48, 0.11, 0.2],
+          "velocity": [0.0, 0.0, 0.0],
+          "extent": [0.08, 0.08, 0.22],
+          "position_covariance": [
+            0.04, 0.0, 0.0,
+            0.0, 0.04, 0.0,
+            0.0, 0.0, 0.09
+          ],
+          "confidence": 0.80
+        }
+      ],
+      "attachments": []
+    }
+  ]
+}

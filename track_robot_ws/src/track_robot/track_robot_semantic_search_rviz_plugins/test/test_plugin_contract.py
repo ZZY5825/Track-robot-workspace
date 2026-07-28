@@ -28,8 +28,15 @@ def test_panel_uses_only_approved_passive_topics_and_no_motion_api():
             '/semantic_search/perception_diagnostics',
             '/semantic_search/regions',
             '/semantic_memory/active_objects',
-            '/semantic_memory/best_candidate'):
+            '/semantic_memory/best_candidate',
+            '/semantic_memory/diagnostic_ranking'):
         assert topic in source
+
+    assert 'UNCALIBRATED - NOT A CONFIRMED TARGET' in source
+    assert 'Diagnostic ranking' in source
+    assert 'support=' in source
+    assert 'query=' in source
+    assert 'relevance=' in source
 
     for forbidden in (
             'cmd_vel',

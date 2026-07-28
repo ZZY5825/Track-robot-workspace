@@ -14,10 +14,12 @@ class StageSpec:
     lidar: bool
     base: bool
     imu: bool
+    phase0: bool
     phase1: bool
     localization: bool
     tracklets: bool
     memory: bool
+    diagnostic_ranking: bool
 
 
 @dataclass(frozen=True)
@@ -32,11 +34,20 @@ class HardwareSelection:
 
 STAGES = {
     'sensors': StageSpec(
-        'sensors', True, True, True, True, False, False, False, False),
+        'sensors', True, True, True, True,
+        False, False, False, False, False, False),
+    'phase0': StageSpec(
+        'phase0', False, False, False, False,
+        True, False, False, False, False, False),
     'phase1': StageSpec(
-        'phase1', True, False, False, False, True, False, False, False),
+        'phase1', True, False, False, False,
+        False, True, False, False, False, False),
     'phase2': StageSpec(
-        'phase2', True, True, True, True, True, True, True, True),
+        'phase2', True, True, True, True,
+        True, True, True, True, True, False),
+    'phase3': StageSpec(
+        'phase3', True, True, True, True,
+        True, True, True, True, True, True),
 }
 
 
@@ -76,10 +87,23 @@ def default_workspace_paths(workspace_root: Union[str, Path]) -> Dict[str, Path]
 
     root = Path(workspace_root)
     config = root / 'src' / 'track_robot' / 'track_robot_bringup' / 'config'
+    memory_config = (
+        root / 'src' / 'track_robot' / 'track_robot_semantic_memory'
+        / 'config')
     return {
         'workspace_root': root,
         'runtime_path': root / 'models' / 'phase1_runtime' / 'python',
         'checkpoint_path': root / 'models' / 'phase1' / 'ViT-B-32.pt',
+        'yolo_runtime_path': root / 'models' / 'r0c_runtime' / 'python',
+        'yolo_checkpoint_path': (
+            root / 'models' / 'r0c' / 'yolov8s-worldv2.pt'),
+        'dino_repo_path': (
+            root / 'src' / 'track_robot_core' / 'third_party'
+            / 'dinov3_py38'),
+        'dino_checkpoint_path': (
+            root / 'models' / 'dinov3_vits16plus_pretrain_lvd1689m.pth'),
+        'cuda_runtime_path': Path('/usr/local/cuda'),
+        'phase3_profile_path': memory_config / 'phase123_test.yaml',
         'defaults_path': config / 'semantic_search_defaults.yaml',
         'dds_profile': config / 'fastdds_semantic_search.xml',
     }

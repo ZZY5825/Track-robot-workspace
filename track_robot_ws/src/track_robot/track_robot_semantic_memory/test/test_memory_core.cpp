@@ -84,6 +84,34 @@ semantic_memory::VisualMemorySupplement supplement(
   return value;
 }
 
+semantic_memory::CameraObservation camera_observation(
+  std::uint64_t camera_track_id,
+  std::int64_t stamp,
+  std::uint64_t observation_id)
+{
+  semantic_memory::CameraObservation value;
+  value.visual_key = {
+    semantic_memory::VisualAssociationKind::kCameraTrack,
+    20U,
+    camera_track_id};
+  value.observation_producer_epoch_id = 20U;
+  value.observation_id = observation_id;
+  value.visual_candidate_id = observation_id + 100U;
+  value.query_id = 30U;
+  value.query_version = 1U;
+  value.camera_stamp_ns = stamp;
+  value.semantic_confidence = 0.8;
+  value.image_width = 1280U;
+  value.image_height = 720U;
+  value.roi_x = 100U;
+  value.roi_y = 200U;
+  value.roi_width = 80U;
+  value.roi_height = 120U;
+  value.semantic_labels.push_back({
+      "blue bottle", 0.8, "yolov8s-worldv2", 1U, observation_id});
+  return value;
+}
+
 bool has_event(
   const semantic_memory::MemoryUpdateResult & result,
   semantic_memory::MemoryEventType type)
@@ -103,6 +131,119 @@ TEST(MemoryCore, EmptyBatchInitializesDomainWithoutFabricatingObjects)
   EXPECT_TRUE(result.objects.empty());
   EXPECT_TRUE(has_event(result, semantic_memory::MemoryEventType::kDomainChanged));
   EXPECT_EQ(result.memory_epoch_id, 100U);
+}
+
+TEST(MemoryCore, CameraTrackCreatesAndPreservesCameraOnlyIdentity)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+
+  const auto first = core.update_camera(
+    local_domain(), camera_observation(7U, 1, 50U));
+  const auto repeated = core.update_camera(
+    local_domain(), camera_observation(7U, 2, 51U));
+  const auto distinct = core.update_camera(
+    local_domain(), camera_observation(8U, 2, 52U));
+
+  ASSERT_EQ(first.objects.size(), 1U);
+  EXPECT_FALSE(first.objects[0].lidar_key.has_value());
+  EXPECT_EQ(first.objects[0].support, semantic_memory::SupportState::kCameraOnly);
+  ASSERT_EQ(repeated.objects.size(), 1U);
+  EXPECT_EQ(
+    repeated.objects[0].key.global_object_id,
+    first.objects[0].key.global_object_id);
+  EXPECT_EQ(repeated.objects[0].camera_observation_count, 2U);
+  ASSERT_EQ(distinct.objects.size(), 2U);
+  EXPECT_NE(
+    distinct.objects[0].key.global_object_id,
+    distinct.objects[1].key.global_object_id);
+}
+
+TEST(MemoryCore, CameraRollbackAdvancesEpochAndCameraOnlyLifecycleExpires)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+  const auto first = core.update_camera(
+    local_domain(), camera_observation(7U, 100, 50U));
+  const auto rollback = core.update_camera(
+    local_domain(), camera_observation(7U, 90, 51U));
+
+  EXPECT_EQ(rollback.memory_epoch_id, first.memory_epoch_id + 1U);
+  ASSERT_EQ(rollback.objects.size(), 1U);
+  EXPECT_TRUE(has_event(
+    rollback, semantic_memory::MemoryEventType::kDomainChanged));
+
+  (void)core.update_camera(
+    local_domain(), camera_observation(7U, 91, 52U));
+  const auto stale = core.update_camera(
+    local_domain(), camera_observation(8U, 102, 53U));
+  const auto lost = core.update_camera(
+    local_domain(), camera_observation(8U, 113, 54U));
+  const auto first_track = [](const auto & object) {
+      return object.attached_visual_key.has_value() &&
+             object.attached_visual_key->local_id == 7U;
+    };
+  const auto stale_object = std::find_if(
+    stale.objects.begin(), stale.objects.end(), first_track);
+  ASSERT_NE(stale_object, stale.objects.end());
+  EXPECT_EQ(stale_object->lifecycle, semantic_memory::LifecycleState::kStale);
+  const auto lost_object = std::find_if(
+    lost.objects.begin(), lost.objects.end(), first_track);
+  ASSERT_NE(lost_object, lost.objects.end());
+  EXPECT_EQ(lost_object->lifecycle, semantic_memory::LifecycleState::kLost);
+}
+
+TEST(MemoryCore, LidarGeometryMergesIntoCameraOwnedIdentity)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+  const auto camera = core.update_camera(
+    local_domain(), camera_observation(7U, 1, 50U));
+  const auto camera_key = camera.objects[0].key;
+  const auto lidar = core.update(
+    local_domain(), 2, {observation(10U, 1, 2, 3.0)});
+  ASSERT_EQ(lidar.objects.size(), 2U);
+
+  const auto attached = core.attach_lidar_geometry(
+    local_domain(),
+    {semantic_memory::VisualAssociationKind::kCameraTrack, 20U, 7U},
+    {10U, 1},
+    0.85);
+
+  ASSERT_TRUE(attached.accepted);
+  ASSERT_EQ(attached.snapshot.objects.size(), 1U);
+  const auto & object = attached.snapshot.objects[0];
+  EXPECT_EQ(object.key, camera_key);
+  ASSERT_TRUE(object.lidar_key.has_value());
+  EXPECT_EQ(object.lidar_key->local_object_id, 1);
+  EXPECT_DOUBLE_EQ(object.position[0], 3.0);
+  EXPECT_EQ(object.support, semantic_memory::SupportState::kCameraLidar);
+  EXPECT_DOUBLE_EQ(object.association_confidence, 0.85);
+}
+
+TEST(MemoryCore, LidarLossFallsBackToCurrentCameraIdentity)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+  (void)core.update_camera(
+    local_domain(), camera_observation(7U, 1, 50U));
+  (void)core.update(
+    local_domain(), 2, {observation(10U, 1, 2, 3.0)});
+  const auto attached = core.attach_lidar_geometry(
+    local_domain(),
+    {semantic_memory::VisualAssociationKind::kCameraTrack, 20U, 7U},
+    {10U, 1},
+    0.85);
+  ASSERT_TRUE(attached.accepted);
+  (void)core.update_camera(
+    local_domain(), camera_observation(7U, 24, 51U));
+
+  const auto lidar_lost = core.update(local_domain(), 25, {});
+
+  ASSERT_EQ(lidar_lost.objects.size(), 1U);
+  EXPECT_FALSE(lidar_lost.objects[0].lidar_key.has_value());
+  EXPECT_EQ(
+    lidar_lost.objects[0].support,
+    semantic_memory::SupportState::kCameraOnly);
+  EXPECT_NE(
+    lidar_lost.objects[0].lifecycle,
+    semantic_memory::LifecycleState::kLost);
 }
 
 TEST(MemoryCore, ObservationOnlyModeNeverPersistsBaseFrameObjectsAcrossBatches)
@@ -132,9 +273,11 @@ TEST(MemoryCore, MultipleTrackletsGetDistinctStableIdsAndRepeatedConfirmation)
     observation(10U, 2, 1, 2.0), observation(10U, 1, 1, 1.0)});
   ASSERT_EQ(first.objects.size(), 2U);
   EXPECT_EQ(first.objects[0].key.global_object_id, 1U);
-  EXPECT_EQ(first.objects[0].lidar_key.local_object_id, 1);
+  ASSERT_TRUE(first.objects[0].lidar_key.has_value());
+  EXPECT_EQ(first.objects[0].lidar_key->local_object_id, 1);
   EXPECT_EQ(first.objects[1].key.global_object_id, 2U);
-  EXPECT_EQ(first.objects[1].lidar_key.local_object_id, 2);
+  ASSERT_TRUE(first.objects[1].lidar_key.has_value());
+  EXPECT_EQ(first.objects[1].lidar_key->local_object_id, 2);
   EXPECT_EQ(first.objects[0].lifecycle, semantic_memory::LifecycleState::kTentative);
 
   auto second = core.update(local_domain(), 2, {
@@ -288,13 +431,15 @@ TEST(MemoryCore, CapacityNeverEvictsActiveObjectAndEvictsArchivedOldestFirst)
     local_domain(), 3, {observation(10U, 2, 3, 2.0)});
   EXPECT_EQ(rejected.objects.size(), 1U);
   EXPECT_EQ(rejected.rejected_observations, 1U);
-  EXPECT_EQ(rejected.objects[0].lidar_key.local_object_id, 1);
+  ASSERT_TRUE(rejected.objects[0].lidar_key.has_value());
+  EXPECT_EQ(rejected.objects[0].lidar_key->local_object_id, 1);
 
   core.update(local_domain(), 33, {});
   auto inserted = core.update(
     local_domain(), 34, {observation(10U, 2, 34, 2.0)});
   ASSERT_EQ(inserted.objects.size(), 1U);
-  EXPECT_EQ(inserted.objects[0].lidar_key.local_object_id, 2);
+  ASSERT_TRUE(inserted.objects[0].lidar_key.has_value());
+  EXPECT_EQ(inserted.objects[0].lidar_key->local_object_id, 2);
   EXPECT_EQ(inserted.objects[0].key.global_object_id, 2U);
 }
 

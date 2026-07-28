@@ -57,17 +57,48 @@ semantic_memory::MemoryUpdateResult snapshot(
 semantic_memory::RuntimeTaskServiceCoordinator coordinator(
   std::uint64_t epoch = 7U, bool calibrated = true)
 {
+  semantic_memory::TaskRelevanceConfig config;
+  config.appearance_weight = 0.0;
+  config.semantic_weight = 0.10;
+  config.normalization_tolerance = 1e-5;
+  config.maximum_semantic_evidence = 16U;
+  config.grounding_weight = 0.70;
+  config.stability_weight = 0.10;
+  config.support_weight = 0.10;
+  config.maximum_grounding_age_ns = 100;
   return semantic_memory::RuntimeTaskServiceCoordinator(
-    {0.75, 0.25, 1e-5, 16U}, {calibrated, 0.8}, epoch);
+    config, {calibrated, 0.8}, epoch);
+}
+
+void set_grounding(
+  semantic_memory::MemoryObject & value,
+  std::uint64_t query_id = 41U,
+  std::uint64_t query_version = 3U,
+  std::int64_t stamp_ns = 110,
+  double confidence = 0.8,
+  double stability = 1.0)
+{
+  value.grounding_query_id = query_id;
+  value.grounding_query_version = query_version;
+  value.grounding_producer_epoch_id = 90U;
+  value.grounding_source_stamp_ns = stamp_ns;
+  value.grounding_confidence = confidence;
+  value.grounding_stability = stability;
 }
 
 }  // namespace
 
-TEST(RuntimeTaskServices, ActiveTaskRanksMaximumCompatiblePrototype)
+TEST(RuntimeTaskServices, ActiveTaskRanksFreshGroundingNotDinoPrototype)
 {
   auto runtime = coordinator();
+  auto first = object(7U, 1U);
+  first.support = semantic_memory::SupportState::kCameraLidar;
+  set_grounding(first, 41U, 3U, 110, 0.9, 1.0);
+  auto second = object(7U, 2U);
+  second.support = semantic_memory::SupportState::kCameraOnly;
+  set_grounding(second, 41U, 3U, 110, 0.6, 0.5);
   runtime.synchronize(
-    snapshot(7U, {object(7U, 2U), object(7U, 1U)}),
+    snapshot(7U, {second, first}),
     {{{7U, 1U}, {prototype({1.0, 0.0}), prototype({0.8, 0.6})}},
       {{7U, 2U}, {prototype({0.0, 1.0})}}});
 
@@ -79,7 +110,7 @@ TEST(RuntimeTaskServices, ActiveTaskRanksMaximumCompatiblePrototype)
   ASSERT_TRUE(page.accepted);
   ASSERT_EQ(page.objects.size(), 2U);
   EXPECT_EQ(page.objects[0].object.key.global_object_id, 1U);
-  EXPECT_DOUBLE_EQ(page.objects[0].task_relevance, 1.0);
+  EXPECT_NEAR(page.objects[0].task_relevance, 0.922222222222, 1e-9);
   ASSERT_TRUE(page.objects[0].active_task.has_value());
   EXPECT_EQ(page.objects[0].active_task->query_id, 41U);
   const auto winner = runtime.best_candidate();
@@ -121,21 +152,22 @@ TEST(RuntimeTaskServices, DescriptorQueryDoesNotReplaceActiveTask)
     {1U, 0U, false, false, false, true});
 
   ASSERT_TRUE(temporary.accepted);
-  ASSERT_EQ(temporary.objects.size(), 1U);
-  EXPECT_EQ(temporary.objects[0].object.key.global_object_id, 2U);
+  EXPECT_TRUE(temporary.objects.empty());
   ASSERT_TRUE(runtime.active_task().has_value());
   EXPECT_EQ(runtime.active_task()->query_id, 41U);
   const auto active = runtime.query_active(
     {41U, 1U}, {1U, 0U, false, false, false, true});
-  ASSERT_EQ(active.objects.size(), 1U);
-  EXPECT_EQ(active.objects[0].object.key.global_object_id, 1U);
+  EXPECT_TRUE(active.objects.empty());
 }
 
 TEST(RuntimeTaskServices, InspectionIsIdempotentAndChangesBestCandidate)
 {
   auto runtime = coordinator();
+  auto target = object(7U, 1U);
+  target.support = semantic_memory::SupportState::kCameraLidar;
+  set_grounding(target, 41U, 1U);
   runtime.synchronize(
-    snapshot(7U, {object(7U, 1U)}),
+    snapshot(7U, {target}),
     {{{7U, 1U}, {prototype({1.0, 0.0})}}});
   ASSERT_TRUE(runtime.accept_task(
       {{41U, 1U}, descriptor({1.0, 0.0})}, "target", 90U, 100));
@@ -151,8 +183,13 @@ TEST(RuntimeTaskServices, InspectionIsIdempotentAndChangesBestCandidate)
   EXPECT_TRUE(unchanged.updated);
   EXPECT_EQ(runtime.service_events().size(), 1U);
 
+  auto next_target = object(7U, 1U);
+  next_target.support = semantic_memory::SupportState::kCameraLidar;
+  set_grounding(next_target, 41U, 1U);
+  auto other = object(7U, 2U);
+  set_grounding(other, 41U, 1U, 110, 0.7, 1.0);
   runtime.synchronize(
-    snapshot(7U, {object(7U, 1U), object(7U, 2U)}),
+    snapshot(7U, {next_target, other}),
     {{{7U, 1U}, {prototype({1.0, 0.0})}},
       {{7U, 2U}, {prototype({0.9, 0.435889894})}}});
   const auto preserved = runtime.get({7U, 1U});
@@ -229,8 +266,10 @@ TEST(RuntimeTaskServices, QueryTextIsRawBoundedAsciiAndFailsClosed)
 TEST(RuntimeTaskServices, BestCandidateStaysDisabledWithoutCalibration)
 {
   auto runtime = coordinator(7U, false);
+  auto target = object(7U, 1U);
+  set_grounding(target, 41U, 1U);
   runtime.synchronize(
-    snapshot(7U, {object(7U, 1U)}),
+    snapshot(7U, {target}),
     {{{7U, 1U}, {prototype({1.0, 0.0})}}});
   ASSERT_TRUE(runtime.accept_task(
       {{41U, 1U}, descriptor({1.0, 0.0})}, "target", 90U, 100));
@@ -240,4 +279,28 @@ TEST(RuntimeTaskServices, BestCandidateStaysDisabledWithoutCalibration)
     result.reason,
     semantic_memory::ServiceReason::kThresholdNotCalibrated);
   EXPECT_FALSE(result.object.has_value());
+}
+
+TEST(RuntimeTaskServices, DiagnosticRankingIsDeterministicWhileBestStaysDisabled)
+{
+  auto first = object(7U, 1U);
+  set_grounding(first, 41U, 1U);
+  auto second = first;
+  second.key.global_object_id = 2U;
+  second.lidar_key = semantic_memory::ProducerObjectKey{10U, 2};
+  auto runtime = coordinator(7U, false);
+  runtime.synchronize(snapshot(7U, {second, first}), {});
+  ASSERT_TRUE(runtime.accept_task(
+      {{41U, 1U}, descriptor({1.0, 0.0})}, "target", 90U, 100));
+
+  const auto ranking = runtime.diagnostic_ranking();
+
+  ASSERT_EQ(ranking.size(), 2U);
+  EXPECT_EQ(ranking[0].view.object.key.global_object_id, 1U);
+  EXPECT_EQ(ranking[1].view.object.key.global_object_id, 2U);
+  EXPECT_TRUE(ranking[0].relevance.eligible);
+  EXPECT_FALSE(runtime.best_candidate().object.has_value());
+  EXPECT_EQ(
+    runtime.best_candidate().reason,
+    semantic_memory::ServiceReason::kThresholdNotCalibrated);
 }

@@ -42,6 +42,8 @@ private:
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void on_best_candidate(
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
+  void on_diagnostic_ranking(
+    const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void queue_label(QLabel * label, const QString & value);
 
   QuerySession session_;
@@ -58,6 +60,9 @@ private:
   rclcpp::Subscription<
     track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
     best_subscription_;
+  rclcpp::Subscription<
+    track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
+    diagnostic_ranking_subscription_;
 
   QLineEdit * query_input_{nullptr};
   QPushButton * new_button_{nullptr};
@@ -68,12 +73,14 @@ private:
   QLabel * region_status_{nullptr};
   QLabel * object_status_{nullptr};
   QLabel * best_status_{nullptr};
+  QLabel * diagnostic_ranking_status_{nullptr};
 
   std::string query_topic_;
   std::string diagnostic_topic_;
   std::string regions_topic_;
   std::string active_objects_topic_;
   std::string best_candidate_topic_;
+  std::string diagnostic_ranking_topic_;
 };
 
 }  // namespace track_robot_semantic_search_rviz_plugins

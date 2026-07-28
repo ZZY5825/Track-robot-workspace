@@ -80,6 +80,39 @@ def test_rejected_diagnostic_is_correlated_and_typed():
     assert diagnostic.model_ready is False
 
 
+def test_correlated_active_model_ready_diagnostic_confirms_acceptance():
+    request = QueryRequest.create('target', 12, 5)
+    diagnostic = parse_diagnostic(
+        '{"state":"active","reason":"frame_processed",'
+        '"model_ready":true,"query_id":12,"query_version":5}')
+
+    assert diagnostic is not None
+    assert diagnostic.matches(request)
+    assert diagnostic.accepted
+    assert not diagnostic.rejected
+
+
+def test_correlated_ready_query_accepted_reason_confirms_acceptance():
+    request = QueryRequest.create('target', 13, 6)
+    diagnostic = parse_diagnostic(
+        '{"state":"ready","reason":"query_accepted",'
+        '"model_ready":true,"query_id":13,"query_version":6}')
+
+    assert diagnostic is not None
+    assert diagnostic.matches(request)
+    assert diagnostic.accepted
+    assert not diagnostic.rejected
+
+
+def test_active_diagnostic_without_ready_model_is_not_acceptance():
+    diagnostic = parse_diagnostic(
+        '{"state":"active","reason":"loading",'
+        '"model_ready":false,"query_id":12,"query_version":5}')
+
+    assert diagnostic is not None
+    assert not diagnostic.accepted
+
+
 def test_ready_diagnostic_without_query_key_is_available_but_uncorrelated():
     diagnostic = parse_diagnostic(
         '{"state":"ready","reason":"model loaded","model_ready":true}')

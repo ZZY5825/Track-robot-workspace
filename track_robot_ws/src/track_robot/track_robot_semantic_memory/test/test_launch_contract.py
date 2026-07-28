@@ -27,6 +27,7 @@ def test_stage2d_keeps_bounded_safe_off_default_configuration():
     assert parameters['publish_association_debug'] is True
     assert parameters['association_shadow_mode'] is True
     assert parameters['camera_attachment_enabled'] is False
+    assert parameters['camera_only_memory_enabled'] is False
     assert parameters['appearance_memory_enabled'] is True
     assert parameters['appearance_maximum_prototypes'] == 4
     assert parameters['reidentification_shadow_mode'] is True
@@ -53,9 +54,16 @@ def test_stage2d_keeps_bounded_safe_off_default_configuration():
     assert parameters['task_queue_depth'] == 1
     assert parameters['best_candidate_topic'] == \
         '/semantic_memory/best_candidate'
+    assert parameters['diagnostic_ranking_topic'] == \
+        '/semantic_memory/diagnostic_ranking'
     assert parameters['publish_best_candidate'] is True
-    assert parameters['task_appearance_weight'] == 0.75
-    assert parameters['task_semantic_weight'] == 0.25
+    assert parameters['publish_diagnostic_ranking'] is True
+    assert 'task_appearance_weight' not in parameters
+    assert parameters['task_grounding_weight'] == 0.70
+    assert parameters['task_stability_weight'] == 0.10
+    assert parameters['task_support_weight'] == 0.10
+    assert parameters['task_semantic_weight'] == 0.10
+    assert parameters['task_grounding_maximum_age_sec'] == 1.0
     assert parameters['best_candidate_threshold_calibrated'] is False
     assert parameters['best_candidate_minimum_relevance'] == 1.0
 
@@ -81,6 +89,27 @@ def test_phase2_launch_starts_only_dedicated_memory_components():
     assert 'track_robot_bringup' not in source
 
 
+def test_phase123_profile_requires_explicit_degraded_attachment_flags():
+    profile = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'phase123_test.yaml').read_text())
+    parameters = profile['semantic_memory']['ros__parameters']
+    launch = (
+        PACKAGE_ROOT / 'launch' / 'semantic_memory_phase2.launch.py'
+    ).read_text()
+
+    assert parameters['camera_only_memory_enabled'] is True
+    assert parameters['camera_attachment_enabled'] is True
+    assert parameters['association_shadow_mode'] is False
+    assert parameters['enable_test_camera_attachment'] is True
+    assert parameters['allow_degraded_calibration'] is True
+    assert parameters['best_candidate_threshold_calibrated'] is False
+    assert parameters['reidentification_mutation_enabled'] is False
+    assert "DeclareLaunchArgument('enable_test_camera_attachment'" in launch
+    assert "DeclareLaunchArgument('allow_degraded_calibration'" in launch
+    assert "'enable_test_camera_attachment'" in launch
+    assert "'allow_degraded_calibration'" in launch
+
+
 def test_stage2d_node_has_runtime_attachment_and_source_time_tf_lookup():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_memory_node.cpp'
@@ -99,6 +128,8 @@ def test_stage2d_node_has_runtime_attachment_and_source_time_tf_lookup():
     assert 'RuntimeAssociationCoordinator' in source
     assert 'next_runtime_association.process(' in source
     assert 'next_memory_core.supplement_visual(' in source
+    assert 'next_memory_core.update_camera(' in source
+    assert 'camera_only_memory_enabled_' in source
     assert 'next_reidentification.process(' in source
     assert 'next_memory_core.make_reidentification_frame(' in source
     assert 'next_memory_core.reidentify(' in source
@@ -144,6 +175,10 @@ def test_stage2f_node_exposes_bounded_fail_closed_task_services():
     assert 'transient_local()' in source
     assert 'semantic_object_from_runtime_view' in source
     assert 'best_candidate_threshold_calibrated' in source
+    assert 'diagnostic_ranking_publisher_' in source
+    assert 'phase3_diagnostic_ranking/1.0.0' in source
+    assert '"UNCALIBRATED"' in source
+    assert 'YOLO_WORLD_GROUNDING' in source
 
     for name in (
             'semantic_memory.yaml',
@@ -156,9 +191,16 @@ def test_stage2f_node_exposes_bounded_fail_closed_task_services():
         assert parameters['task_queue_depth'] == 1
         assert parameters['best_candidate_topic'] == \
             '/semantic_memory/best_candidate'
+        assert parameters['diagnostic_ranking_topic'] == \
+            '/semantic_memory/diagnostic_ranking'
         assert parameters['publish_best_candidate'] is True
-        assert parameters['task_appearance_weight'] == 0.75
-        assert parameters['task_semantic_weight'] == 0.25
+        assert parameters['publish_diagnostic_ranking'] is True
+        assert 'task_appearance_weight' not in parameters
+        assert parameters['task_grounding_weight'] == 0.70
+        assert parameters['task_stability_weight'] == 0.10
+        assert parameters['task_support_weight'] == 0.10
+        assert parameters['task_semantic_weight'] == 0.10
+        assert parameters['task_grounding_maximum_age_sec'] == 1.0
         assert parameters['best_candidate_threshold_calibrated'] is False
         assert parameters['best_candidate_minimum_relevance'] == 1.0
 

@@ -191,6 +191,37 @@ TEST(RosConversions, MapsMemoryObjectAndBoundedHistoryWithoutLosingIdentity)
     interfaces::SemanticObject::SUPPORT_LIDAR_ONLY);
 }
 
+TEST(RosConversions, MapsCameraOnlyObjectWithoutFabricatingLidarOrPosition)
+{
+  const semantic_memory::MemoryDomainKey domain{
+    semantic_memory::MemoryMode::kLocalSession, 7U, "odom"};
+  auto object = memory_object();
+  object.lidar_key.reset();
+  object.support = semantic_memory::SupportState::kCameraOnly;
+  object.attached_visual_key = semantic_memory::VisualAssociationKey{
+    semantic_memory::VisualAssociationKind::kCameraTrack, 20U, 7U};
+  object.last_camera_seen_ns = object.state_stamp_ns;
+  object.camera_observation_count = 2U;
+  object.observation_count = 0U;
+  object.short_history.clear();
+
+  const auto output = semantic_memory::semantic_object_from_memory(
+    object, domain);
+
+  EXPECT_FALSE(output.lidar_tracklet_id_valid);
+  EXPECT_TRUE(output.camera_track_id_valid);
+  EXPECT_EQ(output.camera_source_epoch_id, 20U);
+  EXPECT_EQ(output.camera_track_id, 7);
+  EXPECT_FALSE(output.position_valid);
+  EXPECT_FALSE(output.velocity_valid);
+  EXPECT_FALSE(output.extent_valid);
+  EXPECT_EQ(
+    output.support_state,
+    interfaces::SemanticObject::SUPPORT_CAMERA_ONLY);
+  EXPECT_EQ(output.lidar_observation_count, 0U);
+  EXPECT_EQ(output.camera_observation_count, 2U);
+}
+
 TEST(RosConversions, BuildsReliableSnapshotShapeAndMapsCoreEvents)
 {
   const semantic_memory::MemoryDomainKey domain{
@@ -299,6 +330,53 @@ TEST(RosConversions, PropagatesPredictionOnlyEvidenceIntoVisualSupplement)
     semantic_memory::visual_supplement_from_semantic_observation(
     observation, visual_key, lidar_key, 0.9, true);
   EXPECT_FALSE(physically_observed.prediction_only);
+}
+
+TEST(RosConversions, ConvertsBoundedCameraObservationWithoutLidarGeometry)
+{
+  interfaces::SemanticObservation observation;
+  observation.producer_epoch_id = 20U;
+  observation.observation_id = 30U;
+  observation.visual_candidate_id = 40U;
+  observation.query_id = 50U;
+  observation.query_version = 1U;
+  observation.camera_stamp.sec = 1;
+  observation.image_width = 1280U;
+  observation.image_height = 720U;
+  observation.roi.x_offset = 100U;
+  observation.roi.y_offset = 200U;
+  observation.roi.width = 80U;
+  observation.roi.height = 120U;
+  observation.language_relevance = 0.8F;
+  observation.appearance_descriptor.encoder_id = "dinov3:vits16plus";
+  observation.appearance_descriptor.checkpoint_id = "dino.pth";
+  observation.appearance_descriptor.version = 1U;
+  observation.appearance_descriptor.dimension = 2U;
+  observation.appearance_descriptor.l2_normalized = true;
+  observation.appearance_descriptor.values = {1.0F, 0.0F};
+  observation.appearance_descriptor.quality = 0.9F;
+  interfaces::SemanticLabelEvidence label;
+  label.label = "blue bottle";
+  label.confidence = 0.8F;
+  label.provenance = "yolov8s-worldv2";
+  label.evidence_kind = label.EVIDENCE_TASK_CONDITIONED;
+  label.source_observation_id = 30U;
+  observation.semantic_labels.push_back(label);
+  const semantic_memory::VisualAssociationKey visual_key{
+    semantic_memory::VisualAssociationKind::kCameraTrack, 20U, 7U};
+
+  const auto output =
+    semantic_memory::camera_observation_from_semantic_observation(
+    observation, visual_key, true);
+
+  EXPECT_EQ(output.visual_key, visual_key);
+  EXPECT_EQ(output.camera_stamp_ns, 1000000000LL);
+  EXPECT_EQ(output.query_id, 50U);
+  EXPECT_DOUBLE_EQ(output.semantic_confidence, 0.8F);
+  ASSERT_TRUE(output.appearance_descriptor.has_value());
+  EXPECT_EQ(output.appearance_descriptor->encoder_id, "dinov3:vits16plus");
+  ASSERT_EQ(output.semantic_labels.size(), 1U);
+  EXPECT_EQ(output.semantic_labels[0].label, "blue bottle");
 }
 
 TEST(RosConversions, PreservesInvalidAssociationTermsAsNanInShadowDebug)

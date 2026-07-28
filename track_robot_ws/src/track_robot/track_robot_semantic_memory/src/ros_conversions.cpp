@@ -369,11 +369,59 @@ VisualMemorySupplement visual_supplement_from_semantic_observation(
   return supplement;
 }
 
+CameraObservation camera_observation_from_semantic_observation(
+  const track_robot_interfaces::msg::SemanticObservation & observation,
+  const VisualAssociationKey & visual_key,
+  bool appearance_memory_enabled)
+{
+  CameraObservation output;
+  output.visual_key = visual_key;
+  output.observation_producer_epoch_id = observation.producer_epoch_id;
+  output.observation_id = observation.observation_id;
+  output.visual_candidate_id = observation.visual_candidate_id;
+  output.query_id = observation.query_id;
+  output.query_version = observation.query_version;
+  output.camera_stamp_ns = time_to_nanoseconds(observation.camera_stamp);
+  output.semantic_confidence =
+    static_cast<double>(observation.language_relevance);
+  output.image_width = observation.image_width;
+  output.image_height = observation.image_height;
+  output.roi_x = observation.roi.x_offset;
+  output.roi_y = observation.roi.y_offset;
+  output.roi_width = observation.roi.width;
+  output.roi_height = observation.roi.height;
+  if (appearance_memory_enabled &&
+    !observation.appearance_descriptor.values.empty())
+  {
+    AppearanceDescriptor descriptor;
+    descriptor.encoder_id = observation.appearance_descriptor.encoder_id;
+    descriptor.checkpoint_id = observation.appearance_descriptor.checkpoint_id;
+    descriptor.version = observation.appearance_descriptor.version;
+    descriptor.dimension = observation.appearance_descriptor.dimension;
+    descriptor.l2_normalized = observation.appearance_descriptor.l2_normalized;
+    descriptor.values.reserve(observation.appearance_descriptor.values.size());
+    for (const float value : observation.appearance_descriptor.values) {
+      descriptor.values.push_back(static_cast<double>(value));
+    }
+    output.appearance_descriptor = std::move(descriptor);
+    output.appearance_quality =
+      static_cast<double>(observation.appearance_descriptor.quality);
+  }
+  for (const auto & label : observation.semantic_labels) {
+    output.semantic_labels.push_back({
+        label.label, label.confidence, label.provenance,
+        label.evidence_kind, label.source_observation_id});
+  }
+  output.validate();
+  return output;
+}
+
 track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
   const MemoryObject & object,
   const MemoryDomainKey & domain)
 {
-  if (!object.key.valid() || !object.lidar_key.valid() ||
+  if (!object.key.valid() ||
+    (object.lidar_key.has_value() && !object.lidar_key->valid()) ||
     object.short_history.size() > 16U)
   {
     throw std::invalid_argument("memory object violates the public ROS contract");
@@ -383,9 +431,11 @@ track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
   output.header.stamp = nanoseconds_to_time(object.state_stamp_ns);
   output.memory_epoch_id = object.key.memory_epoch_id;
   output.global_object_id = object.key.global_object_id;
-  output.lidar_tracklet_id_valid = true;
-  output.lidar_source_epoch_id = object.lidar_key.producer_epoch_id;
-  output.lidar_tracklet_id = object.lidar_key.local_object_id;
+  output.lidar_tracklet_id_valid = object.lidar_key.has_value();
+  if (object.lidar_key.has_value()) {
+    output.lidar_source_epoch_id = object.lidar_key->producer_epoch_id;
+    output.lidar_tracklet_id = object.lidar_key->local_object_id;
+  }
   if (object.attached_visual_key.has_value()) {
     if (object.attached_visual_key->kind == VisualAssociationKind::kCameraTrack) {
       output.camera_track_id_valid = true;
@@ -401,21 +451,23 @@ track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
   output.memory_mode = static_cast<std::uint8_t>(domain.mode());
   output.localization_epoch_id = domain.localization_epoch_id();
   output.position_frame_id = domain.canonical_frame_id();
-  output.position_valid = true;
-  output.position.x = object.position[0];
-  output.position.y = object.position[1];
-  output.position.z = object.position[2];
-  output.velocity_valid = true;
-  output.velocity.x = object.velocity[0];
-  output.velocity.y = object.velocity[1];
-  output.velocity.z = object.velocity[2];
-  output.extent_valid = true;
-  output.extent.x = object.extent[0];
-  output.extent.y = object.extent[1];
-  output.extent.z = object.extent[2];
-  for (std::size_t index = 0U; index < object.position_covariance.size(); ++index) {
-    output.position_covariance[index] =
-      static_cast<float>(object.position_covariance[index]);
+  output.position_valid = object.lidar_key.has_value();
+  output.velocity_valid = object.lidar_key.has_value();
+  output.extent_valid = object.lidar_key.has_value();
+  if (object.lidar_key.has_value()) {
+    output.position.x = object.position[0];
+    output.position.y = object.position[1];
+    output.position.z = object.position[2];
+    output.velocity.x = object.velocity[0];
+    output.velocity.y = object.velocity[1];
+    output.velocity.z = object.velocity[2];
+    output.extent.x = object.extent[0];
+    output.extent.y = object.extent[1];
+    output.extent.z = object.extent[2];
+    for (std::size_t index = 0U; index < object.position_covariance.size(); ++index) {
+      output.position_covariance[index] =
+        static_cast<float>(object.position_covariance[index]);
+    }
   }
   output.lifecycle_state = static_cast<std::uint8_t>(object.lifecycle);
   output.support_state = static_cast<std::uint8_t>(object.support);
@@ -427,7 +479,9 @@ track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
   output.first_seen = nanoseconds_to_time(object.first_seen_ns);
   output.last_seen = nanoseconds_to_time(std::max(
       object.last_seen_ns, object.last_camera_seen_ns));
-  output.last_lidar_seen = nanoseconds_to_time(object.last_seen_ns);
+  if (object.lidar_key.has_value()) {
+    output.last_lidar_seen = nanoseconds_to_time(object.last_seen_ns);
+  }
   if (object.last_camera_seen_ns >= 0) {
     output.last_camera_seen = nanoseconds_to_time(object.last_camera_seen_ns);
   }
@@ -449,9 +503,10 @@ track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
     converted.source_observation_id = label.source_observation_id;
     output.semantic_labels.push_back(std::move(converted));
   }
-  const double uncertainty = std::sqrt(std::max({
+  const double uncertainty = object.lidar_key.has_value() ?
+    std::sqrt(std::max({
       0.0, object.position_covariance[0], object.position_covariance[4],
-      object.position_covariance[8]}));
+      object.position_covariance[8]})) : 0.0;
   for (const auto & history : object.short_history) {
     track_robot_interfaces::msg::SemanticObjectHistorySample sample;
     sample.stamp = nanoseconds_to_time(history.source_stamp_ns);

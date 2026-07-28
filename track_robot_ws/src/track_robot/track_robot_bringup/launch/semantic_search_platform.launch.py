@@ -21,6 +21,13 @@ def generate_launch_description():
             'launch',
             'phidget_imu.launch.py',
         ])),
+        launch_arguments={
+            'config_path': PathJoinSubstitution([
+                FindPackageShare('track_robot_perception'),
+                'config',
+                'phidget_imu.yaml',
+            ]),
+        }.items(),
         condition=IfCondition(LaunchConfiguration('start_imu')),
     )
 

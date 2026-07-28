@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Grounding Dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "dataset_id", "cases"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "cases": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "split",
+          "image_relative_path",
+          "image_sha256",
+          "image_width",
+          "image_height",
+          "session_id",
+          "physical_object_id",
+          "query_text",
+          "target_present",
+          "ground_truth_boxes_xywh",
+          "scenario_tags",
+          "label_review_status"
+        ],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1},
+          "split": {"enum": ["train", "validation", "test"]},
+          "image_relative_path": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          },
+          "image_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "image_width": {"type": "integer", "minimum": 1},
+          "image_height": {"type": "integer", "minimum": 1},
+          "session_id": {"type": "string", "minLength": 1},
+          "physical_object_id": {"type": "string"},
+          "query_text": {"type": "string", "minLength": 1},
+          "target_present": {"type": "boolean"},
+          "ground_truth_boxes_xywh": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": [
+                {"type": "number", "minimum": 0},
+                {"type": "number", "minimum": 0},
+                {"type": "number", "exclusiveMinimum": 0},
+                {"type": "number", "exclusiveMinimum": 0}
+              ],
+              "additionalItems": false
+            }
+          },
+          "scenario_tags": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "label_review_status": {
+            "enum": ["human_authored", "human_verified"]
+          }
+        }
+      }
+    }
+  }
+}

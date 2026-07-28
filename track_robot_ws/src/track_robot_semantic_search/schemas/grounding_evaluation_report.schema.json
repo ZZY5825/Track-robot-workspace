@@ -1,0 +1,242 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Grounding Evaluation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "dataset_checksum",
+    "candidate_id",
+    "model_identity",
+    "platform",
+    "input_size",
+    "validation_selection",
+    "test_metrics",
+    "per_scenario_test_metrics",
+    "resources",
+    "runtime_available",
+    "platform_compatible",
+    "licence_approved",
+    "human_reviewed_test_labels",
+    "release_gates",
+    "reasons"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "dataset_checksum": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "model_identity": {"$ref": "#/definitions/model_identity"},
+    "platform": {"$ref": "#/definitions/platform"},
+    "input_size": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "integer", "minimum": 1, "maximum": 16384}
+    },
+    "validation_selection": {"$ref": "#/definitions/validation_selection"},
+    "test_metrics": {"$ref": "#/definitions/metrics"},
+    "per_scenario_test_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.+$": {"$ref": "#/definitions/metrics"}
+      }
+    },
+    "resources": {"$ref": "#/definitions/resources"},
+    "runtime_available": {"type": "boolean"},
+    "platform_compatible": {"type": "boolean"},
+    "licence_approved": {"type": "boolean"},
+    "human_reviewed_test_labels": {"type": "boolean"},
+    "release_gates": {"$ref": "#/definitions/release_gates"},
+    "reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "validation_threshold_selected",
+          "runtime_available",
+          "platform_compatible",
+          "licence_approved",
+          "human_reviewed_test_labels",
+          "top1_recall_iou_50_at_least_0_85",
+          "false_accept_rate_at_most_0_05",
+          "median_iou_at_least_0_50",
+          "latency_p95_at_most_150_ms",
+          "semantic_rate_at_least_5_hz",
+          "incremental_cuda_at_most_1536_mib"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "model_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation",
+        "code_revision",
+        "checkpoint_id",
+        "checkpoint_sha256",
+        "licence"
+      ],
+      "properties": {
+        "implementation": {"type": "string", "minLength": 1, "maxLength": 256},
+        "code_revision": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "checkpoint_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(?![\\\\/])(?![A-Za-z]:[\\\\/]).+$"
+        },
+        "checkpoint_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "licence": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "hardware", "os", "python", "pytorch", "device"],
+      "properties": {
+        "role": {"type": "string", "minLength": 1, "maxLength": 256},
+        "hardware": {"type": "string", "minLength": 1, "maxLength": 256},
+        "os": {"type": "string", "minLength": 1, "maxLength": 256},
+        "python": {"type": "string", "minLength": 1, "maxLength": 256},
+        "pytorch": {"type": "string", "minLength": 1, "maxLength": 256},
+        "device": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positive_case_count",
+        "absent_case_count",
+        "top1_recall_iou_50",
+        "target_absent_false_accept_rate",
+        "median_accepted_positive_iou",
+        "empty_output_rate"
+      ],
+      "properties": {
+        "positive_case_count": {"type": "integer", "minimum": 0},
+        "absent_case_count": {"type": "integer", "minimum": 0},
+        "top1_recall_iou_50": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "target_absent_false_accept_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "median_accepted_positive_iou": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "empty_output_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "validation_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "threshold"],
+      "properties": {
+        "status": {"enum": ["selected", "unavailable"]},
+        "threshold": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "no_positive_validation_cases",
+            "no_target_absent_validation_cases",
+            "no_validation_threshold_meets_quality_gates"
+          ]
+        },
+        "metrics": {"$ref": "#/definitions/metrics"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "selected"}}},
+          "then": {
+            "required": ["metrics"],
+            "properties": {"threshold": {"type": "number"}},
+            "not": {"required": ["reason"]}
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "unavailable"}}},
+          "then": {
+            "required": ["reason"],
+            "properties": {"threshold": {"type": "null"}},
+            "not": {"required": ["metrics"]}
+          }
+        }
+      ]
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete_path_case_count",
+        "p50_complete_path_ms",
+        "p95_complete_path_ms",
+        "maximum_complete_path_ms",
+        "semantic_rate_hz",
+        "incremental_cuda_reserved_mib"
+      ],
+      "properties": {
+        "complete_path_case_count": {"type": "integer", "minimum": 0},
+        "p50_complete_path_ms": {"type": ["number", "null"], "minimum": 0},
+        "p95_complete_path_ms": {"type": ["number", "null"], "minimum": 0},
+        "maximum_complete_path_ms": {"type": ["number", "null"], "minimum": 0},
+        "semantic_rate_hz": {"type": ["number", "null"], "exclusiveMinimum": 0},
+        "incremental_cuda_reserved_mib": {"type": "number", "minimum": 0}
+      }
+    },
+    "release_gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "validation_threshold_selected",
+        "runtime_available",
+        "platform_compatible",
+        "licence_approved",
+        "human_reviewed_test_labels",
+        "top1_recall_iou_50_at_least_0_85",
+        "false_accept_rate_at_most_0_05",
+        "median_iou_at_least_0_50",
+        "latency_p95_at_most_150_ms",
+        "semantic_rate_at_least_5_hz",
+        "incremental_cuda_at_most_1536_mib",
+        "all_passed"
+      ],
+      "properties": {
+        "validation_threshold_selected": {"type": "boolean"},
+        "runtime_available": {"type": "boolean"},
+        "platform_compatible": {"type": "boolean"},
+        "licence_approved": {"type": "boolean"},
+        "human_reviewed_test_labels": {"type": "boolean"},
+        "top1_recall_iou_50_at_least_0_85": {"type": "boolean"},
+        "false_accept_rate_at_most_0_05": {"type": "boolean"},
+        "median_iou_at_least_0_50": {"type": "boolean"},
+        "latency_p95_at_most_150_ms": {"type": "boolean"},
+        "semantic_rate_at_least_5_hz": {"type": "boolean"},
+        "incremental_cuda_at_most_1536_mib": {"type": "boolean"},
+        "all_passed": {"type": "boolean"}
+      }
+    }
+  }
+}

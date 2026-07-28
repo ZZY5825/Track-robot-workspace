@@ -17,11 +17,32 @@ def test_phase1_requires_only_camera():
     assert spec.imu is False
 
 
+def test_phase0_is_contract_only_and_starts_no_hardware_or_model():
+    spec = resolve_stage('phase0')
+
+    assert (spec.camera, spec.lidar, spec.base, spec.imu) == (
+        False, False, False, False)
+    assert spec.phase0 is True
+    assert spec.phase1 is False
+    assert spec.memory is False
+
+
 def test_phase2_requires_all_passive_hardware():
     spec = resolve_stage('phase2')
 
     assert (spec.camera, spec.lidar, spec.base, spec.imu) == (
         True, True, True, True)
+
+
+def test_phase3_adds_uncalibrated_diagnostic_ranking_without_motion():
+    spec = resolve_stage('phase3')
+
+    assert (spec.camera, spec.lidar, spec.base, spec.imu) == (
+        True, True, True, True)
+    assert spec.phase0 is True
+    assert spec.phase1 is True
+    assert spec.memory is True
+    assert spec.diagnostic_ranking is True
 
 
 def test_managed_environment_uses_domain_20_and_preserves_parent():
@@ -55,6 +76,18 @@ def test_default_workspace_paths_are_relative_to_the_workspace_root(tmp_path):
 
     assert paths['runtime_path'] == tmp_path / 'models' / 'phase1_runtime' / 'python'
     assert paths['checkpoint_path'] == tmp_path / 'models' / 'phase1' / 'ViT-B-32.pt'
+    assert paths['yolo_runtime_path'] == (
+        tmp_path / 'models' / 'r0c_runtime' / 'python')
+    assert paths['yolo_checkpoint_path'] == (
+        tmp_path / 'models' / 'r0c' / 'yolov8s-worldv2.pt')
+    assert paths['dino_repo_path'] == (
+        tmp_path / 'src' / 'track_robot_core' / 'third_party'
+        / 'dinov3_py38')
+    assert paths['dino_checkpoint_path'] == (
+        tmp_path / 'models' / 'dinov3_vits16plus_pretrain_lvd1689m.pth')
+    assert paths['phase3_profile_path'] == (
+        tmp_path / 'src' / 'track_robot' / 'track_robot_semantic_memory'
+        / 'config' / 'phase123_test.yaml')
     assert paths['dds_profile'] == (
         tmp_path / 'src' / 'track_robot' / 'track_robot_bringup' / 'config'
         / 'fastdds_semantic_search.xml')

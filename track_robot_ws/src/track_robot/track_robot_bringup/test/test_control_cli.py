@@ -822,6 +822,78 @@ def test_test_start_stack_stops_only_the_process_it_spawned(
     assert manager.stop_calls == 1
 
 
+def test_test_start_stack_gets_fresh_post_launch_readiness_budget(
+        monkeypatch, tmp_path):
+    clock = {'now': 0.0}
+    deadlines = []
+    not_ready = ReadinessReport([
+        CheckResult.not_ready('regions', 'topic absent'),
+    ], stage='phase1')
+    ready = ReadinessReport([], stage='phase1')
+
+    def initial_readiness(*args, **kwargs):
+        deadlines.append(('initial', args[6]))
+        clock['now'] = 29.0
+        return not_ready
+
+    class Child:
+        returncode = None
+
+        def poll(self):
+            return None
+
+    def spawn(*args, **kwargs):
+        deadlines.append(('spawn', args[5]))
+        return (
+            Child(),
+            SimpleNamespace(pid=42),
+            HardwareSelection(True, False, False, False),
+        )
+
+    def wait(*args, **kwargs):
+        deadlines.append(('wait', kwargs['deadline']))
+        return ready
+
+    class Manager:
+        def __init__(self):
+            self.stop_calls = 0
+
+        def stop_owned(self):
+            self.stop_calls += 1
+            return True
+
+    class LiveTest:
+        @staticmethod
+        def run_live_test(*args, **kwargs):
+            return SimpleNamespace(exit_code=0, report_path=None, error='')
+
+    monkeypatch.setattr(
+        control_cli, '_bounded_readiness_report', initial_readiness)
+    monkeypatch.setattr(control_cli, '_spawn_managed_stack', spawn)
+    monkeypatch.setattr(control_cli, '_wait_for_readiness', wait)
+    monkeypatch.setattr(control_cli, '_load_live_test', lambda: LiveTest)
+    manager = Manager()
+
+    code = control_cli.main(
+        [
+            'test', 'phase1', 'blue chair', '--start-stack',
+            '--readiness-timeout', '30',
+            '--workspace-root', str(tmp_path),
+        ],
+        manager=manager,
+        monotonic=lambda: clock['now'],
+        environ={'PATH': '/bin'},
+    )
+
+    assert code == 0
+    assert deadlines == [
+        ('initial', 30.0),
+        ('spawn', 59.0),
+        ('wait', 59.0),
+    ]
+    assert manager.stop_calls == 1
+
+
 def test_test_interrupt_has_priority_and_cleans_up_owned_stack(
         monkeypatch, tmp_path):
     reports = [

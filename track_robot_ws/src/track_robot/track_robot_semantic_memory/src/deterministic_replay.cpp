@@ -16,6 +16,7 @@
 
 #include "track_robot_semantic_memory/hungarian_assignment.hpp"
 #include "track_robot_semantic_memory/memory_core.hpp"
+#include "track_robot_semantic_memory/runtime_task_services.hpp"
 #include "track_robot_semantic_memory/task_relevance_scorer.hpp"
 
 namespace track_robot_semantic_memory
@@ -211,17 +212,227 @@ Json memory_objects(const MemoryUpdateResult & result)
 {
   Json output = Json::array();
   for (const auto & object : result.objects) {
+    if (!object.lidar_key.has_value()) {
+      continue;
+    }
     output.push_back({
       {"memory_epoch_id", object.key.memory_epoch_id},
       {"global_object_id", object.key.global_object_id},
-      {"lidar_source_epoch_id", object.lidar_key.producer_epoch_id},
-      {"lidar_tracklet_id", object.lidar_key.local_object_id},
+      {"lidar_source_epoch_id", object.lidar_key->producer_epoch_id},
+      {"lidar_tracklet_id", object.lidar_key->local_object_id},
       {"lifecycle_state", static_cast<std::uint8_t>(object.lifecycle)},
       {"support_state", static_cast<std::uint8_t>(object.support)},
       {"position", object.position},
       {"observation_count", object.observation_count}});
   }
   return output;
+}
+
+CameraObservation camera_observation(
+  const Json & value,
+  const Json & root,
+  const Json & query)
+{
+  const auto box = fixed_array<4U>(value.at("box"), "camera box");
+  const auto image_width = root.at("image_width").get<std::uint32_t>();
+  const auto image_height = root.at("image_height").get<std::uint32_t>();
+  if (box[0] < 0.0 || box[1] < 0.0 ||
+    box[2] <= box[0] || box[3] <= box[1] ||
+    box[2] > image_width || box[3] > image_height)
+  {
+    throw std::invalid_argument("normalized camera box is invalid");
+  }
+  CameraObservation output;
+  output.visual_key = {
+    VisualAssociationKind::kCameraTrack,
+    root.at("visual_producer_epoch_id").get<std::uint64_t>(),
+    value.at("camera_track_id").get<std::uint64_t>()};
+  output.observation_producer_epoch_id =
+    query.at("producer_epoch_id").get<std::uint64_t>();
+  output.observation_id = value.at("observation_id").get<std::uint64_t>();
+  output.visual_candidate_id = value.at("candidate_id").get<std::uint64_t>();
+  output.query_id = query.at("query_id").get<std::uint64_t>();
+  output.query_version = query.at("query_version").get<std::uint64_t>();
+  output.camera_stamp_ns = value.at("source_stamp_ns").get<std::int64_t>();
+  output.semantic_confidence = value.at("confidence").get<double>();
+  output.image_width = image_width;
+  output.image_height = image_height;
+  output.roi_x = static_cast<std::uint32_t>(box[0]);
+  output.roi_y = static_cast<std::uint32_t>(box[1]);
+  output.roi_width = static_cast<std::uint32_t>(box[2] - box[0]);
+  output.roi_height = static_cast<std::uint32_t>(box[3] - box[1]);
+  const auto & appearance = value.at("appearance");
+  output.appearance_descriptor = appearance_descriptor(appearance);
+  output.appearance_quality = appearance.at("quality").get<double>();
+  output.semantic_labels.push_back({
+      value.at("label").get<std::string>(),
+      output.semantic_confidence,
+      "yolo_world_replay",
+      1U,
+      output.observation_id});
+  output.validate();
+  return output;
+}
+
+std::string support_name(SupportState support)
+{
+  switch (support) {
+    case SupportState::kCameraLidar: return "CAMERA_LIDAR";
+    case SupportState::kCameraOnly: return "CAMERA_ONLY";
+    case SupportState::kLidarOnly: return "LIDAR_ONLY";
+    case SupportState::kPredictionOnly: return "PREDICTION_ONLY";
+    case SupportState::kNone: return "NONE";
+  }
+  throw std::logic_error("unsupported normalized support state");
+}
+
+Json phase123_memory_objects(const MemoryUpdateResult & result)
+{
+  Json output = Json::array();
+  for (const auto & object : result.objects) {
+    Json serialized{
+      {"memory_epoch_id", object.key.memory_epoch_id},
+      {"global_object_id", object.key.global_object_id},
+      {"support", support_name(object.support)},
+      {"camera_track_id",
+        object.attached_visual_key.has_value() ?
+        Json(object.attached_visual_key->local_id) : Json(nullptr)},
+      {"lidar_tracklet_id",
+        object.lidar_key.has_value() ?
+        Json(object.lidar_key->local_object_id) : Json(nullptr)},
+      {"grounding_confidence", object.grounding_confidence},
+      {"grounding_stability", object.grounding_stability},
+      {"query_id", object.grounding_query_id},
+      {"query_version", object.grounding_query_version},
+      {"appearance_encoder_id", object.appearance_encoder_id}};
+    output.push_back(std::move(serialized));
+  }
+  return output;
+}
+
+std::string run_phase123_replay(const Json & input)
+{
+  const auto epoch = input.at("initial_memory_epoch_id").get<std::uint64_t>();
+  const auto & frames = input.at("frames");
+  const auto & query = input.at("query");
+  if (epoch == 0U || !frames.is_array() || frames.empty() ||
+    frames.size() > 10000U)
+  {
+    throw std::invalid_argument("Phase 1-3 replay root contract is invalid");
+  }
+  const auto & domain_json = input.at("domain");
+  const MemoryDomainKey domain(
+    memory_mode(domain_json.at("mode").get<std::string>()),
+    domain_json.at("localization_epoch_id").get<std::uint64_t>(),
+    domain_json.at("frame_id").get<std::string>());
+  MemoryCore memory(MemoryCoreConfig{}, epoch);
+  MemoryUpdateResult latest;
+  Json output{
+    {"schema_version", "phase123_yolo_world/1.0.0"},
+    {"query", {
+        {"text", query.at("text")},
+        {"query_id", query.at("query_id")},
+        {"query_version", query.at("query_version")}}},
+    {"calibration_state", "UNCALIBRATED"},
+    {"frames", Json::array()}};
+
+  std::size_t frame_index = 0U;
+  for (const auto & frame : frames) {
+    const auto stamp = frame.at("source_stamp_ns").get<std::int64_t>();
+    const auto & serialized_camera = frame.at("camera_candidates");
+    if (!serialized_camera.is_array() || serialized_camera.size() > 64U) {
+      throw std::invalid_argument("Phase 1-3 camera candidates exceed their bound");
+    }
+    for (const auto & candidate : serialized_camera) {
+      auto serialized = candidate;
+      serialized["source_stamp_ns"] = stamp;
+      latest = memory.update_camera(
+        domain, camera_observation(serialized, input, query));
+    }
+
+    const auto & serialized_lidar = frame.at("lidar_observations");
+    if (!serialized_lidar.is_array() || serialized_lidar.size() > 256U) {
+      throw std::invalid_argument("Phase 1-3 LiDAR observations exceed their bound");
+    }
+    if (!serialized_lidar.empty()) {
+      std::vector<LidarObservation> observations;
+      for (const auto & serialized : serialized_lidar) {
+        observations.push_back(lidar_observation(serialized));
+      }
+      latest = memory.update(domain, stamp, std::move(observations));
+    }
+
+    const auto & attachments = frame.at("attachments");
+    if (!attachments.is_array() || attachments.size() > 64U) {
+      throw std::invalid_argument("Phase 1-3 attachments exceed their bound");
+    }
+    for (const auto & attachment : attachments) {
+      const VisualAssociationKey visual_key{
+        VisualAssociationKind::kCameraTrack,
+        input.at("visual_producer_epoch_id").get<std::uint64_t>(),
+        attachment.at("camera_track_id").get<std::uint64_t>()};
+      const ProducerObjectKey lidar_key{
+        attachment.at("lidar_source_epoch_id").get<std::uint64_t>(),
+        attachment.at("lidar_tracklet_id").get<std::int64_t>()};
+      const auto attached = memory.attach_lidar_geometry(
+        domain, visual_key, lidar_key,
+        attachment.at("association_confidence").get<double>());
+      if (!attached.accepted) {
+        throw std::invalid_argument(
+                "Phase 1-3 fixture attachment was rejected: " + attached.reason);
+      }
+      latest = attached.snapshot;
+    }
+    output["frames"].push_back({
+        {"frame_index", frame_index++},
+        {"source_stamp_ns", stamp},
+        {"objects", phase123_memory_objects(latest)}});
+  }
+
+  TaskRelevanceConfig relevance_config;
+  RuntimeTaskServiceCoordinator runtime(
+    relevance_config, BestCandidateConfig{false, 1.0},
+    latest.memory_epoch_id);
+  runtime.synchronize(latest, {});
+  SemanticTaskEvidence task{
+    {query.at("query_id").get<std::uint64_t>(),
+      query.at("query_version").get<std::uint64_t>()},
+    appearance_descriptor(query.at("descriptor"))};
+  if (!runtime.accept_task(
+      task, query.at("text").get<std::string>(),
+      query.at("producer_epoch_id").get<std::uint64_t>(),
+      query.at("source_stamp_ns").get<std::int64_t>()))
+  {
+    throw std::invalid_argument("Phase 1-3 fixture task was rejected");
+  }
+  output["diagnostic_ranking"] = Json::array();
+  for (const auto & candidate : runtime.diagnostic_ranking()) {
+    output["diagnostic_ranking"].push_back({
+        {"memory_epoch_id",
+          candidate.view.object.key.memory_epoch_id},
+        {"global_object_id",
+          candidate.view.object.key.global_object_id},
+        {"camera_track_id",
+          candidate.view.object.attached_visual_key.has_value() ?
+          Json(candidate.view.object.attached_visual_key->local_id) :
+          Json(nullptr)},
+        {"score", candidate.relevance.relevance},
+        {"grounding_confidence",
+          candidate.relevance.grounding_confidence},
+        {"stability", candidate.relevance.stability},
+        {"support_quality", candidate.relevance.support_quality},
+        {"evidence_mode", "YOLO_WORLD_GROUNDING"}});
+  }
+  const auto best = runtime.best_candidate();
+  output["best_candidate"] = Json::array();
+  output["best_candidate_reason"] =
+    best.reason == ServiceReason::kThresholdNotCalibrated ?
+    "THRESHOLD_NOT_CALIBRATED" : "UNEXPECTED";
+  if (best.object.has_value()) {
+    throw std::logic_error(
+            "uncalibrated Phase 1-3 replay produced a production winner");
+  }
+  return output.dump();
 }
 
 }  // namespace
@@ -256,6 +467,9 @@ std::string run_normalized_replay(const std::string & serialized_input)
             std::string("normalized replay JSON is invalid: ") + error.what());
   }
   try {
+    if (input.at("schema_version") == "phase123_yolo_world/1.0.0") {
+      return run_phase123_replay(input);
+    }
     if (input.at("schema_version") != "1.0.0") {
       throw std::invalid_argument("normalized replay schema version is unsupported");
     }

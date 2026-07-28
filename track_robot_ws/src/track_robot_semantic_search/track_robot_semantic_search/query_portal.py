@@ -63,7 +63,14 @@ class PortalDiagnostic:
 
     @property
     def accepted(self) -> bool:
-        return self.state == 'query_accepted'
+        return (
+            self.state == 'query_accepted' or
+            (
+                self.state == 'ready' and
+                self.reason == 'query_accepted' and
+                self.model_ready is True
+            ) or
+            (self.state == 'active' and self.model_ready is True))
 
     @property
     def rejected(self) -> bool:

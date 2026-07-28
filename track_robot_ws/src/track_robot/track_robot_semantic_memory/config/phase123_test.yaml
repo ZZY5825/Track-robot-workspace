@@ -1,0 +1,49 @@
+semantic_memory:
+  ros__parameters:
+    enabled: true
+    observations_topic: /semantic_memory/observations
+    lidar_tracklets_topic: /semantic_memory/lidar_tracklets
+    active_objects_topic: /semantic_memory/active_objects
+    tasks_topic: /semantic_memory/tasks
+    best_candidate_topic: /semantic_memory/best_candidate
+    diagnostic_ranking_topic: /semantic_memory/diagnostic_ranking
+    association_debug_topic: /semantic_memory/association_debug
+    diagnostics_topic: /semantic_memory/diagnostics
+    camera_info_topic: /zed/zed_node/left/camera_info
+    camera_calibration_id: zed_left_rectified_v1
+    camera_only_memory_enabled: true
+    association_shadow_mode: false
+    camera_attachment_enabled: true
+    enable_test_camera_attachment: true
+    allow_degraded_calibration: true
+    association_calibration_status: test_only_uncalibrated
+    association_calibration_report: ""
+    maximum_lidar_candidates_per_visual: 8
+    association_max_source_time_delta_sec: 0.10
+    association_match_threshold: 0.63
+    association_ambiguity_margin: 0.06
+    association_confirmation_frames: 3
+    association_detach_after_misses: 2
+    association_cooldown_frames: 2
+    appearance_memory_enabled: true
+    reidentification_shadow_mode: true
+    reidentification_mutation_enabled: false
+    reidentification_calibration_status: uncalibrated
+    best_candidate_threshold_calibrated: false
+    publish_best_candidate: true
+    publish_diagnostic_ranking: true
+    task_grounding_weight: 0.70
+    task_stability_weight: 0.10
+    task_support_weight: 0.10
+    task_semantic_weight: 0.10
+    task_grounding_maximum_age_sec: 1.0
+    max_objects: 256
+    max_history: 16
+
+semantic_memory_visualizer:
+  ros__parameters:
+    enabled: true
+    active_objects_topic: /semantic_memory/active_objects
+    best_candidate_topic: /semantic_memory/best_candidate
+    markers_topic: /semantic_memory/markers
+    max_objects: 256

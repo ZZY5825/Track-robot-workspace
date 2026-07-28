@@ -1,5 +1,10 @@
 # Phase 2 pilot recording and evaluation guide
 
+For the current YOLO-World Phase 0–3 startup, English query, diagnostic
+ranking, RViz and shutdown procedure, begin with the
+[Phase 0–3 test guide](phase0-3-yolo-world-test.md). This document remains the
+long-form physical evidence, calibration and dataset procedure.
+
 This guide creates the first evidence-bearing dataset for Generalized
 Multi-Object 3D Semantic Memory. Do not reuse the legacy human-tracking bag as
 proof of camera/LiDAR association, persistent odom/map memory, re-ID, or task
@@ -23,7 +28,7 @@ reports `FAIL` if `/cmd_vel` already has a publisher. None of the commands
 below moves the robot. Motion used later to collect a recording remains a
 separate, supervised operator action with the normal safety chain.
 
-### Phase 1: camera and language-conditioned image search
+### Phase 1: camera and YOLO-World language-conditioned image search
 
 First inspect requirements without starting anything:
 
@@ -253,6 +258,7 @@ ros2 bag record -o rosbags/semantic_search/recordings/phase2_pilot_YYYYMMDD_HHMM
   /semantic_memory/observations \
   /semantic_memory/tasks \
   /semantic_memory/active_objects \
+  /semantic_memory/diagnostic_ranking \
   /semantic_memory/best_candidate \
   /semantic_memory/events \
   /semantic_memory/association_debug \

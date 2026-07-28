@@ -33,11 +33,30 @@ constexpr const char * kActiveObjectsTopic =
   "/semantic_memory/active_objects";
 constexpr const char * kBestCandidateTopic =
   "/semantic_memory/best_candidate";
+constexpr const char * kDiagnosticRankingTopic =
+  "/semantic_memory/diagnostic_ranking";
 
 QString compact_reason(const std::string & reason)
 {
   return reason.empty() ? QStringLiteral("no reason supplied") :
          QString::fromUtf8(reason.c_str());
+}
+
+QString support_name(std::uint8_t support)
+{
+  using Object = track_robot_interfaces::msg::SemanticObject;
+  switch (support) {
+    case Object::SUPPORT_CAMERA_LIDAR:
+      return QStringLiteral("camera+lidar");
+    case Object::SUPPORT_CAMERA_ONLY:
+      return QStringLiteral("camera-only");
+    case Object::SUPPORT_LIDAR_ONLY:
+      return QStringLiteral("lidar-only");
+    case Object::SUPPORT_PREDICTION_ONLY:
+      return QStringLiteral("prediction-only");
+    default:
+      return QStringLiteral("none");
+  }
 }
 
 }  // namespace
@@ -48,7 +67,8 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   diagnostic_topic_(kDiagnosticTopic),
   regions_topic_(kRegionsTopic),
   active_objects_topic_(kActiveObjectsTopic),
-  best_candidate_topic_(kBestCandidateTopic)
+  best_candidate_topic_(kBestCandidateTopic),
+  diagnostic_ranking_topic_(kDiagnosticRankingTopic)
 {
   auto * safety = new QLabel(
     tr("PASSIVE OBSERVATION ONLY — this panel cannot move the robot."),
@@ -57,6 +77,12 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   safety->setStyleSheet(
     "QLabel { color: #ffcc66; font-weight: bold; padding: 6px; "
     "background: #3b2f16; }");
+  auto * calibration_warning = new QLabel(
+    tr("UNCALIBRATED - NOT A CONFIRMED TARGET"), this);
+  calibration_warning->setWordWrap(true);
+  calibration_warning->setStyleSheet(
+    "QLabel { color: #ffffff; font-weight: bold; padding: 7px; "
+    "background: #8a2d3c; }");
 
   query_input_ = new QLineEdit(this);
   query_input_->setPlaceholderText(
@@ -74,9 +100,13 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   region_status_ = new QLabel(tr("waiting"), this);
   object_status_ = new QLabel(tr("waiting"), this);
   best_status_ = new QLabel(tr("unavailable"), this);
+  diagnostic_ranking_status_ = new QLabel(tr("waiting"), this);
+  diagnostic_ranking_status_->setStyleSheet(
+    "QLabel { color: #d8b4fe; font-weight: bold; }");
   for (auto * label : {
       query_status_, model_status_, acknowledgement_status_,
-      region_status_, object_status_, best_status_})
+      region_status_, object_status_, diagnostic_ranking_status_,
+      best_status_})
   {
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -88,10 +118,12 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   form->addRow(tr("Model"), model_status_);
   form->addRow(tr("Image candidates"), region_status_);
   form->addRow(tr("3D objects"), object_status_);
+  form->addRow(tr("Diagnostic ranking"), diagnostic_ranking_status_);
   form->addRow(tr("Best candidate"), best_status_);
 
   auto * layout = new QVBoxLayout();
   layout->addWidget(safety);
+  layout->addWidget(calibration_warning);
   layout->addWidget(query_input_);
   layout->addLayout(buttons);
   layout->addLayout(form);
@@ -152,6 +184,13 @@ void SemanticSearchPanel::onInitialize()
     snapshot_qos,
     std::bind(
       &SemanticSearchPanel::on_best_candidate, this, std::placeholders::_1));
+  diagnostic_ranking_subscription_ = node_->create_subscription<
+    track_robot_interfaces::msg::SemanticObjectArray>(
+    diagnostic_ranking_topic_,
+    snapshot_qos,
+    std::bind(
+      &SemanticSearchPanel::on_diagnostic_ranking, this,
+      std::placeholders::_1));
 }
 
 void SemanticSearchPanel::submit_new_query()
@@ -268,6 +307,27 @@ void SemanticSearchPanel::on_best_candidate(
   queue_label(best_status_, text);
 }
 
+void SemanticSearchPanel::on_diagnostic_ranking(
+  const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message)
+{
+  if (message->objects.empty()) {
+    queue_label(
+      diagnostic_ranking_status_,
+      tr("none — valid abstention  [epoch=%1]").arg(message->memory_epoch_id));
+    return;
+  }
+  const auto & candidate = message->objects.front();
+  queue_label(
+    diagnostic_ranking_status_,
+    tr("#1 object=%1  query=%2/v%3  support=%4  relevance=%5  count=%6")
+    .arg(candidate.global_object_id)
+    .arg(candidate.active_query_id)
+    .arg(candidate.active_query_version)
+    .arg(support_name(candidate.support_state))
+    .arg(static_cast<double>(candidate.task_relevance), 0, 'f', 3)
+    .arg(message->objects.size()));
+}
+
 void SemanticSearchPanel::queue_label(
   QLabel * label,
   const QString & value)
@@ -299,6 +359,9 @@ void SemanticSearchPanel::load(const rviz_common::Config & config)
   if (config.mapGetString("best_candidate_topic", &value)) {
     best_candidate_topic_ = value.toStdString();
   }
+  if (config.mapGetString("diagnostic_ranking_topic", &value)) {
+    diagnostic_ranking_topic_ = value.toStdString();
+  }
 }
 
 void SemanticSearchPanel::save(rviz_common::Config config) const
@@ -312,6 +375,9 @@ void SemanticSearchPanel::save(rviz_common::Config config) const
     "active_objects_topic", QString::fromStdString(active_objects_topic_));
   config.mapSetValue(
     "best_candidate_topic", QString::fromStdString(best_candidate_topic_));
+  config.mapSetValue(
+    "diagnostic_ranking_topic",
+    QString::fromStdString(diagnostic_ranking_topic_));
 }
 
 }  // namespace track_robot_semantic_search_rviz_plugins

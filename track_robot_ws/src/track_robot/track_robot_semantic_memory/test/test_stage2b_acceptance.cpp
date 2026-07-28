@@ -66,9 +66,12 @@ std::string encode(const std::vector<semantic_memory::MemoryUpdateResult> & batc
   for (const auto & batch : batches) {
     output << "E" << batch.memory_epoch_id << ":";
     for (const auto & object : batch.objects) {
+      if (!object.lidar_key.has_value()) {
+        continue;
+      }
       output << object.key.global_object_id << ","
-             << object.lidar_key.producer_epoch_id << ","
-             << object.lidar_key.local_object_id << ","
+             << object.lidar_key->producer_epoch_id << ","
+             << object.lidar_key->local_object_id << ","
              << static_cast<int>(object.lifecycle) << ","
              << static_cast<int>(object.support) << ","
              << object.position[0] << ","
@@ -133,7 +136,8 @@ TEST(Stage2BAcceptance, LidarOnlyMemoryMeetsIdentityLifecycleAndDomainGates)
 
   const auto & source_changed = replay.batches[3];
   ASSERT_EQ(source_changed.objects.size(), 3U);
-  EXPECT_EQ(source_changed.objects.back().lidar_key.producer_epoch_id, 11U);
+  ASSERT_TRUE(source_changed.objects.back().lidar_key.has_value());
+  EXPECT_EQ(source_changed.objects.back().lidar_key->producer_epoch_id, 11U);
   EXPECT_NE(source_changed.objects.back().key.global_object_id,
     confirmed.objects[1].key.global_object_id);
 

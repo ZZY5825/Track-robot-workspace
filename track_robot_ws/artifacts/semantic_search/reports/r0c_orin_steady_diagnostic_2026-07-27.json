@@ -1,0 +1,18 @@
+{
+  "schema_version": "r0c_steady_diagnostic/1.0.0",
+  "candidate_id": "yolov8s-worldv2-fp16-640-c005-i070",
+  "image": "phase1_blue_target_probe.png",
+  "query": "blue bottle",
+  "same_process": true,
+  "same_cached_query": true,
+  "complete_path_ms": [
+    6867.698,
+    52.223
+  ],
+  "detection_counts": [
+    0,
+    0
+  ],
+  "incremental_cuda_reserved_mib": 460.0,
+  "interpretation": "execution evidence only; semantic quality unavailable"
+}
