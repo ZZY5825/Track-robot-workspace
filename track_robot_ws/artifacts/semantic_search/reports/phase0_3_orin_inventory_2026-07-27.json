@@ -1,0 +1,48 @@
+{
+  "architecture": "aarch64",
+  "host_eligible": true,
+  "host_role": "r0c_orin_candidate",
+  "l4t_release": "35",
+  "models": {
+    "clip": {
+      "filename": "ViT-B-32.pt",
+      "present": true,
+      "sha256": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af"
+    },
+    "composite_sha256": "28a91138045c6357208e5d026096a6c24268a7c52235f838415a4f03284e7450",
+    "world": {
+      "filename": "yolov8s-worldv2.pt",
+      "present": true,
+      "sha256": "9b2c17ab6124a913e9b3a5c170617920d91b0f01111a8479da69f00e2cf27792"
+    }
+  },
+  "os": "Linux-5.10.104-tegra-aarch64-with-glibc2.29",
+  "paths": {
+    "clip_runtime_present": true,
+    "runtime_present": true
+  },
+  "python": "3.8.10",
+  "reasons": [],
+  "runtime": {
+    "clip": {
+      "available": true,
+      "origin": "/home/track-robot/track_robot_ws/models/phase1_runtime/python/clip/__init__.py",
+      "version": "1.0"
+    },
+    "torch": {
+      "available": true,
+      "cuda_available": true,
+      "device_name": "Orin",
+      "origin": "/home/track-robot/.local/lib/python3.8/site-packages/torch/__init__.py",
+      "version": "1.13.0a0+936e9305.nv22.11"
+    },
+    "ultralytics": {
+      "available": true,
+      "origin": "/home/track-robot/track_robot_ws/models/r0c_runtime/python/ultralytics/__init__.py",
+      "version": "8.2.103",
+      "yolo_world_available": true
+    }
+  },
+  "runtime_ready": true,
+  "schema_version": "1.0.0"
+}

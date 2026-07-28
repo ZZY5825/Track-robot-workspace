@@ -1,0 +1,41 @@
+{
+  "architecture": "aarch64",
+  "gpu": {
+    "devices": [],
+    "nvidia_smi_available": false
+  },
+  "host_eligible": false,
+  "host_role": "r0b_desktop_teacher",
+  "model": {
+    "checkpoint_present": false,
+    "checkpoint_sha256": "",
+    "model_dir_present": false
+  },
+  "os": "Linux-5.10.104-tegra-aarch64-with-glibc2.29",
+  "python": "3.8.10",
+  "reasons": [
+    "architecture_not_x86_64",
+    "nvidia_smi_unavailable"
+  ],
+  "runtime": {
+    "opencv": {
+      "available": false,
+      "version": ""
+    },
+    "pillow": {
+      "available": false,
+      "version": ""
+    },
+    "torch": {
+      "available": false,
+      "cuda_available": false,
+      "version": ""
+    },
+    "transformers": {
+      "available": false,
+      "version": ""
+    }
+  },
+  "runtime_ready": false,
+  "schema_version": "1.0.0"
+}

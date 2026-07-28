@@ -1,5 +1,73 @@
 # Releases
 
+## V1.5.0-alpha.1 - 2026-07-28
+
+V1.5.0-alpha.1 records the first staged minimum working system (MWS) that
+connects semantic-search Phase 0 through Phase 3 on the Jetson AGX Orin. It is
+an engineering preview rather than a stable production release: live language
+grounding and the downstream passive data paths work together, while calibrated
+camera/LiDAR association and reliable world-frame localization remain open.
+
+### Orin Language-Grounded Perception
+
+- Replaces the CLIP grid-only bottleneck with pretrained YOLO-World
+  open-vocabulary detection on the Orin; no project-specific model training is
+  required for this checkpoint.
+- Restricts the operator query path to English so the deployed vocabulary and
+  diagnostics have one explicit contract.
+- Adds DINO crop descriptors for target appearance and camera-side continuity.
+- Fixes the DINO runtime device mismatch that previously placed image tensors
+  on CPU while the model was on CUDA and silently dropped the output frame.
+- Adds bounded query acknowledgement logic so a continuing model stream is not
+  incorrectly reported as a portal timeout.
+
+### Phase 0–3 Staged Runtime
+
+- Adds modular launch and readiness contracts for camera perception, localization
+  health, semantic memory, passive Phase 3 ranking, RViz, and optional LiDAR.
+- Adds the YOLO-World ROS launch/configuration path and a reproducible Phase 0–3
+  replay contract.
+- Carries language-grounded regions into semantic memory and read-only Phase 3
+  diagnostics without publishing robot motion commands.
+- Adds an RViz Phase 3 profile and panel updates for operator-visible query and
+  diagnostic state.
+- Keeps fail-closed behavior when a safe three-dimensional position is not
+  available.
+
+### Live MWS Evidence
+
+The staged 20-second Jetson run used the English query `green bottle` with ROS
+domain 20. It produced 40 Phase 1 region messages, of which 39 were non-empty,
+at 2.0 Hz. The detected target score was 0.444 minimum, 0.591 average, and
+0.662 maximum. The same run observed 171 LiDAR tracklet messages, 200
+localization-health messages, 181 semantic-object messages, and 181 Phase 3
+ranking-diagnostic messages. The visual bounding box was manually checked
+against the intended bottle.
+
+### Verification
+
+- The affected Python regression suite passed 766 tests.
+- The five selected ROS packages built successfully and `colcon test-result`
+  reported 1,153 tests, 0 errors, 0 failures, and 4 expected DDS skips.
+- The live Phase 0–3 collector reported `PASS` for the staged MWS data-flow
+  contract.
+- The test remained passive and did not publish `/cmd_vel`.
+- Model checkpoints, rosbag payloads, environment imagery, build/install
+  products, and generated caches are not included in the source release.
+
+### Known Limitations
+
+- The camera extrinsic is still marked `prototype` and has not been validated
+  by a physical calibration procedure.
+- The recorded localization state was `local_pose_stale`; reliable world-frame
+  target coordinates were therefore unavailable.
+- The recorded camera/LiDAR association and Phase 3 ranked-candidate counts
+  were zero. This release proves the staged data paths, not calibrated 3D
+  target localization or final candidate selection.
+- Current physical testing must use staged startup because a one-shot launch
+  can delay YOLO inference under resource contention.
+- RoboSense shutdown may still emit a driver exception while exiting.
+
 ## V1.4.0 - 2026-07-21
 
 V1.4.0 promotes the Phase 2 semantic-search software preview into an official

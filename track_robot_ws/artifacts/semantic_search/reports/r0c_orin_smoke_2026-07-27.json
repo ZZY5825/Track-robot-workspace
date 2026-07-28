@@ -1,0 +1,40 @@
+{
+  "candidate_id": "yolov8s-worldv2-fp16-640-c005-i070",
+  "complete_path_ms": 6754.917649,
+  "detections": [],
+  "image": "phase1_blue_target_probe.png",
+  "image_height": 720,
+  "image_width": 1280,
+  "incremental_cuda_reserved_mib": 460.0,
+  "model_identity": {
+    "clip_checkpoint": {
+      "filename": "ViT-B-32.pt",
+      "present": true,
+      "sha256": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af"
+    },
+    "code_revision": "r0c-v1;ultralytics=8.2.103",
+    "composite_sha256": "28a91138045c6357208e5d026096a6c24268a7c52235f838415a4f03284e7450",
+    "implementation": "ultralytics_yolov8s_worldv2_pytorch",
+    "licence": "AGPL-3.0",
+    "world_checkpoint": {
+      "filename": "yolov8s-worldv2.pt",
+      "present": true,
+      "sha256": "9b2c17ab6124a913e9b3a5c170617920d91b0f01111a8479da69f00e2cf27792"
+    }
+  },
+  "platform": {
+    "device": "cuda:0",
+    "hardware": "Orin",
+    "os": "Linux-5.10.104-tegra-aarch64-with-glibc2.29",
+    "python": "3.8.10",
+    "pytorch": "1.13.0a0+936e9305.nv22.11",
+    "role": "r0c_orin_candidate"
+  },
+  "query": "blue cylindrical container",
+  "release_evidence": {
+    "licence_approved": false,
+    "platform_compatible": true,
+    "runtime_available": true
+  },
+  "schema_version": "r0c_smoke/1.0.0"
+}
