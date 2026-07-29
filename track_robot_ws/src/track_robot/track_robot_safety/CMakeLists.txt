@@ -34,7 +34,7 @@ ament_target_dependencies(
 add_executable(motion_safety_supervisor_node src/motion_safety_supervisor_node.cpp)
 ament_target_dependencies(
   motion_safety_supervisor_node
-  rclcpp sensor_msgs geometry_msgs visualization_msgs std_msgs std_srvs
+  rclcpp sensor_msgs nav_msgs geometry_msgs visualization_msgs std_msgs std_srvs
   track_robot_interfaces bunker_msgs)
 
 install(TARGETS
@@ -45,5 +45,15 @@ install(TARGETS
 
 install(DIRECTORY launch config docs
   DESTINATION share/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(
+    test_nav2_safety_contract
+    test/test_nav2_safety_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+endif()
 
 ament_package()
