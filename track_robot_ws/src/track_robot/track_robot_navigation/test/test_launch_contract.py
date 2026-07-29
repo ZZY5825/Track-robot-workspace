@@ -38,6 +38,8 @@ def test_active_modes_include_existing_safety_chain():
     assert "executable='cmd_vel_gate'" in source
     assert 'motion_safety_supervisor_nav2.yaml' in source
     assert 'cmd_vel_gate_nav2.yaml' in source
+    assert "'start_obstacle_map'" in source
+    assert 'if start_obstacle_map:' in source
 
 
 def test_semantic_modes_start_supervisor_but_shadow_has_no_motion_servers():

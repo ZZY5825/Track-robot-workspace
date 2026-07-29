@@ -29,6 +29,8 @@ def _runtime_nodes(context):
         LaunchConfiguration('runtime_mode').perform(context))
     semantic_enabled = _as_bool(
         LaunchConfiguration('enable_semantic_execution').perform(context))
+    start_obstacle_map = _as_bool(
+        LaunchConfiguration('start_obstacle_map').perform(context))
     validate_mode_request(mode, semantic_enabled)
     spec = mode_spec(mode)
 
@@ -90,8 +92,8 @@ def _runtime_nodes(context):
         lifecycle_nodes.append('bt_navigator')
 
     if spec.safety_chain:
-        actions.extend([
-            Node(
+        if start_obstacle_map:
+            actions.append(Node(
                 package='track_robot_safety',
                 executable='local_obstacle_map_node',
                 name='local_obstacle_map_node',
@@ -99,7 +101,8 @@ def _runtime_nodes(context):
                 parameters=[
                     LaunchConfiguration('obstacle_map_config'),
                 ],
-            ),
+            ))
+        actions.extend([
             Node(
                 package='track_robot_safety',
                 executable='motion_safety_supervisor_node',
@@ -164,6 +167,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('autostart', default_value='true'),
+        DeclareLaunchArgument('start_obstacle_map', default_value='true'),
         DeclareLaunchArgument(
             'params_file',
             default_value=(

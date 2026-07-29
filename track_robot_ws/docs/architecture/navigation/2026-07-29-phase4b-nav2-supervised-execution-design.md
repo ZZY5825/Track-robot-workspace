@@ -259,7 +259,7 @@ preserves all existing behavior outside Phase 4B.
 
 New package `src/track_robot/track_robot_navigation`:
 
-- `package.xml`, `setup.py`, `setup.cfg`, resource marker;
+- `package.xml`, `CMakeLists.txt`, and installed Python modules;
 - `config/nav2_phase4b.yaml`;
 - `behavior_trees/navigate_supervised.xml`;
 - `launch/phase4b_navigation.launch.py`;
@@ -327,4 +327,3 @@ Reject a change if it:
 - accepts stale target, odometry, map, or safety data;
 - bypasses arm, E-stop, RC override, supervisor, or velocity gate;
 - worsens target identity stability without a documented feature flag.
-
