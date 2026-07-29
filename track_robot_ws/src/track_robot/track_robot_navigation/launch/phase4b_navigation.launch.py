@@ -32,11 +32,6 @@ def _runtime_nodes(context):
     validate_mode_request(mode, semantic_enabled)
     spec = mode_spec(mode)
 
-    if spec.semantic_adapter:
-        raise RuntimeError(
-            '{} requires the semantic supervisor delivered in the next '
-            'regression-gated stage'.format(mode.value))
-
     configured_params = RewrittenYaml(
         source_file=LaunchConfiguration('params_file'),
         root_key='',
@@ -125,6 +120,21 @@ def _runtime_nodes(context):
             ),
         ])
 
+    if spec.semantic_adapter:
+        actions.append(Node(
+            package='track_robot_navigation',
+            executable='semantic_navigation_supervisor',
+            name='semantic_navigation_supervisor',
+            output='screen',
+            parameters=[
+                LaunchConfiguration('semantic_supervisor_config'),
+                {
+                    'runtime_mode': mode.value,
+                    'semantic_execution_enabled': semantic_enabled,
+                },
+            ],
+        ))
+
     actions.append(Node(
         package='nav2_lifecycle_manager',
         executable='lifecycle_manager',
@@ -179,6 +189,11 @@ def generate_launch_description():
             'cmd_vel_gate_config',
             default_value=(
                 navigation_share + '/config/cmd_vel_gate_nav2.yaml'),
+        ),
+        DeclareLaunchArgument(
+            'semantic_supervisor_config',
+            default_value=(
+                navigation_share + '/config/semantic_navigation.yaml'),
         ),
         OpaqueFunction(function=_runtime_nodes),
     ])

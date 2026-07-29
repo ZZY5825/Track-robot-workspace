@@ -40,6 +40,29 @@ def test_active_modes_include_existing_safety_chain():
     assert 'cmd_vel_gate_nav2.yaml' in source
 
 
+def test_semantic_modes_start_supervisor_but_shadow_has_no_motion_servers():
+    source = (
+        PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
+    ).read_text()
+
+    assert "executable='semantic_navigation_supervisor'" in source
+    assert "'runtime_mode': mode.value" in source
+    assert (
+        "'semantic_execution_enabled': semantic_enabled"
+        in source
+    )
+    assert 'requires the semantic supervisor delivered' not in source
+
+
+def test_semantic_execution_remains_disabled_by_default():
+    source = (
+        PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
+    ).read_text()
+
+    assert "'enable_semantic_execution'" in source
+    assert "default_value='false'" in source
+
+
 def test_supervised_behavior_tree_has_no_spin_or_backup():
     tree = (
         PACKAGE_ROOT

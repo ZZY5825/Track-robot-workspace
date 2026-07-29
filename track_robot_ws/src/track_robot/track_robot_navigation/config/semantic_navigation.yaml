@@ -1,0 +1,20 @@
+semantic_navigation_supervisor:
+  ros__parameters:
+    runtime_mode: SEMANTIC_SHADOW
+    semantic_execution_enabled: false
+    selected_target_topic: /semantic_search/phase4a/selected_target
+    selected_goal_topic: /semantic_search/phase4/selected_goal
+    planner_diagnostics_topic: /semantic_search/phase4/diagnostics
+    odometry_topic: /odom
+    safety_state_topic: /safety/state
+    shadow_path_topic: /semantic_navigation/shadow_path
+    diagnostics_topic: /semantic_navigation/diagnostics
+    navigation_frame: odom
+    planner_id: GridBased
+    confirmation_snapshots: 2
+    maximum_target_age_sec: 1.0
+    maximum_goal_age_sec: 0.5
+    maximum_diagnostics_age_sec: 0.5
+    maximum_odom_age_sec: 0.25
+    transform_timeout_sec: 0.10
+    supervision_rate_hz: 10.0

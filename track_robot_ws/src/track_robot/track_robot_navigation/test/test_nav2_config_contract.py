@@ -81,3 +81,18 @@ def test_gate_is_the_only_final_cmd_vel_publisher():
     assert gate['output_topic'] == '/cmd_vel'
     assert gate['max_linear_x'] <= 0.10
     assert gate['max_angular_z'] <= 0.25
+
+
+def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
+    params = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'semantic_navigation.yaml').read_text()
+    )['semantic_navigation_supervisor']['ros__parameters']
+
+    assert params['runtime_mode'] == 'SEMANTIC_SHADOW'
+    assert params['semantic_execution_enabled'] is False
+    assert params['navigation_frame'] == 'odom'
+    assert params['confirmation_snapshots'] >= 2
+    assert params['maximum_target_age_sec'] <= 1.0
+    assert params['maximum_goal_age_sec'] <= 0.5
+    assert params['maximum_diagnostics_age_sec'] <= 0.5
+    assert params['maximum_odom_age_sec'] <= 0.25

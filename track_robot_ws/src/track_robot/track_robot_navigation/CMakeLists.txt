@@ -6,6 +6,11 @@ find_package(ament_cmake_python REQUIRED)
 
 ament_python_install_package(${PROJECT_NAME})
 
+install(PROGRAMS
+  scripts/semantic_navigation_supervisor
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY
   behavior_trees
   config
@@ -31,7 +36,11 @@ if(BUILD_TESTING)
     test/test_launch_contract.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_semantic_goal_policy
+    test/test_semantic_goal_policy.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()
-
