@@ -1,0 +1,60 @@
+phase4a_fixed_base_session:
+  ros__parameters:
+    state_topic: /semantic_search/phase4a/localization_state
+    frame_id: base_link
+    publish_rate_hz: 10.0
+    epoch_id: 0
+
+phase4a_target_selector:
+  ros__parameters:
+    ranking_topic: /semantic_memory/diagnostic_ranking
+    tasks_topic: /semantic_memory/tasks
+    observations_topic: /semantic_memory/observations
+    depth_topic: /zed/zed_node/depth/depth_registered
+    camera_info_topic: /zed/zed_node/left/camera_info
+    localization_topic: /semantic_search/phase4a/localization_state
+    selected_target_topic: /semantic_search/phase4a/selected_target
+    spatial_objects_topic: /semantic_search/phase4a/spatial_objects
+    diagnostics_topic: /semantic_search/phase4a/selector_diagnostics
+    minimum_relevance: 0.50
+    minimum_margin: 0.08
+    maximum_uncertainty: 0.50
+    confirmation_snapshots: 3
+    position_window: 5
+    maximum_xy_spread_m: 0.35
+    maximum_age_sec: 1.0
+    maximum_depth_age_sec: 0.5
+    minimum_depth_samples: 20
+    minimum_depth_m: 0.3
+    maximum_depth_m: 8.0
+    depth_inner_fraction: 0.5
+    frame_id: base_link
+
+phase4_approach_planner:
+  ros__parameters:
+    planning_only: true
+    selected_target_topic: /semantic_search/phase4a/selected_target
+    costmap_topic: /safety/local_obstacle_grid
+    localization_topic: /semantic_search/phase4a/localization_state
+    approach_candidates_topic: /semantic_search/phase4/approach_candidates
+    selected_goal_topic: /semantic_search/phase4/selected_goal
+    path_topic: /semantic_search/phase4/planned_path
+    markers_topic: /semantic_search/phase4/markers
+    diagnostics_topic: /semantic_search/phase4/diagnostics
+    planning_rate: 5.0
+    standoff_distance: 0.8
+    candidate_count: 16
+    minimum_target_relevance: 0.50
+    minimum_target_margin: 0.08
+    maximum_target_uncertainty: 0.50
+    maximum_target_age_sec: 1.0
+    maximum_map_age_sec: 0.5
+    maximum_search_expansions: 30000
+    occupied_threshold: 50
+    unknown_is_obstacle: true
+    enable_path_shortcutting: true
+
+phase4a_advisor:
+  ros__parameters:
+    advisory_only: true
+    standoff_distance: 0.8

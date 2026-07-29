@@ -4,9 +4,39 @@ This opt-in ROS 2 Foxy package owns Phase 0 semantic-search manifests,
 localisation-mode health, replay evaluation, and the passive Phase 1 language
 baseline.
 
-It deliberately contains no action server, controller, planner, or cmd_vel
-publisher. See the approved design and the semantic-search rosbag guide before
-enabling later phases.
+It deliberately contains no action server, controller, executable motion
+interface, or cmd_vel publisher. Phase 4 includes a local planning-only
+standoff planner whose products are visualization and diagnostics only. See
+the approved design and the semantic-search test guides before enabling later
+phases.
+
+## Phase 4 Planning-Only Approach
+
+Start the Phase 4 planner and saved RViz view after the Phase 0–3 stack and
+local obstacle map are running:
+
+```bash
+export ROS_DOMAIN_ID=20
+ros2 launch track_robot_semantic_search semantic_search_phase4.launch.py \
+  start_rviz:=true
+```
+
+The planner consumes the fail-closed Phase 3 best candidate, semantic
+localization state, and local occupancy grid. It publishes approach
+candidates, a selected standoff goal, a `nav_msgs/Path`, markers, and
+diagnostics. `planning_only=false` is rejected at startup.
+
+Run the deterministic success/failure contract with:
+
+```bash
+ros2 run track_robot_semantic_search semantic_search_phase4_validate \
+  --output /tmp/phase4_contract.json
+```
+
+Use `semantic_search_phase04_live_validate` for real cross-phase evidence.
+See the
+[Phase 0–4 planning-only guide](../../docs/guides/semantic-search/phase0-4-planning-only-test.md)
+for the complete routine and acceptance gates.
 
 ## Grounding Benchmark Artifacts
 

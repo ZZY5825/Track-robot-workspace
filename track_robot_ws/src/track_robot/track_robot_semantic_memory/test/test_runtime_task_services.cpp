@@ -222,6 +222,27 @@ TEST(RuntimeTaskServices, ResetAndInvalidSynchronizationAreTransactional)
   EXPECT_EQ(runtime.active_task()->query_id, 41U);
 }
 
+TEST(RuntimeTaskServices, ResetAcceptsSkippedCoreEpoch)
+{
+  auto runtime = coordinator();
+  runtime.synchronize(
+    snapshot(7U, {object(7U, 1U)}),
+    {{{7U, 1U}, {prototype({1.0, 0.0})}}});
+  ASSERT_TRUE(runtime.accept_task(
+      {{41U, 1U}, descriptor({1.0, 0.0})}, "target", 90U, 100));
+
+  runtime.reset_to_epoch(11U, "observation-only batch advanced core epoch");
+
+  EXPECT_EQ(runtime.current_epoch(), 11U);
+  EXPECT_EQ(
+    runtime.get({7U, 1U}).reason,
+    semantic_memory::ServiceReason::kStaleEpoch);
+  ASSERT_TRUE(runtime.active_task().has_value());
+  EXPECT_EQ(runtime.active_task()->query_id, 41U);
+  ASSERT_EQ(runtime.service_events().size(), 1U);
+  EXPECT_EQ(runtime.service_events().front().key.memory_epoch_id, 11U);
+}
+
 TEST(RuntimeTaskServices, ProducerChangeAndRollbackReplaceTaskFailClosed)
 {
   auto runtime = coordinator();

@@ -297,19 +297,28 @@ def test_camera_launch_is_opt_in_and_disables_zed_owned_tf_edges():
     _assert_if_condition(includes[0], 'start_camera')
 
 
-def test_camera_launch_disables_unused_zed_depth_and_positional_tracking():
+def test_camera_launch_defaults_to_no_depth_and_disables_positional_tracking():
     settings = {}
+    depth_mode = None
     for call in _calls(CAMERA_LAUNCH, 'SetParameter'):
         name = _keyword(call, 'name')
         value = _keyword(call, 'value')
+        if (
+                isinstance(name, ast.Constant)
+                and name.value == 'depth.depth_mode'):
+            depth_mode = value
         if isinstance(name, ast.Constant) and isinstance(value, ast.Constant):
             settings[name.value] = value.value
 
     assert settings == {
-        'depth.depth_mode': 'NONE',
         'depth.depth_stabilization': 0,
         'pos_tracking.pos_tracking_enabled': False,
     }
+    assert isinstance(depth_mode, ast.Call)
+    assert isinstance(depth_mode.func, ast.Name)
+    assert depth_mode.func.id == 'LaunchConfiguration'
+    assert depth_mode.args[0].value == 'depth_mode'
+    assert _argument_defaults(CAMERA_LAUNCH)['depth_mode'] == 'NONE'
     assert _calls(CAMERA_LAUNCH, 'GroupAction')
 
 

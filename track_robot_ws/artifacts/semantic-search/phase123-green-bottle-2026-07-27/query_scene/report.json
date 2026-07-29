@@ -1,0 +1,64 @@
+{
+  "calibration": {
+    "mode": "prototype",
+    "state": "UNCALIBRATED"
+  },
+  "collection": {
+    "duration_sec": 20.0,
+    "timestamp": "2026-07-27T16:39:59Z"
+  },
+  "metrics": {
+    "frame_rate_hz": 0.0,
+    "frames": 0,
+    "nonempty_frame_ratio": 0.0,
+    "nonempty_frames": 0,
+    "phase2": {
+      "association_matches": 0,
+      "association_messages": 0,
+      "diagnostic_candidate_count": 0,
+      "diagnostic_ranking_messages": 0,
+      "latest_localization_reason": "",
+      "latest_memory_mode": null,
+      "localization_messages": 0,
+      "object_count": 0,
+      "object_messages": 0,
+      "tracklet_count": 0,
+      "tracklet_messages": 0
+    },
+    "score": {
+      "count": 0,
+      "maximum": null,
+      "mean": null,
+      "minimum": null
+    }
+  },
+  "pipeline": {
+    "failures": [
+      "no semantic region frames were collected",
+      "observed query IDs [] do not match accepted query ID 1785170150544702",
+      "observed query versions [] do not match accepted version 1",
+      "no Phase 2 tracklet messages were collected",
+      "no Phase 2 localization messages were collected",
+      "no Phase 2 object messages were collected",
+      "no Phase 3 diagnostic ranking messages were collected"
+    ],
+    "status": "FAIL",
+    "warnings": [
+      "overlay not written: no scored semantic region was collected"
+    ]
+  },
+  "query": {
+    "accepted_query_id": 1785170150544702,
+    "accepted_query_version": 1,
+    "observed_query_ids": [],
+    "observed_query_versions": [],
+    "text": "green bottle on a chair"
+  },
+  "readiness": {},
+  "schema_version": 1,
+  "semantic_result": {
+    "ground_truth_available": false,
+    "status": "REVIEW REQUIRED"
+  },
+  "stage": "phase3"
+}

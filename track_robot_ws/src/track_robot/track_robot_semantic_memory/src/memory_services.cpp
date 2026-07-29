@@ -186,6 +186,20 @@ ResetMemoryResult MemoryServiceStore::reset(
   return {true, current_epoch_, ServiceReason::kOk};
 }
 
+ResetMemoryResult MemoryServiceStore::reset_to_epoch(
+  std::uint64_t new_epoch, std::string reason)
+{
+  if (new_epoch == 0U) {
+    return {false, current_epoch_, ServiceReason::kInvalidRequest};
+  }
+  current_epoch_ = new_epoch;
+  records_.clear();
+  append_event(
+    MemoryServiceEventType::kMemoryReset, {current_epoch_, 0U},
+    std::move(reason));
+  return {true, current_epoch_, ServiceReason::kOk};
+}
+
 BestCandidateResult MemoryServiceStore::best_candidate(
   const BestCandidateConfig & config) const
 {

@@ -1,0 +1,121 @@
+{
+  "collection": {
+    "duration_sec": 20.0,
+    "start_ns": 1785243395305357260
+  },
+  "cross_phase_consistency": {
+    "failures": [],
+    "global_object_ids": [],
+    "localization_epoch_ids": [],
+    "memory_epoch_ids": [],
+    "planning_frames": [
+      "base_link"
+    ],
+    "query_ids": [
+      1785243136318206
+    ],
+    "query_versions": [
+      1
+    ],
+    "status": "PASS"
+  },
+  "generated_at": "2026-07-28T12:56:55Z",
+  "phases": {
+    "phase0": {
+      "evidence": {
+        "localization_messages": 0
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "NOT EVALUATED"
+    },
+    "phase1": {
+      "evidence": {
+        "nonempty_region_messages": 40,
+        "observation_count": 40,
+        "observation_frames": [
+          "zed_left_camera_optical_frame"
+        ],
+        "observation_messages": 40,
+        "query_ids": [
+          1785243136318206
+        ],
+        "query_versions": [
+          1
+        ],
+        "region_frames": [
+          "zed_left_camera_optical_frame"
+        ],
+        "region_messages": 40,
+        "score_maximum": 0.521484375,
+        "score_mean": 0.50078125,
+        "score_minimum": 0.474609375
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    },
+    "phase2": {
+      "evidence": {
+        "active_object_messages": 0
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "NOT EVALUATED"
+    },
+    "phase3": {
+      "evidence": {
+        "best_candidate_messages": 0
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "NOT EVALUATED"
+    },
+    "phase4": {
+      "evidence": {
+        "costmap_frames": [
+          "base_link"
+        ],
+        "costmap_messages": 401,
+        "costmap_shapes": [
+          [
+            240,
+            240,
+            0.05000000074505806
+          ]
+        ],
+        "diagnostic_messages": 100,
+        "maximum_path_poses": 0,
+        "nonempty_path_messages": 0,
+        "path_frames": [
+          "base_link"
+        ],
+        "path_messages": 100,
+        "planned_messages": 0,
+        "reasons": [
+          "waiting_for_inputs"
+        ]
+      },
+      "failures": [
+        "waiting_for_inputs",
+        "no collision-free planned path"
+      ],
+      "latency_ms": {
+        "planner_p50": 0.0,
+        "planner_p95": 0.0
+      },
+      "status": "FAIL"
+    }
+  },
+  "query": {
+    "query_id": 1785243136318206,
+    "query_version": 1,
+    "text": "green bottle"
+  },
+  "safety": {
+    "cmd_vel_publishers": 0,
+    "planning_only": true,
+    "status": "PASS"
+  },
+  "schema_version": "phase0_4_live_validation/1.0.0"
+}

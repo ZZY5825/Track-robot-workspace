@@ -1,0 +1,23 @@
+phase4_approach_planner:
+  ros__parameters:
+    planning_only: true
+    selected_target_topic: /semantic_memory/best_candidate
+    costmap_topic: /safety/local_obstacle_grid
+    localization_topic: /semantic_memory/localization_state
+    approach_candidates_topic: /semantic_search/phase4/approach_candidates
+    selected_goal_topic: /semantic_search/phase4/selected_goal
+    path_topic: /semantic_search/phase4/planned_path
+    markers_topic: /semantic_search/phase4/markers
+    diagnostics_topic: /semantic_search/phase4/diagnostics
+    planning_rate: 5.0
+    standoff_distance: 0.8
+    candidate_count: 16
+    minimum_target_relevance: 0.5
+    minimum_target_margin: 0.08
+    maximum_target_uncertainty: 0.5
+    maximum_target_age_sec: 0.75
+    maximum_map_age_sec: 0.5
+    maximum_search_expansions: 30000
+    occupied_threshold: 50
+    unknown_is_obstacle: true
+    enable_path_shortcutting: true

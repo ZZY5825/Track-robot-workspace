@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-07-28T13:04:21Z",
+  "phase4": {
+    "mode": "DETERMINISTIC_CONTRACT",
+    "scenarios": {
+      "ambiguous_target": {
+        "candidate_count": 0,
+        "expected_reason": "ambiguous_target",
+        "expected_status": "FAIL",
+        "latency_ms": 0.0176,
+        "observed_reason": "ambiguous_target",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      },
+      "blocked_path": {
+        "candidate_count": 16,
+        "expected_reason": "blocked_path",
+        "expected_status": "FAIL",
+        "global_object_id": 42,
+        "latency_ms": 702.997265,
+        "localization_epoch_id": 7,
+        "memory_epoch_id": 11,
+        "observed_reason": "blocked_path",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "position_frame_id": "base_link",
+        "query_id": 1234,
+        "query_version": 2,
+        "task_relevance": 0.82,
+        "test_status": "PASS",
+        "uncertainty": 0.18
+      },
+      "invalid_position": {
+        "candidate_count": 0,
+        "expected_reason": "invalid_position",
+        "expected_status": "FAIL",
+        "latency_ms": 0.007072,
+        "observed_reason": "invalid_position",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      },
+      "localization_reset": {
+        "candidate_count": 0,
+        "expected_reason": "localization_reset",
+        "expected_status": "FAIL",
+        "latency_ms": 0.02192,
+        "observed_reason": "localization_reset",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      },
+      "no_target": {
+        "candidate_count": 0,
+        "expected_reason": "no_target",
+        "expected_status": "FAIL",
+        "latency_ms": 0.014784,
+        "observed_reason": "no_target",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      },
+      "stale_map": {
+        "candidate_count": 0,
+        "expected_reason": "stale_map",
+        "expected_status": "FAIL",
+        "latency_ms": 0.0248,
+        "observed_reason": "stale_map",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      },
+      "success": {
+        "candidate_count": 16,
+        "expected_reason": "planned",
+        "expected_status": "PASS",
+        "global_object_id": 42,
+        "latency_ms": 17.842881,
+        "localization_epoch_id": 7,
+        "memory_epoch_id": 11,
+        "observed_reason": "planned",
+        "path_pose_count": 13,
+        "planning_status": "PASS",
+        "position_frame_id": "base_link",
+        "query_id": 1234,
+        "query_version": 2,
+        "task_relevance": 0.82,
+        "test_status": "PASS",
+        "uncertainty": 0.18
+      },
+      "target_lost": {
+        "candidate_count": 0,
+        "expected_reason": "target_lost",
+        "expected_status": "FAIL",
+        "latency_ms": 0.007104,
+        "observed_reason": "target_lost",
+        "path_pose_count": 0,
+        "planning_status": "FAIL",
+        "test_status": "PASS"
+      }
+    },
+    "status": "PASS"
+  },
+  "safety": {
+    "motion_interfaces": [],
+    "planning_only": true
+  },
+  "schema_version": "phase0_4_validation/1.0.0"
+}

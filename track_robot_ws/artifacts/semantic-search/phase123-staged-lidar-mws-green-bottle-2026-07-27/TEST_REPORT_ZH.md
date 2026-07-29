@@ -70,8 +70,7 @@ ROS Domain：20
 ## 产物
 
 - `report.json`：机器可读测试结果。
-- `phase1_overlay.png`：绿色瓶子检测框叠加图，仅保存在本地测试环境；为避免
-  发布实验场地画面，本次源码版本不包含该图片。
+- `phase1_overlay.png`：绿色瓶子检测框叠加图。
 - `TEST_REPORT_ZH.md`：本报告。
 
 测试结束后，本次启动的相机、LiDAR、tracklet、定位健康和语义记忆进程均已停止。

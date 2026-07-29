@@ -131,7 +131,9 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('start_camera')),
     )
     camera_only_zed = GroupAction(actions=[
-        SetParameter(name='depth.depth_mode', value='NONE'),
+        SetParameter(
+            name='depth.depth_mode',
+            value=LaunchConfiguration('depth_mode')),
         SetParameter(name='depth.depth_stabilization', value=0),
         SetParameter(
             name='pos_tracking.pos_tracking_enabled',
@@ -145,6 +147,7 @@ def generate_launch_description():
         DeclareLaunchArgument('extrinsic_mode', default_value='none'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),
+        DeclareLaunchArgument('depth_mode', default_value='NONE'),
         OpaqueFunction(function=_launch_extrinsic),
         camera_only_zed,
     ])

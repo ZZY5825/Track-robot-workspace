@@ -1,0 +1,278 @@
+{
+  "collection": {
+    "duration_sec": 25.0,
+    "start_ns": 1785248798515567255
+  },
+  "cross_phase_consistency": {
+    "failures": [],
+    "global_object_ids": [
+      17
+    ],
+    "localization_epoch_ids": [
+      1785248776301029482
+    ],
+    "memory_epoch_ids": [
+      4012842245455624155
+    ],
+    "planning_frames": [
+      "base_link"
+    ],
+    "query_ids": [
+      2026072813
+    ],
+    "query_versions": [
+      1
+    ],
+    "status": "PASS"
+  },
+  "generated_at": "2026-07-28T14:27:03Z",
+  "phases": {
+    "phase0": {
+      "evidence": {
+        "canonical_frames": [
+          "base_link"
+        ],
+        "healthy_messages": 251,
+        "localization_epoch_ids": [
+          1785248776301029482
+        ],
+        "localization_messages": 251,
+        "reasons": [
+          "operator_asserted_fixed_base_test"
+        ]
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    },
+    "phase1": {
+      "evidence": {
+        "nonempty_region_messages": 19,
+        "observation_contract_failures": {},
+        "observation_count": 19,
+        "observation_frames": [
+          "zed_left_camera_optical_frame"
+        ],
+        "observation_messages": 19,
+        "query_ids": [
+          2026072813
+        ],
+        "query_versions": [
+          1
+        ],
+        "region_frames": [
+          "zed_left_camera_optical_frame"
+        ],
+        "region_messages": 19,
+        "score_maximum": 0.42431640625,
+        "score_mean": 0.3946597450657895,
+        "score_minimum": 0.332763671875
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    },
+    "phase2": {
+      "evidence": {
+        "active_object_messages": 246,
+        "camera_lidar_nearest_delta_ms": {
+          "maximum": 59.578619,
+          "minimum": 4.225361,
+          "p50": 25.386375,
+          "p95": 59.578619,
+          "sample_count": 19
+        },
+        "camera_to_available_lidar_delta_ms": {
+          "maximum": 109.546488,
+          "minimum": -56.098448,
+          "p50": 8.91657,
+          "p95": 109.546488,
+          "sample_count": 19
+        },
+        "global_object_ids": [
+          17
+        ],
+        "latest_runtime_diagnostics": {
+          "accepted_camera_attachments": "0",
+          "active_objects": "10",
+          "association_debug_pairs": "24",
+          "association_last_active_unique_lidar_tracklets": "9",
+          "association_last_matched_lidar_tracklets": "9",
+          "association_last_scored_pairs": "9",
+          "association_last_source_time_matched_outcome": "runtime_association_no_attachment",
+          "association_last_visual_probe_stamp_ns": "1785248823196448940",
+          "association_lidar_buffer_age_evictions": "323",
+          "association_lidar_buffer_count_evictions": "0",
+          "association_lidar_buffer_entries": "27",
+          "association_lidar_buffer_rollback_drops": "0",
+          "association_lidar_buffer_rollbacks": "0",
+          "association_lidar_current_epoch_entries": "27",
+          "association_lidar_last_source_epoch_id": "1741085482907056459",
+          "association_max_source_time_delta_ns": "200000000",
+          "association_nearest_current_epoch_lidar_delta_ns": "43723482",
+          "association_nearest_lidar_delta_ns": "43723482",
+          "association_reason": "runtime_association_no_attachment",
+          "association_source_time_matches": "18",
+          "association_source_time_misses": "1",
+          "association_valid_visuals_in_last_batch": "1",
+          "best_candidate_reason": "threshold_not_calibrated",
+          "camera_info_messages": "602",
+          "camera_info_reason": "valid",
+          "diagnostic_ranking": "{\"calibration_state\":\"UNCALIBRATED\",\"memory_epoch_id\":4012842245455624155,\"objects\":[{\"evidence_mode\":\"YOLO_WORLD_GROUNDING\",\"global_object_id\":17,\"grounding_confidence\":0.332763671875,\"permanent_semantic\":0.0,\"rejection_reason\":\"\",\"score\":0.46992730034722224,\"stability\":1.0,\"support_quality\":0.9}],\"schema_version\":\"phase3_diagnostic_ranking/1.0.0\"}",
+          "dropped_association_debug_pairs": "0",
+          "event_sequence": "166",
+          "lidar_messages": "350",
+          "lidar_reason": "updated",
+          "localization_messages": "470",
+          "localization_reason": "operator_asserted_fixed_base_test",
+          "memory_epoch_id": "4012842245455624155",
+          "observation_messages": "19",
+          "producer_dropped_tracklets": "0",
+          "rejected_camera_info": "0",
+          "rejected_lidar_batches": "0",
+          "rejected_localization": "0",
+          "rejected_observation_batches": "1",
+          "rejected_observations": "0",
+          "rejected_tasks": "0",
+          "rejected_visual_observations": "1",
+          "runtime_association_resets": "0",
+          "service_calls": "0",
+          "snapshot_sequence": "388",
+          "status_message": "running",
+          "task_messages": "1",
+          "task_reason": "accepted"
+        },
+        "lidar_tracklet_messages": 214,
+        "localization_epoch_ids": [
+          1785248776301029482
+        ],
+        "memory_epoch_ids": [
+          4012842245455624155
+        ],
+        "object_count_total": 50,
+        "position_frames": [
+          "base_link"
+        ],
+        "query_ids": [
+          2026072813
+        ],
+        "query_versions": [
+          1
+        ],
+        "runtime_diagnostic_messages": 25,
+        "top_object_samples": 50,
+        "valid_position_samples": 50
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    },
+    "phase3": {
+      "evidence": {
+        "best_candidate_messages": 246,
+        "confidence_minimum": 0.5033474564552307,
+        "global_object_ids": [
+          17
+        ],
+        "localization_epoch_ids": [
+          1785248776301029482
+        ],
+        "memory_epoch_ids": [
+          4012842245455624155
+        ],
+        "position_frames": [
+          "base_link"
+        ],
+        "query_ids": [
+          2026072813
+        ],
+        "query_versions": [
+          1
+        ],
+        "selected_target_count_total": 34,
+        "uncertainty_maximum": 0.0
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    },
+    "phase4": {
+      "evidence": {
+        "costmap_frames": [
+          "base_link"
+        ],
+        "costmap_messages": 500,
+        "costmap_shapes": [
+          [
+            240,
+            240,
+            0.05000000074505806
+          ]
+        ],
+        "diagnostic_messages": 125,
+        "maximum_path_poses": 37,
+        "nonempty_path_messages": 17,
+        "path_frames": [
+          "base_link"
+        ],
+        "path_messages": 125,
+        "planned_messages": 17,
+        "reasons": [
+          "no_target",
+          "planned"
+        ]
+      },
+      "failures": [],
+      "latency_ms": {
+        "planner_p50": 5.042,
+        "planner_p95": 105.809
+      },
+      "status": "PASS"
+    },
+    "phase4a_advisory": {
+      "evidence": {
+        "advice_messages": 125,
+        "diagnostic_messages": 125,
+        "global_object_ids": [
+          17
+        ],
+        "latest_advice": "NOT_READY reason=no_target ADVISORY_ONLY",
+        "localization_epoch_ids": [
+          1785248776301029482
+        ],
+        "memory_epoch_ids": [
+          4012842245455624155
+        ],
+        "query_ids": [
+          2026072813
+        ],
+        "query_versions": [
+          1
+        ],
+        "ready_advice_messages": 12,
+        "ready_diagnostic_messages": 12,
+        "reasons": [
+          "missing_target",
+          "no_target",
+          "ready"
+        ]
+      },
+      "failures": [],
+      "latency_ms": {},
+      "status": "PASS"
+    }
+  },
+  "query": {
+    "query_id": 2026072813,
+    "query_version": 1,
+    "text": "green bottle"
+  },
+  "safety": {
+    "advisory_only": true,
+    "cmd_vel_publishers": 0,
+    "motion_publishers": {},
+    "planning_only": true,
+    "status": "PASS"
+  },
+  "schema_version": "phase0_4_live_validation/1.0.0"
+}

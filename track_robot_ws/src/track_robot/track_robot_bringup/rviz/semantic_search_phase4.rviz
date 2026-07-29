@@ -1,0 +1,112 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Phase 0-4 Planning-Only Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Local Costmap1
+        - /Phase 4 Planned Path1
+      Splitter Ratio: 0.5
+    Tree Height: 600
+  - Class: track_robot_semantic_search_rviz_plugins/SemanticSearchPanel
+    Name: Semantic Search Query and Phase 3 Selection
+    diagnostic_ranking_topic: /semantic_memory/diagnostic_ranking
+    best_candidate_topic: /semantic_memory/best_candidate
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Ground Grid
+      Plane: XY
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Name: TF
+      Show Axes: true
+      Show Names: true
+      Value: true
+    - Alpha: 0.65
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Local Costmap
+      Topic:
+        Value: /safety/local_obstacle_grid
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Semantic Memory Objects
+      Topic:
+        Value: /semantic_memory/markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Phase 4 Target and Goals
+      Topic:
+        Value: /semantic_search/phase4/markers
+      Value: true
+    - Class: rviz_default_plugins/PoseArray
+      Enabled: true
+      Name: Phase 4 Approach Candidates
+      Shape: Arrow (Flat)
+      Topic:
+        Value: /semantic_search/phase4/approach_candidates
+      Value: true
+    - Class: rviz_default_plugins/Pose
+      Enabled: true
+      Name: Phase 4 Selected Goal
+      Shape: Arrow
+      Topic:
+        Value: /semantic_search/phase4/selected_goal
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Enabled: true
+      Line Style: Lines
+      Line Width: 0.05
+      Name: Phase 4 Planned Path
+      Topic:
+        Value: /semantic_search/phase4/planned_path
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: RoboSense Points
+      Queue Size: 2
+      Size (Pixels): 2
+      Style: Points
+      Topic:
+        Value: /rslidar_points
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Phase 1 Semantic Overlay
+      Topic:
+        Value: /semantic_search/overlay_image
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 32; 34; 38
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 8
+      Focal Point:
+        X: 1
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.65
+      Target Frame: base_link
+      Yaw: 0.75
+Window Geometry:
+  Height: 950
+  Width: 1600

@@ -18,6 +18,7 @@ def generate_launch_description():
             'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
             'extrinsic_file': LaunchConfiguration('extrinsic_file'),
             'allow_degraded': LaunchConfiguration('allow_degraded'),
+            'depth_mode': LaunchConfiguration('camera_depth_mode'),
         }.items(),
     )
     lidar = IncludeLaunchDescription(
@@ -75,6 +76,7 @@ def generate_launch_description():
         DeclareLaunchArgument('extrinsic_mode', default_value='none'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),
+        DeclareLaunchArgument('camera_depth_mode', default_value='NONE'),
         camera,
         lidar,
         platform,
