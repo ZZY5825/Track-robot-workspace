@@ -1,0 +1,83 @@
+from pathlib import Path
+
+import yaml
+
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _params():
+    config = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'nav2_phase4b.yaml').read_text()
+    )
+    return config
+
+
+def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
+    config = _params()
+
+    planner = config['planner_server']['ros__parameters']['GridBased']
+    controller = config['controller_server']['ros__parameters']['FollowPath']
+
+    assert planner['plugin'] == 'nav2_navfn_planner/NavfnPlanner'
+    assert planner['use_astar'] is True
+    assert controller['plugin'].endswith('RegulatedPurePursuitController')
+    assert controller['desired_linear_vel'] <= 0.10
+    assert controller['rotate_to_heading_angular_vel'] <= 0.25
+
+
+def test_costmaps_are_short_range_rolling_odom_maps():
+    config = _params()
+
+    for name in ('global_costmap', 'local_costmap'):
+        params = config[name][name]['ros__parameters']
+        assert params['global_frame'] == 'odom'
+        assert params['robot_base_frame'] == 'base_link'
+        assert params['rolling_window'] is True
+        assert params['resolution'] == 0.05
+        assert params['footprint'] == (
+            '[[-0.60,-0.50],[-0.60,0.50],'
+            '[0.60,0.50],[0.60,-0.50]]'
+        )
+        assert isinstance(params['width'], int)
+        assert isinstance(params['height'], int)
+        assert params['width'] <= 12.0
+        assert params['height'] <= 12.0
+
+
+def test_costmaps_use_standard_lidar_layers():
+    config = _params()
+    local = config['local_costmap']['local_costmap']['ros__parameters']
+    global_map = config['global_costmap']['global_costmap']['ros__parameters']
+
+    assert local['voxel_layer']['plugin'] == 'nav2_costmap_2d::VoxelLayer'
+    assert local['voxel_layer']['z_voxels'] <= 16
+    assert local['voxel_layer']['lidar']['topic'] == '/rslidar_points'
+    assert (
+        global_map['obstacle_layer']['plugin']
+        == 'nav2_costmap_2d::ObstacleLayer'
+    )
+    assert global_map['obstacle_layer']['lidar']['topic'] == '/rslidar_points'
+    assert 'static_layer' not in local['plugins']
+    assert 'static_layer' not in global_map['plugins']
+
+
+def test_recoveries_cannot_move_the_robot():
+    config = _params()
+    recoveries = config['recoveries_server']['ros__parameters']
+
+    assert recoveries['recovery_plugins'] == ['wait']
+    assert set(recoveries) >= {'wait'}
+    assert 'spin' not in recoveries
+    assert 'back_up' not in recoveries
+
+
+def test_gate_is_the_only_final_cmd_vel_publisher():
+    gate = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'cmd_vel_gate_nav2.yaml').read_text()
+    )['cmd_vel_gate']['ros__parameters']
+
+    assert gate['input_topic'] == '/nav2/cmd_vel_safe'
+    assert gate['output_topic'] == '/cmd_vel'
+    assert gate['max_linear_x'] <= 0.10
+    assert gate['max_angular_z'] <= 0.25
