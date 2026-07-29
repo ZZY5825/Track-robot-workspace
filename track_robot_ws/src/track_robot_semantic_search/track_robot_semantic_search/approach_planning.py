@@ -106,8 +106,10 @@ class PlannerConfig:
     maximum_target_uncertainty: float = 0.5
     maximum_target_age_sec: float = 0.75
     maximum_map_age_sec: float = 0.5
+    maximum_search_expansions: int = 30_000
     occupied_threshold: int = 50
     unknown_is_obstacle: bool = True
+    enable_path_shortcutting: bool = False
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,19 @@ class PlanResult:
     approach_candidates: Tuple[Pose2D, ...] = ()
     selected_goal: Optional[Pose2D] = None
     path: Tuple[Pose2D, ...] = ()
+    search_expansions: int = 0
+    search_budget_exhausted: bool = False
+    raw_path_pose_count: int = 0
+    path_length_m: float = 0.0
+    path_shortcut_applied: bool = False
+
+
+@dataclass(frozen=True)
+class _SearchResult:
+    goal_index: Optional[int]
+    cells: Tuple[Tuple[int, int], ...]
+    expansions: int
+    budget_exhausted: bool
 
 
 class Phase4Planner:
@@ -142,7 +157,8 @@ class Phase4Planner:
                 or config.candidate_count < 4
                 or config.candidate_count > 128
                 or config.maximum_target_age_sec <= 0.0
-                or config.maximum_map_age_sec <= 0.0):
+                or config.maximum_map_age_sec <= 0.0
+                or config.maximum_search_expansions <= 0):
             raise ValueError('invalid Phase 4 planner configuration')
 
     @staticmethod
@@ -213,31 +229,97 @@ class Phase4Planner:
             return self._fail('blocked_path')
 
         candidates = self._approach_candidates(target)
-        best = None
-        best_cells = None
-        best_cost = math.inf
         valid_candidates: List[Pose2D] = []
+        valid_goals: List[Tuple[int, int]] = []
         for candidate in candidates:
             goal = context.grid.world_to_cell(candidate.x, candidate.y)
             if goal is None or not self._traversable(context.grid, goal):
                 continue
             valid_candidates.append(candidate)
-            cells = self._a_star(context.grid, start, goal)
-            if not cells:
-                continue
-            cost = self._path_cost(cells)
-            if cost < best_cost:
-                best = candidate
-                best_cells = cells
-                best_cost = cost
-        if best is None or best_cells is None:
+            valid_goals.append(goal)
+
+        search = self._shortest_approach_path(
+            context.grid, start, tuple(valid_goals))
+        if search.budget_exhausted:
+            return PlanResult(
+                status='FAIL',
+                reason='search_budget_exhausted',
+                target=target,
+                approach_candidates=tuple(valid_candidates),
+                search_expansions=search.expansions,
+                search_budget_exhausted=True,
+            )
+        if search.goal_index is None or not search.cells:
             return PlanResult(
                 status='FAIL',
                 reason='blocked_path',
                 target=target,
                 approach_candidates=tuple(valid_candidates),
+                search_expansions=search.expansions,
             )
-        path = self._path_poses(context.grid, best_cells, best.yaw)
+        total_expansions = search.expansions
+        published_cells = search.cells
+        if self._config.enable_path_shortcutting:
+            published_cells = self._shortcut_path(
+                context.grid, search.cells)
+            if not published_cells:
+                remaining_expansions = (
+                    self._config.maximum_search_expansions
+                    - total_expansions)
+                if remaining_expansions <= 0:
+                    return PlanResult(
+                        status='FAIL',
+                        reason='search_budget_exhausted',
+                        target=target,
+                        approach_candidates=tuple(valid_candidates),
+                        search_expansions=total_expansions,
+                        search_budget_exhausted=True,
+                        raw_path_pose_count=len(search.cells),
+                    )
+                safe_search = self._shortest_approach_path(
+                    context.grid,
+                    start,
+                    tuple(valid_goals),
+                    prevent_corner_cutting=True,
+                    maximum_expansions=remaining_expansions,
+                )
+                total_expansions += safe_search.expansions
+                if safe_search.budget_exhausted:
+                    return PlanResult(
+                        status='FAIL',
+                        reason='search_budget_exhausted',
+                        target=target,
+                        approach_candidates=tuple(valid_candidates),
+                        search_expansions=total_expansions,
+                        search_budget_exhausted=True,
+                        raw_path_pose_count=len(search.cells),
+                    )
+                if (
+                        safe_search.goal_index is None
+                        or not safe_search.cells):
+                    return PlanResult(
+                        status='FAIL',
+                        reason='blocked_path',
+                        target=target,
+                        approach_candidates=tuple(valid_candidates),
+                        search_expansions=total_expansions,
+                        raw_path_pose_count=len(search.cells),
+                    )
+                search = safe_search
+                published_cells = self._shortcut_path(
+                    context.grid, search.cells)
+                if not published_cells:
+                    return PlanResult(
+                        status='FAIL',
+                        reason='blocked_path',
+                        target=target,
+                        approach_candidates=tuple(valid_candidates),
+                        search_expansions=total_expansions,
+                        raw_path_pose_count=len(search.cells),
+                    )
+        best = valid_candidates[search.goal_index]
+        path = self._path_poses(
+            context.grid, published_cells, best.yaw)
         return PlanResult(
             status='PASS',
             reason='planned',
@@ -245,6 +327,13 @@ class Phase4Planner:
             approach_candidates=tuple(valid_candidates),
             selected_goal=best,
             path=path,
+            search_expansions=total_expansions,
+            raw_path_pose_count=len(search.cells),
+            path_length_m=(
+                self._path_cost(published_cells)
+                * context.grid.resolution),
+            path_shortcut_applied=(
+                tuple(published_cells) != tuple(search.cells)),
         )
 
     def _approach_candidates(
@@ -267,40 +356,150 @@ class Phase4Planner:
             occupied_threshold=self._config.occupied_threshold,
             unknown_is_obstacle=self._config.unknown_is_obstacle)
 
-    def _a_star(
+    def _shortest_approach_path(
             self, grid: GridMap, start: Tuple[int, int],
-            goal: Tuple[int, int]) -> Tuple[Tuple[int, int], ...]:
+            goals: Sequence[Tuple[int, int]],
+            prevent_corner_cutting: bool = False,
+            maximum_expansions: Optional[int] = None) -> _SearchResult:
+        if not goals:
+            return _SearchResult(None, (), 0, False)
+        expansion_limit = (
+            self._config.maximum_search_expansions
+            if maximum_expansions is None
+            else maximum_expansions)
+
+        goal_indices = {}
+        for index, goal in enumerate(goals):
+            goal_indices.setdefault(goal, []).append(index)
         frontier = [(0.0, start)]
         came_from = {start: None}
         cost_so_far = {start: 0.0}
+        expansions = 0
+        selected_goal = None
+        selected_goal_index = None
+        selected_cost = None
         while frontier:
-            _, current = heapq.heappop(frontier)
-            if current == goal:
+            if (
+                    selected_cost is not None
+                    and frontier[0][0] > selected_cost):
                 break
+            if expansions >= expansion_limit:
+                return _SearchResult(None, (), expansions, True)
+            current_cost, current = heapq.heappop(frontier)
+            if current_cost > cost_so_far.get(current, math.inf):
+                continue
+            expansions += 1
+            if current in goal_indices:
+                goal_index = min(goal_indices[current])
+                if (
+                        selected_goal_index is None
+                        or goal_index < selected_goal_index):
+                    selected_goal = current
+                    selected_goal_index = goal_index
+                    selected_cost = current_cost
+                continue
             for dx, dy, move_cost in self._NEIGHBORS:
                 next_cell = current[0] + dx, current[1] + dy
                 if not self._traversable(grid, next_cell):
                     continue
-                next_cost = cost_so_far[current] + move_cost
+                if (
+                        prevent_corner_cutting
+                        and dx != 0 and dy != 0
+                        and (
+                            not self._traversable(
+                                grid, (current[0] + dx, current[1]))
+                            or not self._traversable(
+                                grid, (current[0], current[1] + dy)))):
+                    continue
+                next_cost = current_cost + move_cost
                 if (
                         next_cell in cost_so_far
                         and next_cost >= cost_so_far[next_cell]):
                     continue
                 cost_so_far[next_cell] = next_cost
-                heuristic = math.hypot(
-                    goal[0] - next_cell[0], goal[1] - next_cell[1])
-                heapq.heappush(
-                    frontier, (next_cost + heuristic, next_cell))
+                heapq.heappush(frontier, (next_cost, next_cell))
                 came_from[next_cell] = current
-        if goal not in came_from:
-            return ()
+        if selected_goal is None or selected_goal_index is None:
+            return _SearchResult(None, (), expansions, False)
         cells = []
-        current = goal
+        current = selected_goal
         while current is not None:
             cells.append(current)
             current = came_from[current]
         cells.reverse()
-        return tuple(cells)
+        return _SearchResult(
+            selected_goal_index, tuple(cells), expansions, False)
+
+    @staticmethod
+    def _supercover_cells(
+            start: Tuple[int, int],
+            end: Tuple[int, int]) -> Tuple[Tuple[int, int], ...]:
+        x, y = start
+        end_x, end_y = end
+        delta_x = end_x - x
+        delta_y = end_y - y
+        count_x = abs(delta_x)
+        count_y = abs(delta_y)
+        step_x = 0 if delta_x == 0 else (1 if delta_x > 0 else -1)
+        step_y = 0 if delta_y == 0 else (1 if delta_y > 0 else -1)
+        index_x = 0
+        index_y = 0
+        output = [(x, y)]
+
+        def append(cell):
+            if output[-1] != cell:
+                output.append(cell)
+
+        while index_x < count_x or index_y < count_y:
+            decision = (
+                (1 + 2 * index_x) * count_y
+                - (1 + 2 * index_y) * count_x)
+            if decision == 0:
+                append((x + step_x, y))
+                append((x, y + step_y))
+                x += step_x
+                y += step_y
+                index_x += 1
+                index_y += 1
+                append((x, y))
+            elif decision < 0:
+                x += step_x
+                index_x += 1
+                append((x, y))
+            else:
+                y += step_y
+                index_y += 1
+                append((x, y))
+        return tuple(output)
+
+    def _line_of_sight(
+            self, grid: GridMap,
+            start: Tuple[int, int],
+            end: Tuple[int, int]) -> bool:
+        return all(
+            self._traversable(grid, cell)
+            for cell in self._supercover_cells(start, end))
+
+    def _shortcut_path(
+            self, grid: GridMap,
+            cells: Sequence[Tuple[int, int]]
+            ) -> Tuple[Tuple[int, int], ...]:
+        if len(cells) <= 2:
+            return tuple(cells)
+        output = [cells[0]]
+        anchor = 0
+        while anchor < len(cells) - 1:
+            selected = None
+            for candidate in range(len(cells) - 1, anchor, -1):
+                if self._line_of_sight(
+                        grid, cells[anchor], cells[candidate]):
+                    selected = candidate
+                    break
+            if selected is None:
+                return ()
+            output.append(cells[selected])
+            anchor = selected
+        return tuple(output)
 
     @staticmethod
     def _path_cost(cells: Sequence[Tuple[int, int]]) -> float:

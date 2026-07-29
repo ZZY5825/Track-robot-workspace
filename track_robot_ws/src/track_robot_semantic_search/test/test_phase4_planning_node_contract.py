@@ -78,8 +78,22 @@ def test_phase4_defaults_are_planning_only_and_fail_closed():
     assert config['maximum_target_uncertainty'] <= 0.5
     assert config['maximum_map_age_sec'] <= 0.5
     assert config['maximum_target_age_sec'] <= 1.0
+    assert config['maximum_search_expansions'] > 0
     assert config['unknown_is_obstacle'] is True
+    assert config['enable_path_shortcutting'] is True
     assert config['planning_only'] is True
+
+
+def test_phase4_node_reports_path_shortcut_quality_metrics():
+    text = source(SOURCE)
+
+    assert "'enable_path_shortcutting'" in text
+    for diagnostic_key in (
+            'raw_path_pose_count',
+            'path_segment_count',
+            'path_length_m',
+            'path_shortcut_applied'):
+        assert "'{}'".format(diagnostic_key) in text
 
 
 def test_rviz_contains_target_candidates_goal_costmap_and_path():

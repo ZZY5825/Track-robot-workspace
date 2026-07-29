@@ -17,5 +17,7 @@ phase4_approach_planner:
     maximum_target_uncertainty: 0.5
     maximum_target_age_sec: 0.75
     maximum_map_age_sec: 0.5
+    maximum_search_expansions: 30000
     occupied_threshold: 50
     unknown_is_obstacle: true
+    enable_path_shortcutting: true

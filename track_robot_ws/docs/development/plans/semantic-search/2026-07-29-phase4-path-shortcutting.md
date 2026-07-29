@@ -17,6 +17,12 @@ unknown-cell policy.
 
 **Tech Stack:** Python 3.8, ROS 2 Foxy, pytest, nav_msgs/Path, OccupancyGrid.
 
+**Execution note:** Performance measurement rejected always-on diagonal
+side-cell checks because they raised open-map P95 latency by about 62 percent.
+The implemented equivalent performs the corner-safe search only when the
+legacy path fails final supercover validation, using the remaining expansion
+budget. The accepted open-map P95 increase was 1.38 percent.
+
 ## Global Constraints
 
 - Do not change Phase 0-3 target selection, IDs, frames, timestamps, or

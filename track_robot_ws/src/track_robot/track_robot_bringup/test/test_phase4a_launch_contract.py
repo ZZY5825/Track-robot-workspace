@@ -111,6 +111,8 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert selector['maximum_age_sec'] <= 1.0
     assert planner['planning_only'] is True
     assert planner['unknown_is_obstacle'] is True
+    assert planner['maximum_search_expansions'] > 0
+    assert planner['enable_path_shortcutting'] is True
     assert advisor['advisory_only'] is True
 
 

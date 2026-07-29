@@ -44,7 +44,12 @@ the graph search. A segment that passes exactly between blocked diagonal cells
 is rejected. This prevents shortcutting across obstacle corners.
 
 The shortcut stage must return the raw path unchanged if it cannot prove a
-safe shortcut. It must never convert a failed search into a successful plan.
+safe shortcut. If the legacy search selected a diagonal obstacle-corner
+transition, the planner uses only its remaining expansion budget for one
+corner-safe search and then repeats the shortcut check. This fallback avoids
+adding corner checks to every expansion on normal open paths. If the fallback
+cannot prove a safe path, planning fails closed. It must never convert a failed
+search into a successful plan.
 
 ## Configuration and diagnostics
 

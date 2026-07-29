@@ -35,7 +35,11 @@ def test_phase4_contract_report_covers_success_and_required_failures():
     assert success['query_id'] == 1234
     assert success['query_version'] == 2
     assert success['candidate_count'] >= 8
-    assert success['path_pose_count'] > 0
+    assert success['raw_path_pose_count'] > 2
+    assert success['path_pose_count'] == 2
+    assert success['path_segment_count'] == 1
+    assert success['path_length_m'] > 0.0
+    assert success['path_shortcut_applied'] is True
     assert report['safety']['planning_only'] is True
     assert report['safety']['motion_interfaces'] == []
 

@@ -98,10 +98,14 @@ class Phase4ApproachPlannerNode(Node):
                 'maximum_target_age_sec', 0.75).value),
             maximum_map_age_sec=float(self.declare_parameter(
                 'maximum_map_age_sec', 0.5).value),
+            maximum_search_expansions=int(self.declare_parameter(
+                'maximum_search_expansions', 30_000).value),
             occupied_threshold=int(self.declare_parameter(
                 'occupied_threshold', 50).value),
             unknown_is_obstacle=bool(self.declare_parameter(
                 'unknown_is_obstacle', True).value),
+            enable_path_shortcutting=bool(self.declare_parameter(
+                'enable_path_shortcutting', False).value),
         )
         planning_rate = float(self.declare_parameter(
             'planning_rate', 5.0).value)
@@ -340,6 +344,14 @@ class Phase4ApproachPlannerNode(Node):
             'latency_ms': '{:.3f}'.format(latency_ms),
             'candidate_count': str(len(result.approach_candidates)),
             'path_pose_count': str(len(result.path)),
+            'raw_path_pose_count': str(result.raw_path_pose_count),
+            'path_segment_count': str(max(0, len(result.path) - 1)),
+            'path_length_m': '{:.3f}'.format(result.path_length_m),
+            'path_shortcut_applied': str(
+                result.path_shortcut_applied).lower(),
+            'search_expansions': str(result.search_expansions),
+            'search_budget_exhausted': str(
+                result.search_budget_exhausted).lower(),
             'memory_epoch_id': str(
                 target.memory_epoch_id if target else 0),
             'global_object_id': str(

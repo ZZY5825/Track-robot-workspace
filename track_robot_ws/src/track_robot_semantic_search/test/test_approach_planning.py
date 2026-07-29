@@ -27,6 +27,21 @@ def make_grid(fill=0):
     )
 
 
+def make_live_size_grid():
+    width = 240
+    height = 240
+    return GridMap(
+        frame_id='base_link',
+        stamp_ns=NOW_NS - 50_000_000,
+        resolution=0.05,
+        width=width,
+        height=height,
+        origin_x=-6.0,
+        origin_y=-6.0,
+        data=tuple([0] * (width * height)),
+    )
+
+
 def replace_cells(grid, cells, value=100):
     data = list(grid.data)
     for cell_x, cell_y in cells:
@@ -112,6 +127,108 @@ def test_open_map_produces_standoff_goal_and_collision_free_path():
         result.target.x - result.selected_goal.x)
     assert abs(result.selected_goal.yaw - facing) < 1e-6
     assert all(grid.is_traversable(*cell) for cell in path_cells(grid, result.path))
+
+
+def test_live_size_map_uses_one_bounded_search():
+    grid = make_live_size_grid()
+    planner = Phase4Planner(PlannerConfig(
+        minimum_target_relevance=0.25,
+        maximum_target_age_sec=2.5,
+        maximum_map_age_sec=2.5,
+        maximum_search_expansions=30_000,
+    ))
+
+    result = planner.plan(context(
+        grid=grid,
+        candidates=(target(x=3.17, y=-1.64),),
+    ))
+
+    assert result.status == 'PASS'
+    assert result.reason == 'planned'
+    assert 0 < result.search_expansions <= 30_000
+    assert result.search_budget_exhausted is False
+
+
+def test_open_map_shortcut_reduces_grid_staircase_to_one_segment():
+    grid = make_live_size_grid()
+    planner = Phase4Planner(PlannerConfig(
+        enable_path_shortcutting=True,
+        minimum_target_relevance=0.25,
+        maximum_target_age_sec=2.5,
+        maximum_map_age_sec=2.5,
+    ))
+
+    result = planner.plan(context(
+        grid=grid,
+        candidates=(target(x=3.17, y=-1.64),),
+    ))
+
+    assert result.status == 'PASS'
+    assert result.raw_path_pose_count > 2
+    assert len(result.path) == 2
+    assert result.path_shortcut_applied is True
+    direct_length = math.hypot(
+        result.path[-1].x - result.path[0].x,
+        result.path[-1].y - result.path[0].y)
+    assert abs(result.path_length_m - direct_length) < 1e-9
+
+
+def test_disabling_shortcut_preserves_raw_grid_path():
+    grid = make_live_size_grid()
+    result = Phase4Planner(PlannerConfig(
+        enable_path_shortcutting=False,
+        minimum_target_relevance=0.25,
+        maximum_target_age_sec=2.5,
+        maximum_map_age_sec=2.5,
+    )).plan(context(
+        grid=grid,
+        candidates=(target(x=2.3, y=0.7),),
+    ))
+
+    assert result.status == 'PASS'
+    assert len(result.path) > 2
+    assert result.raw_path_pose_count == len(result.path)
+    assert result.path_shortcut_applied is False
+
+
+def test_shortcut_keeps_collision_required_detour():
+    grid = make_grid()
+    wall = [(46, y) for y in range(35, 46)]
+    grid = replace_cells(grid, wall)
+    planner = Phase4Planner(PlannerConfig(
+        enable_path_shortcutting=True))
+
+    result = planner.plan(context(grid=grid))
+
+    assert result.status == 'PASS'
+    assert len(result.path) > 2
+    assert len(result.path) < result.raw_path_pose_count
+    assert result.search_expansions <= 30_000
+    path_cell_list = list(path_cells(grid, result.path))
+    for start, end in zip(path_cell_list, path_cell_list[1:]):
+        assert planner._line_of_sight(grid, start, end)
+
+
+def test_line_of_sight_rejects_diagonal_obstacle_corner():
+    grid = replace_cells(make_grid(), [(41, 40), (40, 41)])
+    planner = Phase4Planner(PlannerConfig(
+        enable_path_shortcutting=True))
+
+    assert planner._line_of_sight(
+        grid, (40, 40), (41, 41)) is False
+
+
+def test_search_budget_exhaustion_is_explicit_and_fail_closed():
+    planner = Phase4Planner(PlannerConfig(maximum_search_expansions=1))
+
+    result = planner.plan(context())
+
+    assert result.status == 'FAIL'
+    assert result.reason == 'search_budget_exhausted'
+    assert result.search_expansions == 1
+    assert result.search_budget_exhausted is True
+    assert result.selected_goal is None
+    assert result.path == ()
 
 
 def test_no_target_is_explicit_abstention():

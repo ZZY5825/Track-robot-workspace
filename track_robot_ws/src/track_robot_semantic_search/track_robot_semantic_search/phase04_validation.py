@@ -129,7 +129,8 @@ def _scenario_inputs():
 
 
 def build_phase4_contract_report():
-    planner = Phase4Planner(PlannerConfig())
+    planner = Phase4Planner(PlannerConfig(
+        enable_path_shortcutting=True))
     scenarios = {}
     all_passed = True
     for name, (context, expected_status, expected_reason) in (
@@ -150,6 +151,10 @@ def build_phase4_contract_report():
             'latency_ms': latency_ms,
             'candidate_count': len(result.approach_candidates),
             'path_pose_count': len(result.path),
+            'raw_path_pose_count': result.raw_path_pose_count,
+            'path_segment_count': max(0, len(result.path) - 1),
+            'path_length_m': result.path_length_m,
+            'path_shortcut_applied': result.path_shortcut_applied,
         }
         if result.target is not None:
             evidence.update({
