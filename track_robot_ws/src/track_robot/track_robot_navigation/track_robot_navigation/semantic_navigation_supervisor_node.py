@@ -326,11 +326,13 @@ class SemanticNavigationSupervisorNode(Node):
             self.get_logger().error(
                 'Nav2 goal dispatch failed: {}'.format(error))
             self._pending_goal_kind = None
+            self._cancel_when_accepted = False
             self._policy.mark_dispatch_failed()
             return
         if not handle.accepted:
             self.get_logger().warn('Nav2 rejected the supervised goal')
             self._pending_goal_kind = None
+            self._cancel_when_accepted = False
             self._policy.mark_dispatch_failed()
             return
         self._active_goal_handle = handle
