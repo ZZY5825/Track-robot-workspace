@@ -130,11 +130,11 @@ def _runtime_nodes(context):
             name='semantic_navigation_supervisor',
             output='screen',
             parameters=[
-                LaunchConfiguration('semantic_supervisor_config'),
                 {
                     'runtime_mode': mode.value,
                     'semantic_execution_enabled': semantic_enabled,
                 },
+                LaunchConfiguration('semantic_supervisor_config'),
             ],
         ))
 

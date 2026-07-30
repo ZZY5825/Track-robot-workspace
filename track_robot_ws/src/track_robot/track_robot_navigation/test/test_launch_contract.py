@@ -56,6 +56,21 @@ def test_semantic_modes_start_supervisor_but_shadow_has_no_motion_servers():
     assert 'requires the semantic supervisor delivered' not in source
 
 
+def test_semantic_runtime_overrides_precede_yaml_for_foxy_parameter_precedence():
+    source = (
+        PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
+    ).read_text()
+    node_block = source.split(
+        "executable='semantic_navigation_supervisor'", 1
+    )[1].split('))', 1)[0]
+
+    assert (
+        node_block.index("'runtime_mode': mode.value")
+        < node_block.index(
+            "LaunchConfiguration('semantic_supervisor_config')")
+    )
+
+
 def test_semantic_execution_remains_disabled_by_default():
     source = (
         PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
