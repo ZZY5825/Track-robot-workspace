@@ -31,8 +31,29 @@ def test_phase4b_config_routes_nav2_through_supervisor():
     assert params['odom_topic'] == '/odom'
     assert params['require_odom'] is True
     assert params['require_planner_state'] is False
-    assert params['max_linear_x'] <= 0.15
-    assert params['max_angular_z'] <= 0.35
+    assert params['max_linear_x'] == 0.15
+    assert params['max_angular_z'] == 0.50
+    assert params['safety_inflation'] == 0.13
+    assert params['bounded_rotation_collision_enabled'] is True
+    assert params['angular_braking_deceleration'] == 0.80
+    assert params['fixed_rotation_margin'] == 0.05
+    stopping_distance = (
+        params['max_linear_x'] ** 2 / (2.0 * params['braking_deceleration'])
+        + params['max_linear_x'] * params['response_latency_sec']
+        + params['fixed_stop_margin']
+    )
+    assert abs(stopping_distance - 0.5325) < 1e-9
+
+
+def test_phase4b_obstacle_visualization_uses_reduced_inflation():
+    config = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'local_obstacle_map.yaml').read_text()
+    )
+    params = config['local_obstacle_map_node']['ros__parameters']
+
+    assert params['footprint_length'] == 1.20
+    assert params['footprint_width'] == 1.00
+    assert params['safety_inflation'] == 0.13
 
 
 def test_existing_supervisor_defaults_remain_unchanged():
@@ -45,4 +66,3 @@ def test_existing_supervisor_defaults_remain_unchanged():
     assert params['safe_cmd_topic'] == '/follow/cmd_vel_safe'
     assert params['require_planner_state'] is True
     assert 'require_odom' not in params
-

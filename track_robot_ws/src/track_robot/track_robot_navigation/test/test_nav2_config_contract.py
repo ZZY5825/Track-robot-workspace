@@ -17,13 +17,21 @@ def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
     config = _params()
 
     planner = config['planner_server']['ros__parameters']['GridBased']
-    controller = config['controller_server']['ros__parameters']['FollowPath']
+    controller_params = config['controller_server']['ros__parameters']
+    controller = controller_params['FollowPath']
 
     assert planner['plugin'] == 'nav2_navfn_planner/NavfnPlanner'
     assert planner['use_astar'] is True
     assert controller['plugin'].endswith('RegulatedPurePursuitController')
-    assert controller['desired_linear_vel'] <= 0.10
-    assert controller['rotate_to_heading_angular_vel'] <= 0.25
+    assert controller['desired_linear_vel'] == 0.15
+    assert (
+        controller['max_linear_accel']
+        >= controller['desired_linear_vel']
+        * controller_params['controller_frequency']
+    )
+    assert controller['rotate_to_heading_angular_vel'] == 0.40
+    assert controller['max_linear_decel'] == 0.25
+    assert controller['max_angular_accel'] == 0.50
 
 
 def test_costmaps_are_short_range_rolling_odom_maps():
@@ -43,6 +51,7 @@ def test_costmaps_are_short_range_rolling_odom_maps():
         assert isinstance(params['height'], int)
         assert params['width'] <= 12.0
         assert params['height'] <= 12.0
+        assert params['inflation_layer']['inflation_radius'] == 0.1625
 
 
 def test_costmaps_use_standard_lidar_layers():
@@ -79,8 +88,8 @@ def test_gate_is_the_only_final_cmd_vel_publisher():
 
     assert gate['input_topic'] == '/nav2/cmd_vel_safe'
     assert gate['output_topic'] == '/cmd_vel'
-    assert gate['max_linear_x'] <= 0.10
-    assert gate['max_angular_z'] <= 0.25
+    assert gate['max_linear_x'] == 0.15
+    assert gate['max_angular_z'] == 0.50
 
 
 def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():

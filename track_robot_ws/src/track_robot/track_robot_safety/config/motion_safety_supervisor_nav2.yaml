@@ -25,8 +25,8 @@ motion_safety_supervisor_node:
     require_planner_state: false
     require_odom: true
 
-    max_linear_x: 0.10
-    max_angular_z: 0.25
+    max_linear_x: 0.15
+    max_angular_z: 0.50
     braking_deceleration: 0.25
     angular_braking_deceleration: 0.80
     response_latency_sec: 0.25
@@ -40,7 +40,7 @@ motion_safety_supervisor_node:
 
     footprint_length: 1.20
     footprint_width: 1.00
-    safety_inflation: 0.20
+    safety_inflation: 0.13
     rc_override_deadband: 10
 
     arm_service: /safety/arm
