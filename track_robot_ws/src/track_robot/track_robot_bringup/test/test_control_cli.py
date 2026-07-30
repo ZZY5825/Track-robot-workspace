@@ -22,6 +22,7 @@ from track_robot_bringup.readiness import CheckResult, CheckStatus, ReadinessRep
     ['visualize', 'phase1'],
     ['visualize', 'phase2'],
     ['test', 'phase1', 'blue chair'],
+    ['run', 'phase4b'],
     ['stop'],
 ])
 def test_parser_supports_every_command_and_fixed_domain(command):
@@ -46,6 +47,52 @@ def test_parser_supports_control_options():
     assert args.start_stack is True
     assert args.readiness_timeout == 30.0
     assert args.probe_timeout == 3.0
+
+
+def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', 'phase4b',
+        '--workspace-root', str(tmp_path),
+        '--extrinsic-mode', 'prototype',
+    ])
+
+    command = control_cli.build_phase4b_launch_argv(
+        args, control_cli.default_workspace_paths(tmp_path))
+
+    assert command[:4] == [
+        'ros2', 'launch', 'track_robot_bringup',
+        'semantic_search_phase4b.launch.py',
+    ]
+    assert 'runtime_mode:=SEMANTIC_ACTIVE' in command
+    assert 'enable_semantic_execution:=true' in command
+    assert 'start_base:=true' in command
+    assert 'start_rviz:=true' in command
+    assert 'extrinsic_mode:=prototype' in command
+    assert not any('imu' in value.lower() for value in command)
+
+
+def test_phase4b_shutdown_requests_cancel_and_disarm_in_domain20(tmp_path):
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, 'success: true', '')
+
+    result = control_cli.request_phase4b_cancel_disarm(
+        runner,
+        {'PATH': '/bin', 'ROS_DOMAIN_ID': '20'},
+        timeout=2.0,
+    )
+
+    assert result is True
+    assert calls[0][0] == [
+        'ros2', 'service', 'call',
+        '/semantic_navigation/cancel_and_disarm',
+        'std_srvs/srv/Trigger', '{}',
+    ]
+    assert calls[0][1]['env']['ROS_DOMAIN_ID'] == '20'
+    assert calls[0][1]['timeout'] == 2.0
+    assert calls[0][1]['shell'] is False
 
 
 def test_parser_rejects_a_domain_other_than_20():

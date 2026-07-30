@@ -27,20 +27,60 @@ Nav2 controller 和 recovery server 都重映射到 `/nav2/cmd_vel_raw`。最终
 
 组合入口默认是 `SEMANTIC_SHADOW`、`start_base=false`、`enable_semantic_execution=false`。
 
-## 3. 构建与公共环境
+## 3. 标准重复测试流程（首选）
 
 ```bash
 cd ~/track_robot_ws
 source /opt/ros/foxy/setup.bash
-colcon build --packages-up-to track_robot_bringup track_robot_navigation
+colcon build --packages-up-to \
+  track_robot_bringup \
+  track_robot_navigation \
+  track_robot_semantic_search_rviz_plugins
 source install/setup.bash
-export ROS_DOMAIN_ID=20
 sudo -v
+ros2 run track_robot_bringup semantic_search_ctl run phase4b
 ```
+
+该命令固定执行以下策略，不再逐个手工启动节点：
+
+- ROS Domain 固定为 `20`；
+- 启动 ZED、LiDAR、Bunker、Phase 0–4B 和 RViz；
+- 不使用 IMU；
+- 运行 `SEMANTIC_ACTIVE`，但启动后没有操作员授权，因此机器人保持静止；
+- 所有速度仍走 Nav2 → safety supervisor → cmd_vel gate → Bunker；
+- `Ctrl-C` 或 `semantic_search_ctl stop` 会先请求
+  `/semantic_navigation/cancel_and_disarm`，再停止自己管理的进程组。
+
+RViz 内按以下固定顺序操作：
+
+1. 输入英文目标，例如 `green bottle`，点击 `New Query`；
+2. 确认 Phase 1 overlay 持续有正确目标框；
+3. 确认 `Best candidate` 显示一个稳定 object/global ID；
+4. 确认地图中目标位置和 Nav2 路径合理；
+5. 只有 `Start Approach` 可点击后，才点击一次开始接近；
+6. 任何异常点击 `Cancel & Disarm`；遥控器接管和 E-stop 始终优先。
+
+`Start Approach` 不是直接发速度。它把当前
+`memory/global/localization/query/version/snapshot` 精确引用交给监督器；
+监督器再次核对 Phase 4A planner 和当前目标，安全链成功武装后才允许
+Nav2 goal。目标或 query 改变、RC 接管、E-stop、底盘故障都会撤销授权。
 
 需要 LiDAR 时，确认 `eth0` 是 `192.168.1.102/24`。组合 launch 会沿用已有的网络配置入口。
 
-## 4. Gate A：影子模式，绝不运动
+## 4. RViz 蓝色/粉色区域是什么
+
+蓝色和粉色区域是 Nav2 global/local costmap 中的障碍代价与 inflation，
+不是语义目标框。它们会影响 Phase 4B 是否可规划、是否暂停：
+
+- 原始 `/rslidar_points` 只用于 raytracing clearing；
+- `/safety/filtered_obstacle_points` 只用于 marking；
+- 两个 observation source 的 persistence 均为 `0`；
+- 人离开后，后续 LiDAR 射线应清除旧代价，不应永久留下脚印。
+
+若痕迹持续不清除，先检查原始点云和 costmap 更新率；这属于
+Phase 4B 动态障碍清除失败，不能靠解锁绕过。
+
+## 5. 分离 Gate A：影子模式（故障排查用，绝不运动）
 
 实机需要 Bunker 里程计和 `odom -> base_link`，因此使用 `start_base:=true`。这只启动底盘驱动；影子模式没有 controller、BT navigator、安全执行链或速度发布者。
 
@@ -79,7 +119,7 @@ ros2 topic info /nav2/cmd_vel_raw --verbose
 
 影子模式出现任何速度发布者均判为 FAIL。
 
-## 5. Gate B：手动 Nav2，低速监督执行
+## 6. 分离 Gate B：手动 Nav2（故障排查用）
 
 只在轮子离地或清空的受控测试通道运行：
 
@@ -110,10 +150,10 @@ ros2 topic echo /safety/state
 ros2 service call /safety/arm std_srvs/srv/Trigger "{}"
 ```
 
-初始限制：
+当前 Phase 4B 限制：
 
-- 线速度不超过 0.10 m/s；
-- 角速度不超过 0.25 rad/s；
+- 起步线速度目标为 0.10 m/s，最高线速度不超过 0.15 m/s；
+- 角速度不超过 0.50 rad/s；
 - controller 10 Hz；
 - NavFn A* 约 1 Hz 重规划；
 - Regulated Pure Pursuit 跟踪。
@@ -131,7 +171,7 @@ ros2 service call /safety/emergency_stop std_srvs/srv/Trigger "{}"
 ros2 service call /safety/reset_emergency_stop std_srvs/srv/Trigger "{}"
 ```
 
-## 6. Gate C：语义主动模式
+## 7. 分离 Gate C：语义主动模式（等价底层命令）
 
 只有 Gate A、Gate B 和失败注入全部通过后才能运行：
 
@@ -150,11 +190,12 @@ ros2 launch track_robot_bringup semantic_search_phase4b.launch.py \
 - 目标、goal、diagnostics 和 odom 均新鲜；
 - `base_link` goal 能转换到 `odom`；
 - 安全监督器已武装；
+- 当前精确目标已由操作员通过 RViz 按钮授权；
 - 安全状态为 CLEAR、SLOWDOWN 或 AVOIDING。
 
 目标丢失/变化、无效位置、TF 失败、odom 陈旧、BLOCKED、RC 接管、Bunker 故障或 E-stop 会拒绝或取消语义 Nav2 goal。SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav2。
 
-## 7. 失败测试
+## 8. 失败测试
 
 按顺序执行，每项都必须安全停止或拒绝：
 
@@ -174,12 +215,12 @@ ps -eo pid,ppid,stat,cmd | grep -E \
   'nav2|semantic_navigation|motion_safety|cmd_vel_gate' | grep -v grep
 ```
 
-## 8. 当前验收状态
+## 9. 当前验收状态
 
 - 软件构建、单元/配置/launch 合同测试：PASS；
 - `PLANNING_ONLY` 运行时启动：PASS；
 - `MANUAL_NAV2_ACTIVE` ROS 图安全链：PASS；
 - `SEMANTIC_SHADOW` 运行时零运动图验证：PASS；
-- 实机手动行驶、失败注入和 `SEMANTIC_ACTIVE`：尚未执行，不能宣称通过。
+- 本次 Camera+Stereo Phase 2、costmap 清除和 RViz 授权改动：离线回归通过后仍需按本页流程做一次实机验收，不能仅凭代码宣称实机通过。
 
 初始 footprint `1.20 x 1.00 m` 来自现有配置，不替代实物复测。Phase 4B 仍使用现有 prototype Camera–LiDAR 外参；在主动实机验收前必须用实际安装外参复核目标位置和障碍投影。

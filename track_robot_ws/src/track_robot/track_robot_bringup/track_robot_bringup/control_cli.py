@@ -1,4 +1,4 @@
-"""Beginner-facing passive control for the semantic-search stack."""
+"""Beginner-facing control for passive stages and supervised Phase 4B."""
 
 import argparse
 import importlib
@@ -77,13 +77,14 @@ def _add_stage_options(
 
 
 def build_parser():
-    """Build the six-command parser; the managed domain is fixed at 20."""
+    """Build the control parser; the managed domain is fixed at 20."""
 
     parser = argparse.ArgumentParser(
         prog='semantic_search_ctl',
         description=(
-            'Passive semantic-search bringup and diagnosis on fixed ROS '
-            'Domain 20. No supported command starts a motion controller.'),
+            'Semantic-search bringup and diagnosis on fixed ROS Domain 20. '
+            'Only the explicit run phase4b command starts supervised motion '
+            'servers, and operator authorization is still required in RViz.'),
     )
     parser.add_argument(
         '--domain',
@@ -132,7 +133,24 @@ def build_parser():
     test.add_argument('--output-dir', default=None)
     test.add_argument('--readiness-timeout', type=float, default=30.0)
 
-    commands.add_parser('stop', help='stop only a verified managed process group')
+    run = commands.add_parser(
+        'run', help='run an explicitly supervised end-to-end workflow')
+    run.add_argument('stage', choices=('phase4b',))
+    run.add_argument(
+        '--workspace-root', default=_default_workspace_root())
+    run.add_argument(
+        '--extrinsic-mode',
+        choices=('prototype', 'measured'),
+        default='prototype',
+    )
+    run.add_argument('--extrinsic-file', default='')
+    run.add_argument('--dino-enabled', action='store_true')
+
+    stop = commands.add_parser(
+        'stop', help='stop only a verified managed process group')
+    stop.add_argument(
+        '--workspace-root', default=_default_workspace_root(),
+        help=argparse.SUPPRESS)
     return parser
 
 
@@ -279,6 +297,76 @@ def build_launch_argv(args, selection, paths):
     if args.extrinsic_file:
         argv.append('extrinsic_file:={}'.format(args.extrinsic_file))
     return argv
+
+
+def build_phase4b_launch_argv(args, paths):
+    """Build the fixed supervised Phase 0-4B command.
+
+    The launch itself hard-disables IMU. Motion remains behind the semantic
+    authorization service, safety supervisor, and final velocity gate.
+    """
+
+    argv = [
+        'ros2',
+        'launch',
+        'track_robot_bringup',
+        'semantic_search_phase4b.launch.py',
+        'runtime_mode:=SEMANTIC_ACTIVE',
+        'enable_semantic_execution:=true',
+        'start_base:=true',
+        'start_rviz:=true',
+        'extrinsic_mode:={}'.format(args.extrinsic_mode),
+        'dino_enabled:={}'.format(
+            str(bool(args.dino_enabled)).lower()),
+        'yolo_runtime_path:={}'.format(paths['yolo_runtime_path']),
+        'clip_runtime_path:={}'.format(paths['runtime_path']),
+        'yolo_checkpoint:={}'.format(paths['yolo_checkpoint_path']),
+        'clip_checkpoint:={}'.format(paths['checkpoint_path']),
+        'dino_repo_path:={}'.format(paths['dino_repo_path']),
+        'dino_checkpoint:={}'.format(paths['dino_checkpoint_path']),
+    ]
+    if args.extrinsic_file:
+        argv.append('extrinsic_file:={}'.format(args.extrinsic_file))
+    return argv
+
+
+def request_phase4b_cancel_disarm(runner, environment, timeout=2.0):
+    """Best-effort bounded cancellation before stopping the owned launch."""
+
+    command = [
+        'ros2',
+        'service',
+        'call',
+        '/semantic_navigation/cancel_and_disarm',
+        'std_srvs/srv/Trigger',
+        '{}',
+    ]
+    code, output, _stderr, timed_out = _run(
+        runner, command, environment, timeout)
+    return (
+        not timed_out
+        and code == 0
+        and 'success: true' in output.lower())
+
+
+class _Phase4BStopProxy:
+    """Add one bounded cancel/disarm request before verified process stop."""
+
+    def __init__(self, manager, runner, environment):
+        self._manager = manager
+        self._runner = runner
+        self._environment = environment
+        self._requested = False
+
+    def stop_owned(self):
+        if not self._requested:
+            self._requested = True
+            request_phase4b_cancel_disarm(
+                self._runner, self._environment)
+        return self._manager.stop_owned()
+
+    def clear_if_owned(self, state):
+        return self._manager.clear_if_owned(state)
 
 
 def _paths_for(args):
@@ -665,6 +753,12 @@ def main(
 
     if args.command == 'stop':
         process_manager = _manager(manager, popen_factory, os_api)
+        verified_state = getattr(process_manager, 'verified_state', None)
+        state = verified_state() if verified_state is not None else None
+        if state is not None and state.stage == 'phase4b':
+            paths = default_workspace_paths(args.workspace_root)
+            environment = _environment(base_environment, paths)
+            request_phase4b_cancel_disarm(runner, environment)
         stopped = process_manager.stop_owned()
         if stopped:
             stdout.write('Stopped verified managed process group.\n')
@@ -676,6 +770,38 @@ def main(
             return 4
         stdout.write('No verified managed process group found.\n')
         return 2
+
+    if args.command == 'run':
+        paths = default_workspace_paths(args.workspace_root)
+        environment = _environment(base_environment, paths)
+        process_manager = _manager(manager, popen_factory, os_api)
+        if process_manager.verified_state() is not None:
+            stderr.write(
+                'A verified managed process is already running; stop it '
+                'before Phase 4B.\n')
+            return 4
+        command = build_phase4b_launch_argv(args, paths)
+        try:
+            child, owned_state = process_manager.spawn_verified(
+                command,
+                stage='phase4b',
+                owned_modules=('camera', 'lidar', 'base'),
+                environment=environment,
+            )
+        except (OSError, RuntimeError) as error:
+            stderr.write('Failed to start supervised Phase 4B: {}\n'.format(
+                error))
+            return 4
+        stdout.write(
+            'Phase 4B started in ROS Domain 20 (IMU disabled).\n'
+            '1. Enter an English target in RViz.\n'
+            '2. Confirm one stable best candidate and a valid path.\n'
+            '3. Click Start Approach; motion cannot start before this.\n'
+            '4. Use Cancel & Disarm, RC override, or E-stop to stop.\n')
+        proxy = _Phase4BStopProxy(
+            process_manager, runner, environment)
+        return _foreground_wait(
+            child, proxy, owned_state, CheckStatus.PASS)
 
     if args.command == 'query':
         paths = default_workspace_paths(args.workspace_root)
@@ -899,9 +1025,11 @@ def main(
 
 
 __all__ = [
+    'build_phase4b_launch_argv',
     'build_launch_argv',
     'build_parser',
     'exit_code',
     'main',
+    'request_phase4b_cancel_disarm',
     'select_hardware',
 ]
