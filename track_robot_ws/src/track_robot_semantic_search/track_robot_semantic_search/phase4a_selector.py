@@ -7,9 +7,22 @@ import statistics
 from typing import Optional, Tuple
 
 
+def classify_spatial_support(
+        *, support, position_valid, fallback_depth_available):
+    """Map public support plus metric geometry to selector support."""
+    if support == 'camera_lidar':
+        return 'camera_lidar'
+    if (
+            support == 'camera_only'
+            and (bool(position_valid) or bool(fallback_depth_available))):
+        return 'camera_depth'
+    return 'other'
+
+
 @dataclass(frozen=True)
 class SelectorConfig:
     minimum_relevance: float = 0.50
+    retained_minimum_relevance: float = 0.40
     minimum_margin: float = 0.08
     maximum_uncertainty: float = 0.50
     confirmation_snapshots: int = 3
@@ -21,6 +34,11 @@ class SelectorConfig:
     def validate(self):
         if not 0.0 <= self.minimum_relevance <= 1.0:
             raise ValueError('minimum_relevance must be in [0, 1]')
+        if not 0.0 <= self.retained_minimum_relevance <= (
+                self.minimum_relevance):
+            raise ValueError(
+                'retained_minimum_relevance must be in '
+                '[0, minimum_relevance]')
         if not 0.0 <= self.minimum_margin <= 1.0:
             raise ValueError('minimum_margin must be in [0, 1]')
         if not 0.0 <= self.maximum_uncertainty <= 1.0:
@@ -82,15 +100,50 @@ class FixedBaseTargetSelector:
         self._key = None
         self._confirmation_count = 0
         self._positions = deque(maxlen=config.position_window)
+        self._last_ready_target = None
 
     def _clear(self):
         self._key = None
         self._confirmation_count = 0
         self._positions.clear()
+        self._last_ready_target = None
 
     def _fail(self, reason: str) -> SelectionResult:
         self._clear()
         return SelectionResult(status='NOT_READY', reason=reason)
+
+    def _hold_last_target(
+            self, snapshot, top, ordered, minimum_relevance=None):
+        target = self._last_ready_target
+        relevance_floor = (
+            self._config.retained_minimum_relevance
+            if minimum_relevance is None else float(minimum_relevance))
+        if (
+                target is None
+                or top.key != target.key
+                or top.localization_epoch_id != target.localization_epoch_id
+                or target.query_id != snapshot.query_id
+                or target.query_version != snapshot.query_version):
+            return None
+        age_ns = snapshot.now_ns - target.last_seen_ns
+        if age_ns < 0 or age_ns > self._config.maximum_age_ns:
+            return None
+        if (
+                not math.isfinite(top.relevance)
+                or top.relevance < relevance_floor
+                or not math.isfinite(top.uncertainty)
+                or top.uncertainty > self._config.maximum_uncertainty):
+            return None
+        if len(ordered) > 1 and (
+                top.relevance - ordered[1].relevance
+                < self._config.minimum_margin):
+            return None
+        return SelectionResult(
+            status='READY',
+            reason='holding_last_target',
+            target=target,
+            confirmation_count=self._confirmation_count,
+        )
 
     def update(self, snapshot: SelectionSnapshot) -> SelectionResult:
         if not snapshot.candidates:
@@ -113,6 +166,9 @@ class FixedBaseTargetSelector:
         if top.lifecycle != 'confirmed':
             return self._fail('target_not_confirmed')
         if top.support not in ('camera_lidar', 'camera_depth'):
+            held = self._hold_last_target(snapshot, top, ordered)
+            if held is not None:
+                return held
             return self._fail('no_spatial_support')
         if not top.position_valid or not all(
                 math.isfinite(value) for value in (top.x, top.y, top.z)):
@@ -121,6 +177,9 @@ class FixedBaseTargetSelector:
             return self._fail('frame_mismatch')
         if not math.isfinite(top.relevance) or (
                 top.relevance < self._config.minimum_relevance):
+            held = self._hold_last_target(snapshot, top, ordered)
+            if held is not None:
+                return held
             return self._fail('below_test_relevance')
         if not math.isfinite(top.uncertainty) or (
                 top.uncertainty > self._config.maximum_uncertainty):
@@ -158,6 +217,7 @@ class FixedBaseTargetSelector:
                 confirmation_count=self._confirmation_count,
                 xy_spread_m=spread,
             )
+        self._last_ready_target = top
         return SelectionResult(
             status='READY',
             reason='ready',

@@ -133,6 +133,22 @@ TEST(Visualization, EncodesGeometryAndStateWithBoundedMarkers)
   EXPECT_THROW((void)registry.update(too_many), std::invalid_argument);
 }
 
+TEST(Visualization, SkipsNonSpatialObjectsWithoutDroppingValidMarkers)
+{
+  semantic_memory::MarkerRegistry registry(256U);
+  auto input = snapshot(10U, 1U);
+  auto camera_only = object(10U, 2U);
+  camera_only.position_valid = false;
+  camera_only.extent_valid = false;
+  camera_only.support_state = interfaces::SemanticObject::SUPPORT_CAMERA_ONLY;
+  input.objects = {object(10U, 1U), camera_only};
+
+  const auto output = registry.update(input);
+
+  ASSERT_EQ(output.markers.size(), 2U);
+  EXPECT_EQ(output.markers[0].pose.position.x, 1.0);
+}
+
 TEST(Visualization, RejectsDuplicateWrongEpochAndOutOfOrderSnapshots)
 {
   semantic_memory::MarkerRegistry registry(256U);

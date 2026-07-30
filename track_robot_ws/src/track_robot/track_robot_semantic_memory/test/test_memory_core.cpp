@@ -112,6 +112,26 @@ semantic_memory::CameraObservation camera_observation(
   return value;
 }
 
+semantic_memory::CameraObservation camera_depth_observation(
+  std::uint64_t camera_track_id,
+  std::int64_t stamp,
+  std::uint64_t observation_id,
+  double x)
+{
+  auto value = camera_observation(camera_track_id, stamp, observation_id);
+  value.position_valid = true;
+  value.position_frame_id = "odom";
+  value.localization_epoch_id = 7U;
+  value.position = {x, 0.25, 0.5};
+  value.position_covariance = {
+    0.04, 0.0, 0.0,
+    0.0, 0.04, 0.0,
+    0.0, 0.0, 0.09};
+  value.geometry_confidence = 0.9;
+  value.stereo_depth_evidence = true;
+  return value;
+}
+
 bool has_event(
   const semantic_memory::MemoryUpdateResult & result,
   semantic_memory::MemoryEventType type)
@@ -156,6 +176,48 @@ TEST(MemoryCore, CameraTrackCreatesAndPreservesCameraOnlyIdentity)
   EXPECT_NE(
     distinct.objects[0].key.global_object_id,
     distinct.objects[1].key.global_object_id);
+}
+
+TEST(MemoryCore, CameraDepthCreatesStablePositionWithoutLidar)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+
+  const auto first = core.update_camera(
+    local_domain(), camera_depth_observation(7U, 1, 50U, 2.0));
+  const auto repeated = core.update_camera(
+    local_domain(), camera_depth_observation(7U, 2, 51U, 2.2));
+
+  ASSERT_EQ(repeated.objects.size(), 1U);
+  EXPECT_EQ(
+    repeated.objects[0].key.global_object_id,
+    first.objects[0].key.global_object_id);
+  EXPECT_TRUE(repeated.objects[0].position_valid);
+  EXPECT_FALSE(repeated.objects[0].lidar_key.has_value());
+  EXPECT_EQ(
+    repeated.objects[0].support,
+    semantic_memory::SupportState::kCameraOnly);
+  EXPECT_EQ(
+    repeated.objects[0].lifecycle,
+    semantic_memory::LifecycleState::kConfirmed);
+  EXPECT_GT(repeated.objects[0].position[0], 2.0);
+  EXPECT_LT(repeated.objects[0].position[0], 2.2);
+}
+
+TEST(MemoryCore, CameraOnlyDepthLossInvalidatesStalePosition)
+{
+  semantic_memory::MemoryCore core(test_config(), 100U);
+  const auto positioned = core.update_camera(
+    local_domain(), camera_depth_observation(7U, 1, 50U, 2.0));
+  const auto depth_lost = core.update_camera(
+    local_domain(), camera_observation(7U, 2, 51U));
+
+  ASSERT_EQ(positioned.objects.size(), 1U);
+  ASSERT_TRUE(positioned.objects[0].position_valid);
+  ASSERT_EQ(depth_lost.objects.size(), 1U);
+  EXPECT_EQ(
+    depth_lost.objects[0].key.global_object_id,
+    positioned.objects[0].key.global_object_id);
+  EXPECT_FALSE(depth_lost.objects[0].position_valid);
 }
 
 TEST(MemoryCore, CameraRollbackAdvancesEpochAndCameraOnlyLifecycleExpires)

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -7,10 +8,40 @@ from track_robot_semantic_search.phase4a_selector import (
     ObjectCandidate,
     SelectionSnapshot,
     SelectorConfig,
+    classify_spatial_support,
 )
 
 
 NOW_NS = 10_000_000_000
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_position_valid_camera_object_is_camera_depth_without_lidar():
+    assert classify_spatial_support(
+        support='camera_only',
+        position_valid=True,
+        fallback_depth_available=False,
+    ) == 'camera_depth'
+    assert classify_spatial_support(
+        support='camera_only',
+        position_valid=False,
+        fallback_depth_available=False,
+    ) == 'other'
+
+
+def test_selector_never_overwrites_canonical_phase2_position_with_fallback():
+    source = (
+        PACKAGE_ROOT
+        / 'track_robot_semantic_search'
+        / 'phase4a_selector_node.py'
+    ).read_text()
+
+    geometry_body = source.split(
+        '    def _geometry(self, message, now_ns):', 1)[1].split(
+        '    def _candidate(', 1)[0]
+    assert 'if message.position_valid:' in geometry_body
+    assert geometry_body.index('if message.position_valid:') < (
+        geometry_body.index('self._depth_geometry.get'))
 
 
 def candidate(**overrides):
@@ -66,6 +97,64 @@ def test_selector_accepts_confirmed_stereo_depth_support():
 
     assert result.reason == 'ready'
     assert result.target.support == 'camera_depth'
+
+
+def test_selector_holds_last_ready_target_during_brief_depth_gap():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        confirmation_snapshots=1))
+    ready = selector.update(snapshot((candidate(support='camera_depth'),)))
+
+    held = selector.update(snapshot((
+        candidate(support='other'),),
+        now_ns=NOW_NS + 200_000_000))
+
+    assert held.status == 'READY'
+    assert held.reason == 'holding_last_target'
+    assert held.target == ready.target
+
+
+def test_selector_does_not_hold_last_target_past_age_limit():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        confirmation_snapshots=1))
+    selector.update(snapshot((candidate(support='camera_depth'),)))
+
+    expired = selector.update(snapshot(
+        (candidate(support='other'),),
+        now_ns=NOW_NS + 1_100_000_000))
+
+    assert expired.status == 'NOT_READY'
+    assert expired.target is None
+
+
+def test_selector_holds_same_target_during_small_relevance_dip():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        minimum_relevance=0.42,
+        confirmation_snapshots=1))
+    ready = selector.update(snapshot((
+        candidate(relevance=0.43),)))
+
+    held = selector.update(snapshot((
+        candidate(relevance=0.41),),
+        now_ns=NOW_NS + 200_000_000))
+
+    assert held.status == 'READY'
+    assert held.reason == 'holding_last_target'
+    assert held.target == ready.target
+
+
+def test_selector_rejects_relevance_below_retention_floor():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        minimum_relevance=0.42,
+        retained_minimum_relevance=0.40,
+        confirmation_snapshots=1))
+    selector.update(snapshot((candidate(relevance=0.43),)))
+
+    rejected = selector.update(snapshot((
+        candidate(relevance=0.39),),
+        now_ns=NOW_NS + 200_000_000))
+
+    assert rejected.reason == 'below_test_relevance'
+    assert rejected.target is None
 
 
 def test_selector_key_change_restarts_confirmation():
@@ -137,3 +226,7 @@ def test_selector_clears_confirmation_after_no_target():
 def test_selector_rejects_invalid_config():
     with pytest.raises(ValueError):
         FixedBaseTargetSelector(SelectorConfig(confirmation_snapshots=0))
+    with pytest.raises(ValueError):
+        FixedBaseTargetSelector(SelectorConfig(
+            minimum_relevance=0.50,
+            retained_minimum_relevance=0.51))

@@ -5,6 +5,21 @@ phase4a_fixed_base_session:
     publish_rate_hz: 10.0
     epoch_id: 0
 
+semantic_depth_enricher:
+  ros__parameters:
+    input_observations_topic: /semantic_memory/observations
+    output_observations_topic: /semantic_memory/spatial_observations
+    depth_topic: /zed/zed_node/depth/depth_registered
+    camera_info_topic: /zed/zed_node/left/camera_info
+    localization_topic: /semantic_search/phase4a/localization_state
+    frame_id: base_link
+    maximum_depth_delta_sec: 0.5
+    minimum_depth_samples: 20
+    minimum_depth_m: 0.3
+    maximum_depth_m: 8.0
+    depth_inner_fraction: 0.5
+    tf_timeout_sec: 0.05
+
 phase4a_target_selector:
   ros__parameters:
     ranking_topic: /semantic_memory/diagnostic_ranking
@@ -16,7 +31,8 @@ phase4a_target_selector:
     selected_target_topic: /semantic_search/phase4a/selected_target
     spatial_objects_topic: /semantic_search/phase4a/spatial_objects
     diagnostics_topic: /semantic_search/phase4a/selector_diagnostics
-    minimum_relevance: 0.50
+    minimum_relevance: 0.30
+    retained_minimum_relevance: 0.27
     minimum_margin: 0.08
     maximum_uncertainty: 0.50
     confirmation_snapshots: 3
@@ -44,7 +60,10 @@ phase4_approach_planner:
     planning_rate: 5.0
     standoff_distance: 0.8
     candidate_count: 16
-    minimum_target_relevance: 0.50
+    # New targets require 0.30 in the selector. The planner accepts the
+    # selector's 0.27 retained-target hysteresis so an already confirmed target
+    # does not make the path flicker at the boundary.
+    minimum_target_relevance: 0.27
     minimum_target_margin: 0.08
     maximum_target_uncertainty: 0.50
     maximum_target_age_sec: 1.0

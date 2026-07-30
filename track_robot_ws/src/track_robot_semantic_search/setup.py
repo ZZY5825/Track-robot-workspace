@@ -62,6 +62,8 @@ setup(
             'track_robot_semantic_search.fixed_base_session_node:main',
             'semantic_search_phase4a_selector = '
             'track_robot_semantic_search.phase4a_selector_node:main',
+            'semantic_search_spatial_observation = '
+            'track_robot_semantic_search.spatial_observation_node:main',
             'semantic_search_phase4a_advisor = '
             'track_robot_semantic_search.phase4a_advisor_node:main',
             'semantic_search_phase4a_validate = '

@@ -1,7 +1,7 @@
 semantic_memory:
   ros__parameters:
     enabled: true
-    observations_topic: /semantic_memory/observations
+    observations_topic: /semantic_memory/spatial_observations
     lidar_tracklets_topic: /semantic_memory/lidar_tracklets
     localization_topic: /semantic_search/phase4a/localization_state
     localization_state_timeout_sec: 0.5
@@ -51,9 +51,11 @@ semantic_memory:
     reidentification_shadow_mode: true
     reidentification_mutation_enabled: false
     reidentification_calibration_status: uncalibrated
-    # Production selection remains fail-closed. Phase 4A consumes the
-    # diagnostic ranking through its own conservative test-only selector.
-    best_candidate_threshold_calibrated: false
+    # Supervised Phase 4A/4B acceptance profile. This threshold is for fused
+    # task_relevance, never raw YOLO confidence. Production defaults remain
+    # fail-closed in semantic_memory.yaml.
+    best_candidate_threshold_calibrated: true
+    best_candidate_minimum_relevance: 0.30
     publish_best_candidate: true
     publish_diagnostic_ranking: true
     task_grounding_weight: 0.70
