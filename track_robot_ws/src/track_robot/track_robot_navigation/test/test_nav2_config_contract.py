@@ -62,12 +62,34 @@ def test_costmaps_use_standard_lidar_layers():
 
     assert local['voxel_layer']['plugin'] == 'nav2_costmap_2d::VoxelLayer'
     assert local['voxel_layer']['z_voxels'] <= 16
-    assert local['voxel_layer']['lidar']['topic'] == '/rslidar_points'
+    assert local['voxel_layer']['observation_sources'] == (
+        'raw_clear filtered_mark')
+    assert local['voxel_layer']['raw_clear']['topic'] == '/rslidar_points'
+    assert local['voxel_layer']['raw_clear']['clearing'] is True
+    assert local['voxel_layer']['raw_clear']['marking'] is False
+    assert local['voxel_layer']['filtered_mark']['topic'] == (
+        '/safety/filtered_obstacle_points')
+    assert local['voxel_layer']['filtered_mark']['clearing'] is False
+    assert local['voxel_layer']['filtered_mark']['marking'] is True
     assert (
         global_map['obstacle_layer']['plugin']
         == 'nav2_costmap_2d::ObstacleLayer'
     )
-    assert global_map['obstacle_layer']['lidar']['topic'] == '/rslidar_points'
+    assert global_map['obstacle_layer']['observation_sources'] == (
+        'raw_clear filtered_mark')
+    assert global_map['obstacle_layer']['raw_clear']['topic'] == (
+        '/rslidar_points')
+    assert global_map['obstacle_layer']['raw_clear']['clearing'] is True
+    assert global_map['obstacle_layer']['raw_clear']['marking'] is False
+    assert global_map['obstacle_layer']['filtered_mark']['topic'] == (
+        '/safety/filtered_obstacle_points')
+    assert global_map['obstacle_layer']['filtered_mark']['clearing'] is False
+    assert global_map['obstacle_layer']['filtered_mark']['marking'] is True
+    for layer in (local['voxel_layer'], global_map['obstacle_layer']):
+        for source_name in ('raw_clear', 'filtered_mark'):
+            source = layer[source_name]
+            assert source['observation_persistence'] == 0.0
+            assert 0.0 < source['expected_update_rate'] <= 0.5
     assert 'static_layer' not in local['plugins']
     assert 'static_layer' not in global_map['plugins']
 

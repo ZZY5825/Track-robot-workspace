@@ -32,6 +32,11 @@ if(BUILD_TESTING)
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
   ament_add_pytest_test(
+    test_dynamic_obstacle_sources
+    test/test_dynamic_obstacle_sources.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
     test_launch_contract
     test/test_launch_contract.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
