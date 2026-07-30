@@ -32,6 +32,7 @@ ament_target_dependencies(
   rclcpp nav_msgs geometry_msgs visualization_msgs std_msgs track_robot_interfaces)
 
 add_executable(motion_safety_supervisor_node src/motion_safety_supervisor_node.cpp)
+target_include_directories(motion_safety_supervisor_node PRIVATE include)
 ament_target_dependencies(
   motion_safety_supervisor_node
   rclcpp sensor_msgs nav_msgs geometry_msgs visualization_msgs std_msgs std_srvs
@@ -46,9 +47,18 @@ install(TARGETS
 install(DIRECTORY launch config docs
   DESTINATION share/${PROJECT_NAME})
 
+install(DIRECTORY include/
+  DESTINATION include)
+
 if(BUILD_TESTING)
   set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_cmake_pytest REQUIRED)
+  ament_add_gtest(
+    test_rotation_collision
+    test/test_rotation_collision.cpp
+  )
+  target_include_directories(test_rotation_collision PRIVATE include)
   ament_add_pytest_test(
     test_nav2_safety_contract
     test/test_nav2_safety_contract.py

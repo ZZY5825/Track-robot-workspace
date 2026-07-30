@@ -18,6 +18,7 @@
 #include "sensor_msgs/msg/point_field.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_srvs/srv/trigger.hpp"
+#include "track_robot_safety/rotation_collision.hpp"
 #include "track_robot_interfaces/msg/avoidance_state.hpp"
 #include "track_robot_interfaces/msg/safety_state.hpp"
 #include "visualization_msgs/msg/marker.hpp"
@@ -99,8 +100,13 @@ public:
     max_linear_x_ = declare_parameter<double>("max_linear_x", 0.15);
     max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
     braking_deceleration_ = declare_parameter<double>("braking_deceleration", 0.25);
+    angular_braking_deceleration_ = declare_parameter<double>(
+      "angular_braking_deceleration", 0.80);
     response_latency_sec_ = declare_parameter<double>("response_latency_sec", 0.25);
     fixed_stop_margin_ = declare_parameter<double>("fixed_stop_margin", 0.45);
+    fixed_rotation_margin_ = declare_parameter<double>("fixed_rotation_margin", 0.05);
+    bounded_rotation_collision_enabled_ = declare_parameter<bool>(
+      "bounded_rotation_collision_enabled", false);
     slowdown_path_distance_ = declare_parameter<double>("slowdown_path_distance", 1.0);
     trajectory_step_sec_ = declare_parameter<double>("trajectory_step_sec", 0.05);
     max_lookahead_distance_ = declare_parameter<double>("max_lookahead_distance", 1.5);
@@ -393,6 +399,20 @@ private:
     }
 
     if (std::abs(linear) < 0.02 && std::abs(angular) >= 1e-4) {
+      if (bounded_rotation_collision_enabled_) {
+        const double sample_angle = std::max(
+          std::abs(angular) * std::max(trajectory_step_sec_, 0.02), 0.005);
+        const auto rotation = track_robot_safety::evaluateRotationCollision(
+          obstacle_points_, angular, half_length, half_width,
+          angular_braking_deceleration_, response_latency_sec_,
+          fixed_rotation_margin_, sample_angle);
+        if (rotation.collision) {
+          result.collision_predicted = true;
+          result.collision_path_distance = 0.0;
+          result.time_to_collision = rotation.time_to_collision;
+        }
+        return result;
+      }
       const double swept_radius = std::hypot(half_length, half_width);
       for (const auto & point : obstacle_points_) {
         if (std::hypot(static_cast<double>(point.x), static_cast<double>(point.y)) <=
@@ -805,8 +825,11 @@ private:
   double max_linear_x_{0.15};
   double max_angular_z_{0.35};
   double braking_deceleration_{0.25};
+  double angular_braking_deceleration_{0.80};
   double response_latency_sec_{0.25};
   double fixed_stop_margin_{0.45};
+  double fixed_rotation_margin_{0.05};
+  bool bounded_rotation_collision_enabled_{false};
   double slowdown_path_distance_{1.0};
   double trajectory_step_sec_{0.05};
   double max_lookahead_distance_{1.5};

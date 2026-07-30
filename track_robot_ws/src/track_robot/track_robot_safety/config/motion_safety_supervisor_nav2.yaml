@@ -28,8 +28,11 @@ motion_safety_supervisor_node:
     max_linear_x: 0.10
     max_angular_z: 0.25
     braking_deceleration: 0.25
+    angular_braking_deceleration: 0.80
     response_latency_sec: 0.25
     fixed_stop_margin: 0.45
+    fixed_rotation_margin: 0.05
+    bounded_rotation_collision_enabled: true
     slowdown_path_distance: 1.0
     trajectory_step_sec: 0.05
     max_lookahead_distance: 1.5
