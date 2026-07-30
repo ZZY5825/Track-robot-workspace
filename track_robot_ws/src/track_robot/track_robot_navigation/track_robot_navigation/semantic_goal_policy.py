@@ -32,6 +32,7 @@ class SemanticGoalSnapshot:
     references_match: bool
     safety_armed: bool
     safety_permits_motion: bool
+    safety_temporarily_blocked: bool
 
     @property
     def key(self):
@@ -149,6 +150,8 @@ class SemanticGoalPolicy:
                     'semantic_execution_disabled', key)
             if not value.safety_armed:
                 return self._reject_or_cancel('safety_not_armed', key)
+            if value.safety_temporarily_blocked:
+                return self._hold('safety_obstacle_blocked', key)
             if not value.safety_permits_motion:
                 return self._reject_or_cancel(
                     'safety_motion_not_permitted', key)

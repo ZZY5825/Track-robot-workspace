@@ -17,7 +17,8 @@ def snapshot(
         position_valid=True,
         references_match=True,
         safety_armed=True,
-        safety_permits_motion=True):
+        safety_permits_motion=True,
+        safety_temporarily_blocked=False):
     return SemanticGoalSnapshot(
         memory_epoch_id=key[0],
         global_object_id=key[1],
@@ -36,6 +37,7 @@ def snapshot(
         references_match=references_match,
         safety_armed=safety_armed,
         safety_permits_motion=safety_permits_motion,
+        safety_temporarily_blocked=safety_temporarily_blocked,
     )
 
 
@@ -152,6 +154,45 @@ def test_odometry_or_safety_loss_cancels_active_goal():
     assert policy.evaluate(snapshot()).action is GoalAction.NAVIGATE
     assert policy.evaluate(
         snapshot(safety_permits_motion=False)).action is GoalAction.CANCEL
+
+
+def test_transient_obstacle_holds_goal_and_clear_state_resumes_it():
+    policy = SemanticGoalPolicy(
+        runtime_mode='SEMANTIC_ACTIVE',
+        semantic_execution_enabled=True,
+        confirmation_snapshots=1,
+    )
+    assert policy.evaluate(snapshot()).action is GoalAction.NAVIGATE
+
+    blocked = policy.evaluate(snapshot(
+        sequence=2,
+        safety_permits_motion=False,
+        safety_temporarily_blocked=True,
+    ))
+    assert blocked.action is GoalAction.HOLD
+    assert blocked.reason == 'safety_obstacle_blocked'
+
+    clear_again = policy.evaluate(snapshot(sequence=3))
+    assert clear_again.action is GoalAction.HOLD
+    assert clear_again.reason == 'goal_already_dispatched'
+
+
+def test_disarm_still_cancels_during_transient_obstacle_block():
+    policy = SemanticGoalPolicy(
+        runtime_mode='SEMANTIC_ACTIVE',
+        semantic_execution_enabled=True,
+        confirmation_snapshots=1,
+    )
+    assert policy.evaluate(snapshot()).action is GoalAction.NAVIGATE
+
+    decision = policy.evaluate(snapshot(
+        sequence=2,
+        safety_armed=False,
+        safety_permits_motion=False,
+        safety_temporarily_blocked=True,
+    ))
+    assert decision.action is GoalAction.CANCEL
+    assert decision.reason == 'safety_not_armed'
 
 
 def test_failed_action_dispatch_can_be_retried_without_new_target():

@@ -32,6 +32,7 @@ def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
     assert controller['rotate_to_heading_angular_vel'] == 0.40
     assert controller['max_linear_decel'] == 0.25
     assert controller['max_angular_accel'] == 0.50
+    assert controller_params['progress_checker']['movement_time_allowance'] == 30.0
 
 
 def test_costmaps_are_short_range_rolling_odom_maps():

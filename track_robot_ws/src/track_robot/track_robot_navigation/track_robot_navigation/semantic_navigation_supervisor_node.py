@@ -253,6 +253,10 @@ class SemanticNavigationSupervisorNode(Node):
                     SafetyState.STATE_CLEAR,
                     SafetyState.STATE_SLOWDOWN,
                     SafetyState.STATE_AVOIDING)),
+            safety_temporarily_blocked=bool(
+                self._safety
+                and self._safety.armed
+                and self._safety.state == SafetyState.STATE_BLOCKED),
         )
 
     def _supervise(self):
