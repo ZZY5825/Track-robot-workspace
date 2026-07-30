@@ -43,6 +43,7 @@ def generate_launch_description():
             'clip_checkpoint': LaunchConfiguration('clip_checkpoint'),
             'dino_repo_path': LaunchConfiguration('dino_repo_path'),
             'dino_checkpoint': LaunchConfiguration('dino_checkpoint'),
+            'dino_enabled': LaunchConfiguration('dino_enabled'),
         },
     )
     platform = _include(
@@ -81,6 +82,12 @@ def generate_launch_description():
         ],
         condition=IfCondition(LaunchConfiguration('start_rviz')),
     )
+    overlay = Node(
+        package='track_robot_semantic_search',
+        executable='semantic_search_live_overlay',
+        name='semantic_search_live_overlay',
+        output='screen',
+    )
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -98,6 +105,7 @@ def generate_launch_description():
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
         DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
+        DeclareLaunchArgument('dino_enabled', default_value='false'),
         DeclareLaunchArgument(
             'lidar_config_path',
             default_value=PathJoinSubstitution([
@@ -136,8 +144,9 @@ def generate_launch_description():
             default_value=(
                 '/home/track-robot/track_robot_ws/'
                 'models/dinov3_vits16plus_pretrain_lvd1689m.pth')),
-        phase4a,
         platform,
+        phase4a,
         navigation,
+        overlay,
         rviz,
     ])

@@ -9,6 +9,10 @@ semantic_navigation_supervisor:
     safety_state_topic: /safety/state
     shadow_path_topic: /semantic_navigation/shadow_path
     diagnostics_topic: /semantic_navigation/diagnostics
+    authorize_service: /semantic_navigation/authorize_approach
+    cancel_disarm_service: /semantic_navigation/cancel_and_disarm
+    safety_arm_service: /safety/arm
+    safety_disarm_service: /safety/disarm
     navigation_frame: odom
     planner_id: GridBased
     confirmation_snapshots: 2

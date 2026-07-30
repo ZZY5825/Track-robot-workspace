@@ -96,6 +96,8 @@ public:
     planner_state_timeout_sec_ = declare_parameter<double>("planner_state_timeout_sec", 0.25);
     require_odom_ = declare_parameter<bool>("require_odom", false);
     odom_timeout_sec_ = declare_parameter<double>("odom_timeout_sec", 0.25);
+    allow_arm_without_command_ = declare_parameter<bool>(
+      "allow_arm_without_command", false);
 
     max_linear_x_ = declare_parameter<double>("max_linear_x", 0.15);
     max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
@@ -580,11 +582,16 @@ private:
       response->message = "Cannot arm: RC sticks are active";
       return;
     }
-    if (ageSeconds(last_command_time_, have_command_) > command_timeout_sec_ ||
-      ageSeconds(last_cloud_time_, have_cloud_) > cloud_timeout_sec_)
+    if (!allow_arm_without_command_ &&
+      ageSeconds(last_command_time_, have_command_) > command_timeout_sec_)
     {
       response->success = false;
-      response->message = "Cannot arm: planned command or obstacle cloud is stale";
+      response->message = "Cannot arm: planned command is stale";
+      return;
+    }
+    if (ageSeconds(last_cloud_time_, have_cloud_) > cloud_timeout_sec_) {
+      response->success = false;
+      response->message = "Cannot arm: obstacle cloud is stale";
       return;
     }
     if (require_bunker_status_ &&
@@ -822,6 +829,7 @@ private:
   double planner_state_timeout_sec_{0.25};
   bool require_odom_{false};
   double odom_timeout_sec_{0.25};
+  bool allow_arm_without_command_{false};
   double max_linear_x_{0.15};
   double max_angular_z_{0.35};
   double braking_deceleration_{0.25};

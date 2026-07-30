@@ -44,6 +44,16 @@ def _runtime_nodes(context):
         },
         convert_types=True,
     )
+    semantic_params = RewrittenYaml(
+        source_file=LaunchConfiguration('semantic_supervisor_config'),
+        root_key='',
+        param_rewrites={
+            'runtime_mode': mode.value,
+            'semantic_execution_enabled':
+                'true' if semantic_enabled else 'false',
+        },
+        convert_types=True,
+    )
     actions = []
     lifecycle_nodes = []
 
@@ -86,7 +96,10 @@ def _runtime_nodes(context):
             executable='bt_navigator',
             name='bt_navigator',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {
+                'default_bt_xml_filename':
+                    LaunchConfiguration('default_bt_xml_filename'),
+            }],
             remappings=TF_REMAPPINGS,
         ))
         lifecycle_nodes.append('bt_navigator')
@@ -129,13 +142,7 @@ def _runtime_nodes(context):
             executable='semantic_navigation_supervisor',
             name='semantic_navigation_supervisor',
             output='screen',
-            parameters=[
-                {
-                    'runtime_mode': mode.value,
-                    'semantic_execution_enabled': semantic_enabled,
-                },
-                LaunchConfiguration('semantic_supervisor_config'),
-            ],
+            parameters=[semantic_params],
         ))
 
     actions.append(Node(

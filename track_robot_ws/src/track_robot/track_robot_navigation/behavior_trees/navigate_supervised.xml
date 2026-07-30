@@ -1,40 +1,16 @@
 <!--
-  Short-range supervised navigation. It replans at 1 Hz and permits only
-  non-displacing recoveries: clear costmaps and wait. Spin and BackUp are
-  intentionally absent from the initial Phase 4B behavior tree.
+  Short-range supervised navigation using the minimal Foxy-compatible
+  replanning pipeline. Automatic recovery, Spin, and BackUp are intentionally
+  absent: a failed plan or controller aborts and leaves the safety chain
+  disarmed until the operator explicitly retries.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <RecoveryNode number_of_retries="2" name="NavigateSupervised">
-      <PipelineSequence name="NavigateWithReplanning">
-        <RateController hz="1.0">
-          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
-            <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
-            <ClearEntireCostmap
-              name="ClearGlobalCostmapContext"
-              service_name="global_costmap/clear_entirely_global_costmap"/>
-          </RecoveryNode>
-        </RateController>
-        <RecoveryNode number_of_retries="1" name="FollowPath">
-          <FollowPath path="{path}" controller_id="FollowPath"/>
-          <ClearEntireCostmap
-            name="ClearLocalCostmapContext"
-            service_name="local_costmap/clear_entirely_local_costmap"/>
-        </RecoveryNode>
-      </PipelineSequence>
-      <ReactiveFallback name="RecoveryFallback">
-        <GoalUpdated/>
-        <SequenceStar name="NonDisplacingRecovery">
-          <ClearEntireCostmap
-            name="ClearLocalCostmap"
-            service_name="local_costmap/clear_entirely_local_costmap"/>
-          <ClearEntireCostmap
-            name="ClearGlobalCostmap"
-            service_name="global_costmap/clear_entirely_global_costmap"/>
-          <Wait wait_duration="2"/>
-        </SequenceStar>
-      </ReactiveFallback>
-    </RecoveryNode>
+    <PipelineSequence name="NavigateWithReplanning">
+      <RateController hz="1.0">
+        <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+      </RateController>
+      <FollowPath path="{path}" controller_id="FollowPath"/>
+    </PipelineSequence>
   </BehaviorTree>
 </root>
-

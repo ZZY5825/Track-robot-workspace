@@ -57,6 +57,7 @@ set(msg_files
 )
 
 set(srv_files
+  "srv/AuthorizeSemanticApproach.srv"
   "srv/GetSemanticObject.srv"
   "srv/QuerySemanticObjects.srv"
   "srv/MarkSemanticObjectInspected.srv"

@@ -28,11 +28,20 @@ def test_phase4b_composes_phase4a_nav2_platform_and_rviz():
     assert 'semantic_search_phase4a.launch.py' in source
     assert 'semantic_search_platform.launch.py' in source
     assert 'phase4b_navigation.launch.py' in source
+    assert "executable='semantic_search_live_overlay'" in source
     assert 'semantic_search_phase4b.rviz' in source
     assert "'runtime_mode': LaunchConfiguration('runtime_mode')" in source
     assert "'enable_semantic_execution':" in source
     assert "LaunchConfiguration('enable_semantic_execution')" in source
     assert ast.parse(source)
+
+
+def test_phase4b_preserves_tested_dino_default_and_starts_platform_first():
+    source = _source(LAUNCH)
+
+    assert "'dino_enabled': LaunchConfiguration('dino_enabled')" in source
+    assert "'dino_enabled', default_value='false'" in source
+    assert 'platform,\n        phase4a,' in source
 
 
 def test_phase4b_rviz_exposes_semantic_and_nav2_evidence():

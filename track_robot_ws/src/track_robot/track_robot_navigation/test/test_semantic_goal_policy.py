@@ -16,6 +16,7 @@ def snapshot(
         lifecycle_confirmed=True,
         position_valid=True,
         references_match=True,
+        operator_authorized=True,
         safety_armed=True,
         safety_permits_motion=True,
         safety_temporarily_blocked=False):
@@ -35,6 +36,7 @@ def snapshot(
         lifecycle_confirmed=lifecycle_confirmed,
         position_valid=position_valid,
         references_match=references_match,
+        operator_authorized=operator_authorized,
         safety_armed=safety_armed,
         safety_permits_motion=safety_permits_motion,
         safety_temporarily_blocked=safety_temporarily_blocked,
@@ -94,6 +96,35 @@ def test_active_requires_feature_gate_and_clear_armed_safety_state():
     assert blocked.evaluate(
         snapshot(safety_permits_motion=False)).action is GoalAction.HOLD
     assert enabled.evaluate(snapshot()).action is GoalAction.NAVIGATE
+
+
+def test_active_requires_exact_operator_authorization_before_safety_arm():
+    policy = SemanticGoalPolicy(
+        runtime_mode='SEMANTIC_ACTIVE',
+        semantic_execution_enabled=True,
+        confirmation_snapshots=1,
+    )
+
+    decision = policy.evaluate(snapshot(
+        operator_authorized=False,
+        safety_armed=False,
+    ))
+
+    assert decision.action is GoalAction.HOLD
+    assert decision.reason == 'operator_authorization_required'
+
+
+def test_authorization_preflight_is_read_only_and_rejects_stale_input():
+    policy = SemanticGoalPolicy(
+        runtime_mode='SEMANTIC_ACTIVE',
+        semantic_execution_enabled=True,
+        confirmation_snapshots=1,
+    )
+
+    assert policy.authorization_failure(snapshot()) is None
+    assert policy.authorization_failure(
+        snapshot(target_age=1.1)) == 'target_stale'
+    assert policy.evaluate(snapshot()).action is GoalAction.NAVIGATE
 
 
 def test_stale_or_mismatched_inputs_fail_closed():

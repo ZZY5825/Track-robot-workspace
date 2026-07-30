@@ -24,6 +24,7 @@ motion_safety_supervisor_node:
     require_can_control_mode: true
     require_planner_state: false
     require_odom: true
+    allow_arm_without_command: true
 
     max_linear_x: 0.15
     max_angular_z: 0.50

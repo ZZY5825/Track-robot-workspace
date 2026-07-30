@@ -11,6 +11,7 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(track_robot_interfaces REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Core Widgets)
@@ -41,6 +42,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rviz_common
   std_msgs
+  std_srvs
   track_robot_interfaces
 )
 target_link_libraries(${PROJECT_NAME}
@@ -91,6 +93,7 @@ ament_export_dependencies(
   rclcpp
   rviz_common
   std_msgs
+  std_srvs
   track_robot_interfaces
 )
 

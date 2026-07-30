@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ElementTree
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_plugin_exports_the_passive_semantic_search_panel():
+def test_plugin_exports_the_semantic_search_panel():
     root = ElementTree.parse(
         str(PACKAGE_ROOT / 'plugin_description.xml')).getroot()
     exported = root.find('class')
@@ -18,7 +18,7 @@ def test_plugin_exports_the_passive_semantic_search_panel():
     assert exported.attrib['base_class_type'] == 'rviz_common::Panel'
 
 
-def test_panel_uses_only_approved_passive_topics_and_no_motion_api():
+def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_search_panel.cpp'
     ).read_text(encoding='utf-8')
@@ -29,10 +29,17 @@ def test_panel_uses_only_approved_passive_topics_and_no_motion_api():
             '/semantic_search/regions',
             '/semantic_memory/active_objects',
             '/semantic_memory/best_candidate',
-            '/semantic_memory/diagnostic_ranking'):
+            '/semantic_memory/diagnostic_ranking',
+            '/semantic_search/phase4a/selected_target',
+            '/semantic_navigation/authorize_approach',
+            '/semantic_navigation/cancel_and_disarm'):
         assert topic in source
 
-    assert 'UNCALIBRATED - NOT A CONFIRMED TARGET' in source
+    assert 'SUPERVISED SEMANTIC APPROACH' in source
+    assert 'Start Approach' in source
+    assert 'Cancel & Disarm' in source
+    assert 'authorization candidate is not correlated' in source
+    assert 'AuthorizeSemanticApproach' in source
     assert 'Diagnostic ranking' in source
     assert 'support=' in source
     assert 'query=' in source
@@ -43,7 +50,6 @@ def test_panel_uses_only_approved_passive_topics_and_no_motion_api():
             'SearchMotionIntent',
             'geometry_msgs',
             'rclcpp_action',
-            'reset',
             'inspection'):
         assert forbidden not in source
 

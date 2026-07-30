@@ -17,6 +17,7 @@
   <depend>rclcpp</depend>
   <depend>rviz_common</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>track_robot_interfaces</depend>
 
   <exec_depend>libqt5-core</exec_depend>

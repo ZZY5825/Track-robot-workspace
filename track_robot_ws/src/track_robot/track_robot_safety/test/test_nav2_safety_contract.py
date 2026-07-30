@@ -31,6 +31,7 @@ def test_phase4b_config_routes_nav2_through_supervisor():
     assert params['odom_topic'] == '/odom'
     assert params['require_odom'] is True
     assert params['require_planner_state'] is False
+    assert params['allow_arm_without_command'] is True
     assert params['max_linear_x'] == 0.15
     assert params['max_angular_z'] == 0.50
     assert params['safety_inflation'] == 0.13
@@ -66,3 +67,14 @@ def test_existing_supervisor_defaults_remain_unchanged():
     assert params['safe_cmd_topic'] == '/follow/cmd_vel_safe'
     assert params['require_planner_state'] is True
     assert 'require_odom' not in params
+    assert 'allow_arm_without_command' not in params
+
+
+def test_nav2_arm_bootstrap_keeps_runtime_command_freshness_gate():
+    source = (
+        PACKAGE_ROOT / 'src' / 'motion_safety_supervisor_node.cpp'
+    ).read_text()
+
+    assert '"allow_arm_without_command"' in source
+    assert '!allow_arm_without_command_' in source
+    assert 'decision.reason = "planned_command_stale"' in source

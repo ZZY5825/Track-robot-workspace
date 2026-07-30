@@ -30,6 +30,7 @@ class SemanticGoalSnapshot:
     lifecycle_confirmed: bool
     position_valid: bool
     references_match: bool
+    operator_authorized: bool
     safety_armed: bool
     safety_permits_motion: bool
     safety_temporarily_blocked: bool
@@ -116,6 +117,11 @@ class SemanticGoalPolicy:
             return 'odometry_stale'
         return None
 
+    def authorization_failure(self, value):
+        """Validate correlated non-motion inputs without mutating policy."""
+
+        return self._input_failure(value)
+
     def _reject_or_cancel(self, reason, key):
         if self._dispatched:
             self._dispatched = False
@@ -148,6 +154,9 @@ class SemanticGoalPolicy:
             if not self._execution_enabled:
                 return self._reject_or_cancel(
                     'semantic_execution_disabled', key)
+            if not value.operator_authorized:
+                return self._reject_or_cancel(
+                    'operator_authorization_required', key)
             if not value.safety_armed:
                 return self._reject_or_cancel('safety_not_armed', key)
             if value.safety_temporarily_blocked:

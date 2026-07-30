@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from rclpy.serialization import deserialize_message, serialize_message
 
 from track_robot_interfaces.action import SearchForObject
@@ -61,3 +63,23 @@ def test_identifier_and_provenance_constants_are_distinct():
     assert TrackedSemanticObject.MEMORY_WORLD == 2
     assert SearchMotionIntent.INTENT_ROTATE_VERIFY == 1
     assert SearchMotionIntent.INTENT_STOP == 2
+
+
+def test_semantic_approach_authorization_carries_the_exact_target_reference():
+    package_root = Path(__file__).resolve().parents[1]
+    service = (
+        package_root / 'srv' / 'AuthorizeSemanticApproach.srv'
+    ).read_text()
+    cmake = (package_root / 'CMakeLists.txt').read_text()
+
+    for field in (
+            'uint64 memory_epoch_id',
+            'uint64 global_object_id',
+            'uint64 localization_epoch_id',
+            'uint64 query_id',
+            'uint64 query_version',
+            'uint64 snapshot_sequence'):
+        assert field in service
+    assert 'bool accepted' in service
+    assert 'string<=256 reason' in service
+    assert '"srv/AuthorizeSemanticApproach.srv"' in cmake

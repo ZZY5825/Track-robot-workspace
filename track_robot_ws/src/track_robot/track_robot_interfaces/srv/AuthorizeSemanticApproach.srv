@@ -1,0 +1,9 @@
+uint64 memory_epoch_id
+uint64 global_object_id
+uint64 localization_epoch_id
+uint64 query_id
+uint64 query_version
+uint64 snapshot_sequence
+---
+bool accepted
+string<=256 reason
