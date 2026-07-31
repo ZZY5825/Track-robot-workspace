@@ -46,6 +46,11 @@ if(BUILD_TESTING)
     test/test_semantic_goal_policy.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_semantic_authorization
+    test/test_semantic_authorization.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()

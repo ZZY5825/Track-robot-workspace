@@ -58,7 +58,8 @@ class SemanticGoalPolicy:
             maximum_target_age_sec=1.0,
             maximum_goal_age_sec=0.5,
             maximum_diagnostics_age_sec=0.5,
-            maximum_odom_age_sec=0.25):
+            maximum_odom_age_sec=0.25,
+            static_target_mode=False):
         self._mode = RuntimeMode.parse(runtime_mode)
         if self._mode not in (
                 RuntimeMode.SEMANTIC_SHADOW,
@@ -67,7 +68,19 @@ class SemanticGoalPolicy:
                 'semantic goal policy requires a semantic runtime mode')
         self._execution_enabled = bool(semantic_execution_enabled)
         self._confirmation_snapshots = max(1, int(confirmation_snapshots))
+        self._static_target_mode = bool(static_target_mode)
         self._maximum_target_age_sec = float(maximum_target_age_sec)
+        maximum_target_budget = 4.0 if self._static_target_mode else 1.0
+        if (
+                self._maximum_target_age_sec <= 0.0
+                or self._maximum_target_age_sec > maximum_target_budget):
+            if self._static_target_mode:
+                raise ValueError(
+                    'maximum_target_age_sec must be in (0, 4.0] for '
+                    'static_target_mode')
+            raise ValueError(
+                'maximum_target_age_sec above 1.0 requires '
+                'static_target_mode')
         self._maximum_goal_age_sec = float(maximum_goal_age_sec)
         self._maximum_diagnostics_age_sec = float(
             maximum_diagnostics_age_sec)

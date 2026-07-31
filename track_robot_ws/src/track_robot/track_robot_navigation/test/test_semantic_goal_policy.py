@@ -1,3 +1,5 @@
+import pytest
+
 from track_robot_navigation.semantic_goal_policy import (
     GoalAction,
     SemanticGoalPolicy,
@@ -125,6 +127,35 @@ def test_authorization_preflight_is_read_only_and_rejects_stale_input():
     assert policy.authorization_failure(
         snapshot(target_age=1.1)) == 'target_stale'
     assert policy.evaluate(snapshot()).action is GoalAction.NAVIGATE
+
+
+def test_static_target_mode_has_a_bounded_four_second_age_budget():
+    with pytest.raises(ValueError, match='static_target_mode'):
+        SemanticGoalPolicy(
+            runtime_mode='SEMANTIC_ACTIVE',
+            semantic_execution_enabled=True,
+            maximum_target_age_sec=4.0,
+        )
+
+    policy = SemanticGoalPolicy(
+        runtime_mode='SEMANTIC_ACTIVE',
+        semantic_execution_enabled=True,
+        confirmation_snapshots=1,
+        maximum_target_age_sec=4.0,
+        static_target_mode=True,
+    )
+
+    assert policy.authorization_failure(snapshot(target_age=3.9)) is None
+    assert policy.authorization_failure(
+        snapshot(target_age=4.1)) == 'target_stale'
+
+    with pytest.raises(ValueError, match='maximum_target_age_sec'):
+        SemanticGoalPolicy(
+            runtime_mode='SEMANTIC_ACTIVE',
+            semantic_execution_enabled=True,
+            maximum_target_age_sec=4.1,
+            static_target_mode=True,
+        )
 
 
 def test_stale_or_mismatched_inputs_fail_closed():

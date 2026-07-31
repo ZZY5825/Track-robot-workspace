@@ -55,14 +55,20 @@ semantic_memory:
     # task_relevance, never raw YOLO confidence. Production defaults remain
     # fail-closed in semantic_memory.yaml.
     best_candidate_threshold_calibrated: true
-    best_candidate_minimum_relevance: 0.30
+    best_candidate_minimum_relevance: 0.26
     publish_best_candidate: true
     publish_diagnostic_ranking: true
     task_grounding_weight: 0.70
     task_stability_weight: 0.10
     task_support_weight: 0.10
     task_semantic_weight: 0.10
-    task_grounding_maximum_age_sec: 1.0
+    # Explicit static-target Phase 4B profile. Measured Orin inference gaps
+    # reached 3.51 s, so all downstream evidence budgets use a bounded 4 s.
+    static_target_profile: true
+    task_grounding_maximum_age_sec: 4.0
+    static_stale_after_sec: 4.0
+    static_lost_after_sec: 6.0
+    static_archive_after_sec: 15.0
     max_objects: 256
     max_history: 16
 

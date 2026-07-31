@@ -88,7 +88,7 @@ def test_operator_authorization_is_reference_bound_and_uses_safety_services():
 
     assert 'AuthorizeSemanticApproach' in source
     assert '_target_reference' in source
-    assert 'requested_reference != current_reference' in source
+    assert '_authorization_reference_is_current(' in source
     assert 'operator_authorized=(' in source
     assert "Trigger, safety_arm_service" in source
     assert "Trigger, safety_disarm_service" in source

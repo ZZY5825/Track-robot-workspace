@@ -130,7 +130,7 @@ def test_selector_holds_same_target_during_small_relevance_dip():
     selector = FixedBaseTargetSelector(SelectorConfig(
         minimum_relevance=0.42,
         confirmation_snapshots=1))
-    ready = selector.update(snapshot((
+    selector.update(snapshot((
         candidate(relevance=0.43),)))
 
     held = selector.update(snapshot((
@@ -139,7 +139,53 @@ def test_selector_holds_same_target_during_small_relevance_dip():
 
     assert held.status == 'READY'
     assert held.reason == 'holding_last_target'
-    assert held.target == ready.target
+    assert held.target == candidate(relevance=0.41)
+
+
+def test_selector_keeps_confirmed_target_when_competitor_temporarily_ranks_first():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        minimum_relevance=0.50,
+        retained_minimum_relevance=0.40,
+        confirmation_snapshots=1))
+    selector.update(snapshot((candidate(relevance=0.70),)))
+
+    refreshed = candidate(
+        x=1.55,
+        relevance=0.60,
+        last_seen_ns=NOW_NS + 150_000_000,
+    )
+    competitor = candidate(
+        global_object_id=43,
+        x=3.0,
+        relevance=0.82,
+        last_seen_ns=NOW_NS + 150_000_000,
+    )
+    held = selector.update(snapshot(
+        (competitor, refreshed),
+        now_ns=NOW_NS + 200_000_000))
+
+    assert held.status == 'READY'
+    assert held.reason == 'holding_confirmed_target'
+    assert held.target == refreshed
+
+
+def test_selector_refreshes_retained_target_instead_of_republishing_old_snapshot():
+    selector = FixedBaseTargetSelector(SelectorConfig(
+        minimum_relevance=0.50,
+        retained_minimum_relevance=0.40,
+        confirmation_snapshots=1))
+    selector.update(snapshot((candidate(relevance=0.70),)))
+    refreshed = candidate(
+        x=1.50,
+        relevance=0.45,
+        last_seen_ns=NOW_NS + 150_000_000,
+    )
+
+    held = selector.update(snapshot(
+        (refreshed,), now_ns=NOW_NS + 200_000_000))
+
+    assert held.status == 'READY'
+    assert held.target == refreshed
 
 
 def test_selector_rejects_relevance_below_retention_floor():
@@ -215,12 +261,15 @@ def test_selector_rejects_unstable_position_spread():
     assert result.target is None
 
 
-def test_selector_clears_confirmation_after_no_target():
+def test_selector_preserves_confirmed_identity_across_one_empty_snapshot():
     selector = FixedBaseTargetSelector(SelectorConfig())
     selector.update(snapshot((candidate(),)))
     selector.update(snapshot((candidate(),)))
+    selector.update(snapshot((candidate(),)))
     assert selector.update(snapshot()).reason == 'no_target'
-    assert selector.update(snapshot((candidate(),))).reason == 'confirming_target'
+    reacquired = selector.update(snapshot((candidate(),)))
+    assert reacquired.status == 'READY'
+    assert reacquired.reason == 'holding_last_target'
 
 
 def test_selector_rejects_invalid_config():

@@ -31,14 +31,14 @@ phase4a_target_selector:
     selected_target_topic: /semantic_search/phase4a/selected_target
     spatial_objects_topic: /semantic_search/phase4a/spatial_objects
     diagnostics_topic: /semantic_search/phase4a/selector_diagnostics
-    minimum_relevance: 0.30
-    retained_minimum_relevance: 0.27
+    minimum_relevance: 0.26
+    retained_minimum_relevance: 0.24
     minimum_margin: 0.08
     maximum_uncertainty: 0.50
     confirmation_snapshots: 3
     position_window: 5
     maximum_xy_spread_m: 0.35
-    maximum_age_sec: 1.0
+    maximum_age_sec: 4.0
     maximum_depth_age_sec: 0.5
     minimum_depth_samples: 20
     minimum_depth_m: 0.3
@@ -60,13 +60,13 @@ phase4_approach_planner:
     planning_rate: 5.0
     standoff_distance: 0.8
     candidate_count: 16
-    # New targets require 0.30 in the selector. The planner accepts the
-    # selector's 0.27 retained-target hysteresis so an already confirmed target
+    # New targets require 0.26 in the selector. The planner accepts the
+    # selector's 0.24 retained-target hysteresis so an already confirmed target
     # does not make the path flicker at the boundary.
-    minimum_target_relevance: 0.27
+    minimum_target_relevance: 0.24
     minimum_target_margin: 0.08
     maximum_target_uncertainty: 0.50
-    maximum_target_age_sec: 1.0
+    maximum_target_age_sec: 4.0
     maximum_map_age_sec: 0.5
     maximum_search_expansions: 30000
     occupied_threshold: 50

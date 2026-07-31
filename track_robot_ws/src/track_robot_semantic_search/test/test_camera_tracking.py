@@ -19,11 +19,13 @@ def _config():
     )
 
 
-def _input(x1, y1, x2, y2, score=0.8, descriptor=None):
+def _input(
+        x1, y1, x2, y2, score=0.8, descriptor=None,
+        label='blue bottle'):
     return DetectionInput(
         detection=GroundedDetection(
             float(x1), float(y1), float(x2), float(y2),
-            float(score), 'blue bottle'),
+            float(score), label),
         descriptor=descriptor,
     )
 
@@ -151,3 +153,30 @@ def test_candidate_ids_are_positive_and_monotonic_per_epoch():
 
     assert first.candidates[0].candidate_id == 1
     assert second.candidates[0].candidate_id == 2
+
+
+def test_constant_velocity_prediction_preserves_track_during_camera_motion():
+    manager = CameraTrackManager(_config())
+    first = manager.update(
+        1_000_000_000, (10, 1), (_input(0, 0, 20, 20),))
+    second = manager.update(
+        2_000_000_000, (10, 1), (_input(10, 0, 30, 20),))
+    third = manager.update(
+        3_000_000_000, (10, 1), (_input(30, 0, 50, 20),))
+
+    assert second.candidates[0].camera_track_id == (
+        first.candidates[0].camera_track_id)
+    assert third.candidates[0].camera_track_id == (
+        first.candidates[0].camera_track_id)
+
+
+def test_camera_track_never_crosses_detector_labels():
+    manager = CameraTrackManager(_config())
+    first = manager.update(
+        1_000, (10, 1), (_input(0, 0, 20, 20),))
+    second = manager.update(
+        2_000, (10, 1), (
+            _input(0, 0, 20, 20, label='green bag'),))
+
+    assert second.candidates[0].camera_track_id != (
+        first.candidates[0].camera_track_id)

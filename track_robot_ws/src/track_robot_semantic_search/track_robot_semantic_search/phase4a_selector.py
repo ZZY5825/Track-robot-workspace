@@ -108,46 +108,69 @@ class FixedBaseTargetSelector:
         self._positions.clear()
         self._last_ready_target = None
 
-    def _fail(self, reason: str) -> SelectionResult:
-        self._clear()
+    def _fail(
+            self, reason: str,
+            preserve_confirmed_target: bool = False) -> SelectionResult:
+        if not preserve_confirmed_target or self._last_ready_target is None:
+            self._clear()
         return SelectionResult(status='NOT_READY', reason=reason)
 
     def _hold_last_target(
-            self, snapshot, top, ordered, minimum_relevance=None):
+            self, snapshot, ordered, minimum_relevance=None):
         target = self._last_ready_target
         relevance_floor = (
             self._config.retained_minimum_relevance
             if minimum_relevance is None else float(minimum_relevance))
+        current = next(
+            (candidate for candidate in ordered
+             if target is not None and candidate.key == target.key),
+            None,
+        )
         if (
                 target is None
-                or top.key != target.key
-                or top.localization_epoch_id != target.localization_epoch_id
+                or current is None
+                or current.localization_epoch_id != target.localization_epoch_id
                 or target.query_id != snapshot.query_id
-                or target.query_version != snapshot.query_version):
+                or target.query_version != snapshot.query_version
+                or current.query_id != snapshot.query_id
+                or current.query_version != snapshot.query_version):
             return None
-        age_ns = snapshot.now_ns - target.last_seen_ns
+        age_ns = snapshot.now_ns - current.last_seen_ns
         if age_ns < 0 or age_ns > self._config.maximum_age_ns:
             return None
         if (
-                not math.isfinite(top.relevance)
-                or top.relevance < relevance_floor
-                or not math.isfinite(top.uncertainty)
-                or top.uncertainty > self._config.maximum_uncertainty):
+                current.lifecycle != 'confirmed'
+                or not math.isfinite(current.relevance)
+                or current.relevance < relevance_floor
+                or not math.isfinite(current.uncertainty)
+                or current.uncertainty > self._config.maximum_uncertainty):
             return None
-        if len(ordered) > 1 and (
-                top.relevance - ordered[1].relevance
-                < self._config.minimum_margin):
-            return None
+        refreshed = current
+        if (
+                current.support not in ('camera_lidar', 'camera_depth')
+                or not current.position_valid
+                or current.position_frame_id != self._config.frame_id
+                or not all(math.isfinite(value) for value in (
+                    current.x, current.y, current.z))):
+            refreshed = target
+            age_ns = snapshot.now_ns - target.last_seen_ns
+            if age_ns < 0 or age_ns > self._config.maximum_age_ns:
+                return None
+        self._last_ready_target = refreshed
         return SelectionResult(
             status='READY',
-            reason='holding_last_target',
-            target=target,
+            reason=(
+                'holding_last_target'
+                if current.key == ordered[0].key
+                else 'holding_confirmed_target'),
+            target=refreshed,
             confirmation_count=self._confirmation_count,
         )
 
     def update(self, snapshot: SelectionSnapshot) -> SelectionResult:
         if not snapshot.candidates:
-            return self._fail('no_target')
+            return self._fail(
+                'no_target', preserve_confirmed_target=True)
         ordered = sorted(
             snapshot.candidates,
             key=lambda item: (
@@ -158,17 +181,24 @@ class FixedBaseTargetSelector:
         )
         top = ordered[0]
         if (
+                self._last_ready_target is not None
+                and (
+                    self._last_ready_target.query_id != snapshot.query_id
+                    or self._last_ready_target.query_version !=
+                    snapshot.query_version)):
+            self._clear()
+        if (
                 snapshot.query_id <= 0
                 or snapshot.query_version <= 0
                 or top.query_id != snapshot.query_id
                 or top.query_version != snapshot.query_version):
             return self._fail('query_mismatch')
+        held = self._hold_last_target(snapshot, ordered)
+        if held is not None:
+            return held
         if top.lifecycle != 'confirmed':
             return self._fail('target_not_confirmed')
         if top.support not in ('camera_lidar', 'camera_depth'):
-            held = self._hold_last_target(snapshot, top, ordered)
-            if held is not None:
-                return held
             return self._fail('no_spatial_support')
         if not top.position_valid or not all(
                 math.isfinite(value) for value in (top.x, top.y, top.z)):
@@ -177,9 +207,6 @@ class FixedBaseTargetSelector:
             return self._fail('frame_mismatch')
         if not math.isfinite(top.relevance) or (
                 top.relevance < self._config.minimum_relevance):
-            held = self._hold_last_target(snapshot, top, ordered)
-            if held is not None:
-                return held
             return self._fail('below_test_relevance')
         if not math.isfinite(top.uncertainty) or (
                 top.uncertainty > self._config.maximum_uncertainty):
