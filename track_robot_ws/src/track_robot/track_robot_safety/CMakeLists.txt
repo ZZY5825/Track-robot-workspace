@@ -59,6 +59,11 @@ if(BUILD_TESTING)
     test/test_rotation_collision.cpp
   )
   target_include_directories(test_rotation_collision PRIVATE include)
+  ament_add_gtest(
+    test_command_freshness
+    test/test_command_freshness.cpp
+  )
+  target_include_directories(test_command_freshness PRIVATE include)
   ament_add_pytest_test(
     test_nav2_safety_contract
     test/test_nav2_safety_contract.py

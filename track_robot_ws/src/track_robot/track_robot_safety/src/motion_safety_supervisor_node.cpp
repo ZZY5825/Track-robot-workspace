@@ -18,6 +18,7 @@
 #include "sensor_msgs/msg/point_field.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_srvs/srv/trigger.hpp"
+#include "track_robot_safety/command_freshness.hpp"
 #include "track_robot_safety/rotation_collision.hpp"
 #include "track_robot_interfaces/msg/avoidance_state.hpp"
 #include "track_robot_interfaces/msg/safety_state.hpp"
@@ -194,6 +195,9 @@ private:
     latest_planned_cmd_ = *msg;
     last_command_time_ = std::chrono::steady_clock::now();
     have_command_ = true;
+    if (armed_) {
+      waiting_for_first_command_after_arm_ = false;
+    }
   }
 
   void obstacleCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -284,11 +288,11 @@ private:
     const double rc_age = ageSeconds(last_rc_time_, have_rc_state_);
     const double planner_age = ageSeconds(last_planner_state_time_, have_planner_state_);
     const double odom_age = ageSeconds(last_odom_time_, have_odom_);
-    if (command_age > command_timeout_sec_) {
-      decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
-      decision.reason = "planned_command_stale";
-      return decision;
-    }
+    const auto command_freshness = track_robot_safety::classifyCommandFreshness(
+      waiting_for_first_command_after_arm_, have_command_, command_age, command_timeout_sec_,
+      allow_arm_without_command_ &&
+      std::abs(decision.planned.linear.x) < 1e-4 &&
+      std::abs(decision.planned.angular.z) < 1e-4);
     if (cloud_age > cloud_timeout_sec_) {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
       decision.reason = "obstacle_cloud_stale";
@@ -335,6 +339,11 @@ private:
       decision.reason = baseFaultReason();
       return decision;
     }
+    if (command_freshness == track_robot_safety::CommandFreshness::STALE) {
+      decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
+      decision.reason = "planned_command_stale";
+      return decision;
+    }
 
     decision.collision = evaluateCollision(decision.planned);
     if (decision.collision.collision_predicted &&
@@ -342,6 +351,14 @@ private:
     {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_BLOCKED;
       decision.reason = "obstacle_inside_stopping_envelope";
+      return decision;
+    }
+    if (
+      command_freshness ==
+      track_robot_safety::CommandFreshness::WAITING_FOR_FIRST_COMMAND)
+    {
+      decision.state = track_robot_interfaces::msg::SafetyState::STATE_CLEAR;
+      decision.reason = "armed_idle_zero_command";
       return decision;
     }
 
@@ -620,6 +637,7 @@ private:
       return;
     }
     armed_ = true;
+    waiting_for_first_command_after_arm_ = allow_arm_without_command_;
     rc_override_latched_ = false;
     response->success = true;
     response->message = "Motion safety supervisor armed";
@@ -631,6 +649,7 @@ private:
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     safe_cmd_pub_->publish(geometry_msgs::msg::Twist());
     response->success = true;
     response->message = "Motion safety supervisor disarmed and zero command sent";
@@ -642,6 +661,7 @@ private:
   {
     emergency_stop_latched_ = true;
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     safe_cmd_pub_->publish(geometry_msgs::msg::Twist());
     response->success = true;
     response->message = "Software emergency stop latched";
@@ -664,6 +684,7 @@ private:
     }
     emergency_stop_latched_ = false;
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     response->success = true;
     response->message = "Software emergency stop reset; supervisor remains disarmed";
   }
@@ -830,6 +851,7 @@ private:
   bool require_odom_{false};
   double odom_timeout_sec_{0.25};
   bool allow_arm_without_command_{false};
+  bool waiting_for_first_command_after_arm_{false};
   double max_linear_x_{0.15};
   double max_angular_z_{0.35};
   double braking_deceleration_{0.25};
