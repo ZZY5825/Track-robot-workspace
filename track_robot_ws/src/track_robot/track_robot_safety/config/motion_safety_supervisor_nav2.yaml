@@ -1,0 +1,50 @@
+motion_safety_supervisor_node:
+  ros__parameters:
+    planned_cmd_topic: /nav2/cmd_vel_raw
+    planner_state_topic: /follow/avoidance_state
+    obstacle_cloud_topic: /safety/filtered_obstacle_points
+    bunker_status_topic: /bunker_status
+    rc_state_topic: /bunker_rc_state
+    odom_topic: /odom
+    safe_cmd_topic: /nav2/cmd_vel_safe
+    safety_state_topic: /safety/state
+    debug_topic: /safety/controller_debug
+    marker_topic: /safety/collision_envelope_markers
+    marker_frame: base_link
+
+    publish_rate: 50.0
+    marker_publish_rate: 10.0
+    command_timeout_sec: 0.15
+    cloud_timeout_sec: 0.25
+    base_status_timeout_sec: 0.20
+    rc_timeout_sec: 0.25
+    odom_timeout_sec: 0.25
+    require_bunker_status: true
+    require_rc_state: true
+    require_can_control_mode: true
+    require_planner_state: false
+    require_odom: true
+    allow_arm_without_command: true
+
+    max_linear_x: 0.15
+    max_angular_z: 0.50
+    braking_deceleration: 0.25
+    angular_braking_deceleration: 0.80
+    response_latency_sec: 0.25
+    fixed_stop_margin: 0.45
+    fixed_rotation_margin: 0.05
+    bounded_rotation_collision_enabled: true
+    slowdown_path_distance: 1.0
+    trajectory_step_sec: 0.05
+    max_lookahead_distance: 1.5
+    max_lookahead_time_sec: 10.0
+
+    footprint_length: 1.20
+    footprint_width: 1.00
+    safety_inflation: 0.13
+    rc_override_deadband: 10
+
+    arm_service: /safety/arm
+    disarm_service: /safety/disarm
+    emergency_stop_service: /safety/emergency_stop
+    reset_emergency_stop_service: /safety/reset_emergency_stop

@@ -1,7 +1,7 @@
 semantic_memory:
   ros__parameters:
     enabled: true
-    observations_topic: /semantic_memory/observations
+    observations_topic: /semantic_memory/spatial_observations
     lidar_tracklets_topic: /semantic_memory/lidar_tracklets
     localization_topic: /semantic_search/phase4a/localization_state
     localization_state_timeout_sec: 0.5
@@ -51,16 +51,24 @@ semantic_memory:
     reidentification_shadow_mode: true
     reidentification_mutation_enabled: false
     reidentification_calibration_status: uncalibrated
-    # Production selection remains fail-closed. Phase 4A consumes the
-    # diagnostic ranking through its own conservative test-only selector.
-    best_candidate_threshold_calibrated: false
+    # Supervised Phase 4A/4B acceptance profile. This threshold is for fused
+    # task_relevance, never raw YOLO confidence. Production defaults remain
+    # fail-closed in semantic_memory.yaml.
+    best_candidate_threshold_calibrated: true
+    best_candidate_minimum_relevance: 0.26
     publish_best_candidate: true
     publish_diagnostic_ranking: true
     task_grounding_weight: 0.70
     task_stability_weight: 0.10
     task_support_weight: 0.10
     task_semantic_weight: 0.10
-    task_grounding_maximum_age_sec: 1.0
+    # Explicit static-target Phase 4B profile. Measured Orin inference gaps
+    # reached 3.51 s, so all downstream evidence budgets use a bounded 4 s.
+    static_target_profile: true
+    task_grounding_maximum_age_sec: 4.0
+    static_stale_after_sec: 4.0
+    static_lost_after_sec: 6.0
+    static_archive_after_sec: 15.0
     max_objects: 256
     max_history: 16
 

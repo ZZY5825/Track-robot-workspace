@@ -12,11 +12,14 @@
 #include "bunker_msgs/msg/bunker_rc_state.hpp"
 #include "bunker_msgs/msg/bunker_status.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "sensor_msgs/msg/point_field.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_srvs/srv/trigger.hpp"
+#include "track_robot_safety/command_freshness.hpp"
+#include "track_robot_safety/rotation_collision.hpp"
 #include "track_robot_interfaces/msg/avoidance_state.hpp"
 #include "track_robot_interfaces/msg/safety_state.hpp"
 #include "visualization_msgs/msg/marker.hpp"
@@ -70,6 +73,7 @@ public:
     bunker_status_topic_ = declare_parameter<std::string>(
       "bunker_status_topic", "/bunker_status");
     rc_state_topic_ = declare_parameter<std::string>("rc_state_topic", "/bunker_rc_state");
+    odom_topic_ = declare_parameter<std::string>("odom_topic", "/odom");
     safe_cmd_topic_ = declare_parameter<std::string>(
       "safe_cmd_topic", "/follow/cmd_vel_safe");
     safety_state_topic_ = declare_parameter<std::string>(
@@ -91,12 +95,21 @@ public:
     require_can_control_mode_ = declare_parameter<bool>("require_can_control_mode", true);
     require_planner_state_ = declare_parameter<bool>("require_planner_state", true);
     planner_state_timeout_sec_ = declare_parameter<double>("planner_state_timeout_sec", 0.25);
+    require_odom_ = declare_parameter<bool>("require_odom", false);
+    odom_timeout_sec_ = declare_parameter<double>("odom_timeout_sec", 0.25);
+    allow_arm_without_command_ = declare_parameter<bool>(
+      "allow_arm_without_command", false);
 
     max_linear_x_ = declare_parameter<double>("max_linear_x", 0.15);
     max_angular_z_ = declare_parameter<double>("max_angular_z", 0.35);
     braking_deceleration_ = declare_parameter<double>("braking_deceleration", 0.25);
+    angular_braking_deceleration_ = declare_parameter<double>(
+      "angular_braking_deceleration", 0.80);
     response_latency_sec_ = declare_parameter<double>("response_latency_sec", 0.25);
     fixed_stop_margin_ = declare_parameter<double>("fixed_stop_margin", 0.45);
+    fixed_rotation_margin_ = declare_parameter<double>("fixed_rotation_margin", 0.05);
+    bounded_rotation_collision_enabled_ = declare_parameter<bool>(
+      "bounded_rotation_collision_enabled", false);
     slowdown_path_distance_ = declare_parameter<double>("slowdown_path_distance", 1.0);
     trajectory_step_sec_ = declare_parameter<double>("trajectory_step_sec", 0.05);
     max_lookahead_distance_ = declare_parameter<double>("max_lookahead_distance", 1.5);
@@ -128,6 +141,9 @@ public:
     rc_state_sub_ = create_subscription<bunker_msgs::msg::BunkerRCState>(
       rc_state_topic_, 10,
       std::bind(&MotionSafetySupervisorNode::rcStateCallback, this, std::placeholders::_1));
+    odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+      odom_topic_, 10,
+      std::bind(&MotionSafetySupervisorNode::odomCallback, this, std::placeholders::_1));
 
     safe_cmd_pub_ = create_publisher<geometry_msgs::msg::Twist>(safe_cmd_topic_, 10);
     safety_state_pub_ = create_publisher<track_robot_interfaces::msg::SafetyState>(
@@ -179,6 +195,9 @@ private:
     latest_planned_cmd_ = *msg;
     last_command_time_ = std::chrono::steady_clock::now();
     have_command_ = true;
+    if (armed_) {
+      waiting_for_first_command_after_arm_ = false;
+    }
   }
 
   void obstacleCloudCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -219,6 +238,12 @@ private:
       armed_ = false;
       rc_override_latched_ = true;
     }
+  }
+
+  void odomCallback(const nav_msgs::msg::Odometry::SharedPtr)
+  {
+    last_odom_time_ = std::chrono::steady_clock::now();
+    have_odom_ = true;
   }
 
   void timerCallback()
@@ -262,11 +287,12 @@ private:
     const double base_age = ageSeconds(last_base_status_time_, have_base_status_);
     const double rc_age = ageSeconds(last_rc_time_, have_rc_state_);
     const double planner_age = ageSeconds(last_planner_state_time_, have_planner_state_);
-    if (command_age > command_timeout_sec_) {
-      decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
-      decision.reason = "planned_command_stale";
-      return decision;
-    }
+    const double odom_age = ageSeconds(last_odom_time_, have_odom_);
+    const auto command_freshness = track_robot_safety::classifyCommandFreshness(
+      waiting_for_first_command_after_arm_, have_command_, command_age, command_timeout_sec_,
+      allow_arm_without_command_ &&
+      std::abs(decision.planned.linear.x) < 1e-4 &&
+      std::abs(decision.planned.angular.z) < 1e-4);
     if (cloud_age > cloud_timeout_sec_) {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
       decision.reason = "obstacle_cloud_stale";
@@ -285,6 +311,11 @@ private:
     if (require_planner_state_ && planner_age > planner_state_timeout_sec_) {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
       decision.reason = "avoidance_planner_state_stale";
+      return decision;
+    }
+    if (require_odom_ && odom_age > odom_timeout_sec_) {
+      decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
+      decision.reason = "odometry_stale";
       return decision;
     }
     if (require_planner_state_ &&
@@ -308,6 +339,11 @@ private:
       decision.reason = baseFaultReason();
       return decision;
     }
+    if (command_freshness == track_robot_safety::CommandFreshness::STALE) {
+      decision.state = track_robot_interfaces::msg::SafetyState::STATE_SENSOR_STALE;
+      decision.reason = "planned_command_stale";
+      return decision;
+    }
 
     decision.collision = evaluateCollision(decision.planned);
     if (decision.collision.collision_predicted &&
@@ -315,6 +351,14 @@ private:
     {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_BLOCKED;
       decision.reason = "obstacle_inside_stopping_envelope";
+      return decision;
+    }
+    if (
+      command_freshness ==
+      track_robot_safety::CommandFreshness::WAITING_FOR_FIRST_COMMAND)
+    {
+      decision.state = track_robot_interfaces::msg::SafetyState::STATE_CLEAR;
+      decision.reason = "armed_idle_zero_command";
       return decision;
     }
 
@@ -374,6 +418,20 @@ private:
     }
 
     if (std::abs(linear) < 0.02 && std::abs(angular) >= 1e-4) {
+      if (bounded_rotation_collision_enabled_) {
+        const double sample_angle = std::max(
+          std::abs(angular) * std::max(trajectory_step_sec_, 0.02), 0.005);
+        const auto rotation = track_robot_safety::evaluateRotationCollision(
+          obstacle_points_, angular, half_length, half_width,
+          angular_braking_deceleration_, response_latency_sec_,
+          fixed_rotation_margin_, sample_angle);
+        if (rotation.collision) {
+          result.collision_predicted = true;
+          result.collision_path_distance = 0.0;
+          result.time_to_collision = rotation.time_to_collision;
+        }
+        return result;
+      }
       const double swept_radius = std::hypot(half_length, half_width);
       for (const auto & point : obstacle_points_) {
         if (std::hypot(static_cast<double>(point.x), static_cast<double>(point.y)) <=
@@ -531,16 +589,26 @@ private:
       response->message = "Cannot arm: software emergency stop is latched";
       return;
     }
+    if (require_odom_ && ageSeconds(last_odom_time_, have_odom_) > odom_timeout_sec_) {
+      response->success = false;
+      response->message = "Cannot arm: odometry is stale";
+      return;
+    }
     if (rc_override_active_) {
       response->success = false;
       response->message = "Cannot arm: RC sticks are active";
       return;
     }
-    if (ageSeconds(last_command_time_, have_command_) > command_timeout_sec_ ||
-      ageSeconds(last_cloud_time_, have_cloud_) > cloud_timeout_sec_)
+    if (!allow_arm_without_command_ &&
+      ageSeconds(last_command_time_, have_command_) > command_timeout_sec_)
     {
       response->success = false;
-      response->message = "Cannot arm: planned command or obstacle cloud is stale";
+      response->message = "Cannot arm: planned command is stale";
+      return;
+    }
+    if (ageSeconds(last_cloud_time_, have_cloud_) > cloud_timeout_sec_) {
+      response->success = false;
+      response->message = "Cannot arm: obstacle cloud is stale";
       return;
     }
     if (require_bunker_status_ &&
@@ -569,6 +637,7 @@ private:
       return;
     }
     armed_ = true;
+    waiting_for_first_command_after_arm_ = allow_arm_without_command_;
     rc_override_latched_ = false;
     response->success = true;
     response->message = "Motion safety supervisor armed";
@@ -580,6 +649,7 @@ private:
     std::shared_ptr<std_srvs::srv::Trigger::Response> response)
   {
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     safe_cmd_pub_->publish(geometry_msgs::msg::Twist());
     response->success = true;
     response->message = "Motion safety supervisor disarmed and zero command sent";
@@ -591,6 +661,7 @@ private:
   {
     emergency_stop_latched_ = true;
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     safe_cmd_pub_->publish(geometry_msgs::msg::Twist());
     response->success = true;
     response->message = "Software emergency stop latched";
@@ -613,6 +684,7 @@ private:
     }
     emergency_stop_latched_ = false;
     armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
     response->success = true;
     response->message = "Software emergency stop reset; supervisor remains disarmed";
   }
@@ -656,6 +728,8 @@ private:
          << "\"base_status_age\":" << finiteOrNegative(ageSeconds(last_base_status_time_, have_base_status_)) << ","
          << "\"planner_state_age\":" << finiteOrNegative(
       ageSeconds(last_planner_state_time_, have_planner_state_)) << ","
+         << "\"odom_age\":" << finiteOrNegative(
+      ageSeconds(last_odom_time_, have_odom_)) << ","
          << "\"planner_state\":" << (have_planner_state_ ?
       static_cast<int>(latest_planner_state_.state) : -1) << ","
          << "\"obstacle_points\":" << obstacle_points_.size() << ","
@@ -752,6 +826,7 @@ private:
   std::string obstacle_cloud_topic_;
   std::string bunker_status_topic_;
   std::string rc_state_topic_;
+  std::string odom_topic_;
   std::string safe_cmd_topic_;
   std::string safety_state_topic_;
   std::string debug_topic_;
@@ -773,11 +848,18 @@ private:
   bool require_can_control_mode_{true};
   bool require_planner_state_{true};
   double planner_state_timeout_sec_{0.25};
+  bool require_odom_{false};
+  double odom_timeout_sec_{0.25};
+  bool allow_arm_without_command_{false};
+  bool waiting_for_first_command_after_arm_{false};
   double max_linear_x_{0.15};
   double max_angular_z_{0.35};
   double braking_deceleration_{0.25};
+  double angular_braking_deceleration_{0.80};
   double response_latency_sec_{0.25};
   double fixed_stop_margin_{0.45};
+  double fixed_rotation_margin_{0.05};
+  bool bounded_rotation_collision_enabled_{false};
   double slowdown_path_distance_{1.0};
   double trajectory_step_sec_{0.05};
   double max_lookahead_distance_{1.5};
@@ -796,6 +878,7 @@ private:
   bool have_base_status_{false};
   bool have_rc_state_{false};
   bool have_planner_state_{false};
+  bool have_odom_{false};
   geometry_msgs::msg::Twist latest_planned_cmd_;
   bunker_msgs::msg::BunkerStatus latest_bunker_status_;
   bunker_msgs::msg::BunkerRCState latest_rc_state_;
@@ -806,6 +889,7 @@ private:
   SteadyTime last_base_status_time_;
   SteadyTime last_rc_time_;
   SteadyTime last_planner_state_time_;
+  SteadyTime last_odom_time_;
   int timer_count_{0};
 
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr planned_sub_;
@@ -814,6 +898,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr obstacle_sub_;
   rclcpp::Subscription<bunker_msgs::msg::BunkerStatus>::SharedPtr bunker_status_sub_;
   rclcpp::Subscription<bunker_msgs::msg::BunkerRCState>::SharedPtr rc_state_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr safe_cmd_pub_;
   rclcpp::Publisher<track_robot_interfaces::msg::SafetyState>::SharedPtr safety_state_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr debug_pub_;

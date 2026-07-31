@@ -152,6 +152,8 @@ public:
       "enable_test_camera_attachment", false);
     allow_degraded_calibration_ = declare_parameter<bool>(
       "allow_degraded_calibration", false);
+    static_target_profile_ = declare_parameter<bool>(
+      "static_target_profile", false);
     appearance_memory_enabled_ = declare_parameter<bool>(
       "appearance_memory_enabled", true);
     reidentification_shadow_mode_ = declare_parameter<bool>(
@@ -309,6 +311,23 @@ public:
       reidentification_config_);
 
     core_config_ = read_core_config();
+    if (static_target_profile_) {
+      constexpr std::int64_t maximum_static_budget_ns = 4'000'000'000LL;
+      if (!enable_test_camera_attachment_ || !allow_degraded_calibration_) {
+        throw std::invalid_argument(
+                "static_target_profile is restricted to the explicit degraded test profile");
+      }
+      if (task_relevance_config_.maximum_grounding_age_ns >
+        maximum_static_budget_ns ||
+        core_config_.static_lifecycle.stale_after_ns <
+        task_relevance_config_.maximum_grounding_age_ns ||
+        core_config_.static_lifecycle.lost_after_ns <=
+        core_config_.static_lifecycle.stale_after_ns)
+      {
+        throw std::invalid_argument(
+                "static_target_profile evidence budgets are inconsistent or unbounded");
+      }
+    }
     task_relevance_config_.normalization_tolerance =
       core_config_.appearance_normalization_tolerance;
     task_relevance_config_.maximum_semantic_evidence = 16U;
@@ -2225,6 +2244,7 @@ private:
   bool camera_only_memory_enabled_{false};
   bool enable_test_camera_attachment_{false};
   bool allow_degraded_calibration_{false};
+  bool static_target_profile_{false};
   bool appearance_memory_enabled_{true};
   bool reidentification_shadow_mode_{true};
   bool reidentification_mutation_enabled_{false};

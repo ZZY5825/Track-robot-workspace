@@ -5,7 +5,7 @@ validating the Track Robot workspace.
 
 - `human-tracking/` covers human-tracking replay and validation.
 - `semantic-search/` covers semantic-search live checks, recording, replay,
-  and evaluation.
+  evaluation, and supervised Nav2 validation.
 
 Keep executable user procedures here. Architecture belongs under
 `docs/architecture/`; dated implementation history belongs under

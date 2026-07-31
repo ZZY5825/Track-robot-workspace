@@ -47,6 +47,7 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
     for expected in (
             'semantic_search_sensors.launch.py',
             'semantic_search_yolo_world.launch.py',
+            'semantic_search_spatial_observation',
             'semantic_memory_lidar_tracklets.launch.py',
             'semantic_memory_phase2.launch.py',
             'semantic_search_phase4.rviz',
@@ -57,7 +58,15 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
     assert "'start_lidar': 'true'" in source
     assert "'enable_test_camera_attachment': 'true'" in source
     assert "'allow_degraded_calibration': 'true'" in source
+    assert "'start_visualizer': 'false'" in source
     assert "'camera_depth_mode': 'PERFORMANCE'" in source
+
+
+def test_phase4a_exposes_optional_dino_and_keeps_tested_baseline_default():
+    source = _source(LAUNCH)
+
+    assert "'dino_enabled': LaunchConfiguration('dino_enabled')" in source
+    assert "'dino_enabled', default_value='false'" in source
 
 
 def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
@@ -79,10 +88,18 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert selector['selected_target_topic'] == target_topic
     assert selector['depth_topic'] == (
         '/zed/zed_node/depth/depth_registered')
+    enricher = search['semantic_depth_enricher']['ros__parameters']
+    assert enricher['input_observations_topic'] == (
+        '/semantic_memory/observations')
+    assert enricher['output_observations_topic'] == (
+        '/semantic_memory/spatial_observations')
+    assert memory['observations_topic'] == (
+        '/semantic_memory/spatial_observations')
     assert selector['spatial_objects_topic'] == (
         '/semantic_search/phase4a/spatial_objects')
     assert selector['maximum_depth_age_sec'] <= 0.5
-    assert memory['best_candidate_threshold_calibrated'] is False
+    assert memory['best_candidate_threshold_calibrated'] is True
+    assert memory['best_candidate_minimum_relevance'] == 0.26
     assert memory['publish_diagnostic_ranking'] is True
     assert memory['association_max_source_time_delta_sec'] == 0.20
     weights = [
@@ -108,8 +125,23 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert memory['association_ambiguity_margin'] >= 0.03
     assert memory['association_confirmation_frames'] >= 3
     assert selector['confirmation_snapshots'] >= 3
-    assert selector['maximum_age_sec'] <= 1.0
+    assert selector['minimum_relevance'] == 0.26
+    assert planner['minimum_target_relevance'] == 0.24
+    # The tested Phase 4B workflow uses an explicit, bounded static-target
+    # profile because semantic inference can legitimately take up to 3.51 s.
+    # Dynamic/default profiles must keep the one-second policy; the static
+    # profile is still fail-closed at four seconds.
+    assert memory['static_target_profile'] is True
+    assert 3.51 <= selector['maximum_age_sec'] <= 4.0
+    assert 3.51 <= planner['maximum_target_age_sec'] <= 4.0
+    assert selector['minimum_relevance'] == 0.26
+    assert selector['retained_minimum_relevance'] == 0.24
     assert planner['planning_only'] is True
+    assert planner['minimum_target_relevance'] == 0.24
+    assert (
+        planner['minimum_target_relevance']
+        == selector['retained_minimum_relevance']
+    )
     assert planner['unknown_is_obstacle'] is True
     assert planner['maximum_search_expansions'] > 0
     assert planner['enable_path_shortcutting'] is True

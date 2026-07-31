@@ -246,11 +246,20 @@ visualization_msgs::msg::MarkerArray MarkerRegistry::update(
     throw std::invalid_argument("semantic snapshot is invalid, oversized, or out of order");
   }
 
+  std::set<GlobalObjectKey> seen_keys;
   std::map<GlobalObjectKey, const track_robot_interfaces::msg::SemanticObject *> objects;
   for (const auto & object : snapshot.objects) {
     const GlobalObjectKey key{object.memory_epoch_id, object.global_object_id};
-    if (!key.valid() || key.memory_epoch_id != snapshot.memory_epoch_id ||
-      !object.position_valid || !object.extent_valid ||
+    if (!key.valid() || key.memory_epoch_id != snapshot.memory_epoch_id) {
+      throw std::invalid_argument("semantic object cannot be visualized safely");
+    }
+    if (!seen_keys.emplace(key).second) {
+      throw std::invalid_argument("semantic snapshot contains a duplicate object key");
+    }
+    if (!object.position_valid || !object.extent_valid) {
+      continue;
+    }
+    if (
       !finite(object.position.x) || !finite(object.position.y) ||
       !finite(object.position.z) || !finite(object.extent.x) ||
       !finite(object.extent.y) || !finite(object.extent.z) ||
@@ -258,9 +267,7 @@ visualization_msgs::msg::MarkerArray MarkerRegistry::update(
     {
       throw std::invalid_argument("semantic object cannot be visualized safely");
     }
-    if (!objects.emplace(key, &object).second) {
-      throw std::invalid_argument("semantic snapshot contains a duplicate object key");
-    }
+    objects.emplace(key, &object);
   }
 
   std::vector<GlobalObjectKey> removed_keys;

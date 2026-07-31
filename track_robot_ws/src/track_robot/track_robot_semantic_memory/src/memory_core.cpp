@@ -150,6 +150,22 @@ void CameraObservation::validate() const
   {
     throw std::invalid_argument("camera observation identity or ROI is invalid");
   }
+  if (position_valid) {
+    const bool finite_position = std::all_of(
+      position.begin(), position.end(),
+      [](double value) {return std::isfinite(value);});
+    const bool finite_covariance = std::all_of(
+      position_covariance.begin(), position_covariance.end(),
+      [](double value) {return std::isfinite(value);});
+    if (position_frame_id.empty() || localization_epoch_id == 0U ||
+      !finite_position || !finite_covariance ||
+      !std::isfinite(geometry_confidence) ||
+      geometry_confidence < 0.0 || geometry_confidence > 1.0 ||
+      !stereo_depth_evidence)
+    {
+      throw std::invalid_argument("camera depth geometry is invalid");
+    }
+  }
   if (appearance_descriptor.has_value()) {
     const auto gate = descriptor_compatibility_gate(
       *appearance_descriptor, *appearance_descriptor, 1e-4);
@@ -312,6 +328,13 @@ MemoryUpdateResult MemoryCore::update_camera(
   const CameraObservation & observation)
 {
   observation.validate();
+  if (observation.position_valid &&
+    (observation.position_frame_id != domain.canonical_frame_id() ||
+    observation.localization_epoch_id != domain.localization_epoch_id()))
+  {
+    throw std::invalid_argument(
+            "camera depth geometry does not match the memory domain");
+  }
   MemoryUpdateResult result;
   const auto domain_transition = domain_tracker_.update(domain);
   if (domain_transition.changed) {
@@ -1062,6 +1085,7 @@ void MemoryCore::apply_observation(
   for (std::size_t i = 0; i < 9U; ++i) {
     object.position_covariance[i] = observation.position_covariance[i];
   }
+  object.position_valid = true;
   object.motion = motion_classifier_.classify(object.motion, speed(object.velocity));
   if (object.motion == MotionState::kStatic) {
     object.velocity = {0.0, 0.0, 0.0};
@@ -1097,6 +1121,22 @@ void MemoryCore::apply_camera_observation(
     SupportState::kCameraLidar : SupportState::kCameraOnly;
   object.visibility = VisibilityState::kVisible;
   object.association_confidence = 0.0;
+  if (observation.position_valid) {
+    const bool first_position = !object.position_valid;
+    const double alpha = first_position ? 1.0 :
+      std::max(0.05, observation.geometry_confidence);
+    for (std::size_t i = 0U; i < object.position.size(); ++i) {
+      object.position[i] = first_position ? observation.position[i] :
+        alpha * observation.position[i] +
+        (1.0 - alpha) * object.position[i];
+    }
+    object.position_covariance = observation.position_covariance;
+    object.position_valid = true;
+  } else if (!object.lidar_key.has_value()) {
+    // A fresh camera observation without fresh stereo geometry must not make
+    // an older camera-only position appear current.
+    object.position_valid = false;
+  }
   object.confidence = object.camera_observation_count == 0U ?
     observation.semantic_confidence :
     std::clamp(

@@ -111,6 +111,9 @@ class _Track:
     detection: GroundedDetection
     descriptor: Optional[AppearanceDescriptor]
     missed_frames: int = 0
+    last_stamp_ns: int = 0
+    box_velocity: Tuple[float, float, float, float] = (
+        0.0, 0.0, 0.0, 0.0)
 
 
 def _box_area(value):
@@ -151,6 +154,26 @@ def _descriptor_cosine(first, second):
         return None
     value = float(np.dot(first.values, second.values))
     return min(max(value, -1.0), 1.0) if math.isfinite(value) else None
+
+
+def _predicted_detection(track, stamp_ns):
+    if track.last_stamp_ns <= 0 or stamp_ns <= track.last_stamp_ns:
+        return track.detection
+    # Prediction is deliberately bounded: it bridges normal detector gaps and
+    # camera motion without allowing an old track to extrapolate indefinitely.
+    delta_sec = min(
+        float(stamp_ns - track.last_stamp_ns) / 1_000_000_000.0,
+        2.0,
+    )
+    velocity = track.box_velocity
+    return GroundedDetection(
+        track.detection.x1 + velocity[0] * delta_sec,
+        track.detection.y1 + velocity[1] * delta_sec,
+        track.detection.x2 + velocity[2] * delta_sec,
+        track.detection.y2 + velocity[3] * delta_sec,
+        track.detection.score,
+        track.detection.label,
+    )
 
 
 def _detection_key(value):
@@ -207,10 +230,13 @@ class CameraTrackManager:
         self._next_candidate_id = 1
         self._tracks = {}
 
-    def _pair_score(self, track, detection):
-        overlap = _iou(track.detection, detection.detection)
+    def _pair_score(self, track, detection, stamp_ns):
+        if track.detection.label != detection.detection.label:
+            return None
+        predicted = _predicted_detection(track, stamp_ns)
+        overlap = _iou(predicted, detection.detection)
         distance = _normalized_center_distance(
-            track.detection, detection.detection)
+            predicted, detection.detection)
         if (
                 overlap < self._config.minimum_iou and
                 distance > self._config.maximum_normalized_center_distance):
@@ -254,7 +280,7 @@ class CameraTrackManager:
         for detection_index, detection in enumerate(detections):
             pairs = []
             for track_id, track in sorted(self._tracks.items()):
-                score = self._pair_score(track, detection)
+                score = self._pair_score(track, detection, stamp_ns)
                 if score is not None:
                     pairs.append((score, track_id, detection_index))
             pairs.sort(key=lambda value: (-value[0], value[1]))
@@ -294,6 +320,8 @@ class CameraTrackManager:
                     detection=track.detection,
                     descriptor=track.descriptor,
                     missed_frames=missed,
+                    last_stamp_ns=track.last_stamp_ns,
+                    box_velocity=track.box_velocity,
                 )
 
         candidates = []
@@ -305,13 +333,29 @@ class CameraTrackManager:
                 track_id = self._next_track_id
                 self._next_track_id += 1
             descriptor = detection.descriptor
+            velocity = (0.0, 0.0, 0.0, 0.0)
             if descriptor is None and track_id in self._tracks:
                 descriptor = self._tracks[track_id].descriptor
+            if track_id in self._tracks:
+                previous = self._tracks[track_id]
+                delta_sec = float(
+                    stamp_ns - previous.last_stamp_ns) / 1_000_000_000.0
+                if delta_sec > 0.0:
+                    current = detection.detection
+                    old = previous.detection
+                    velocity = (
+                        (current.x1 - old.x1) / delta_sec,
+                        (current.y1 - old.y1) / delta_sec,
+                        (current.x2 - old.x2) / delta_sec,
+                        (current.y2 - old.y2) / delta_sec,
+                    )
             next_tracks[track_id] = _Track(
                 track_id=track_id,
                 detection=detection.detection,
                 descriptor=descriptor,
                 missed_frames=0,
+                last_stamp_ns=stamp_ns,
+                box_velocity=velocity,
             )
             candidates.append(CameraCandidate(
                 candidate_id=self._next_candidate_id,

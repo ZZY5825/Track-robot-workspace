@@ -31,6 +31,7 @@ from .phase4a_depth import (
     transform_point,
 )
 from .phase4a_selector import (
+    classify_spatial_support,
     FixedBaseTargetSelector,
     ObjectCandidate,
     SelectionSnapshot,
@@ -105,6 +106,8 @@ class Phase4ASelectorNode(Node):
         self._selector = FixedBaseTargetSelector(SelectorConfig(
             minimum_relevance=float(self.declare_parameter(
                 'minimum_relevance', 0.50).value),
+            retained_minimum_relevance=float(self.declare_parameter(
+                'retained_minimum_relevance', 0.40).value),
             minimum_margin=float(self.declare_parameter(
                 'minimum_margin', 0.08).value),
             maximum_uncertainty=float(self.declare_parameter(
@@ -260,6 +263,11 @@ class Phase4ASelectorNode(Node):
         }
 
     def _geometry(self, message, now_ns):
+        # Phase 2 owns the canonical 3D state. The selector's local depth
+        # cache is only a compatibility fallback for older/non-spatial
+        # snapshots and must never overwrite a valid memory position.
+        if message.position_valid:
+            return None
         if not message.camera_track_id_valid:
             return None
         geometry = self._depth_geometry.get((
@@ -280,11 +288,16 @@ class Phase4ASelectorNode(Node):
             if message.lifecycle_state == SemanticObject.LIFECYCLE_CONFIRMED
             else 'other')
         if message.support_state == SemanticObject.SUPPORT_CAMERA_LIDAR:
-            support = 'camera_lidar'
-        elif geometry is not None:
-            support = 'camera_depth'
+            public_support = 'camera_lidar'
+        elif message.support_state == SemanticObject.SUPPORT_CAMERA_ONLY:
+            public_support = 'camera_only'
         else:
-            support = 'other'
+            public_support = 'other'
+        support = classify_spatial_support(
+            support=public_support,
+            position_valid=bool(message.position_valid),
+            fallback_depth_available=geometry is not None,
+        )
         return ObjectCandidate(
             memory_epoch_id=int(memory_epoch_id),
             global_object_id=int(message.global_object_id),

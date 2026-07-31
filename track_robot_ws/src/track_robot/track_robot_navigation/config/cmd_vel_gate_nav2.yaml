@@ -1,0 +1,8 @@
+cmd_vel_gate:
+  ros__parameters:
+    input_topic: /nav2/cmd_vel_safe
+    output_topic: /cmd_vel
+    timeout_sec: 0.20
+    publish_rate: 50.0
+    max_linear_x: 0.15
+    max_angular_z: 0.50

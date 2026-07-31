@@ -1,0 +1,37 @@
+semantic_navigation_supervisor:
+  ros__parameters:
+    runtime_mode: SEMANTIC_SHADOW
+    semantic_execution_enabled: false
+    selected_target_topic: /semantic_search/phase4a/selected_target
+    selected_goal_topic: /semantic_search/phase4/selected_goal
+    planner_diagnostics_topic: /semantic_search/phase4/diagnostics
+    odometry_topic: /odom
+    safety_state_topic: /safety/state
+    shadow_path_topic: /semantic_navigation/shadow_path
+    diagnostics_topic: /semantic_navigation/diagnostics
+    authorize_service: /semantic_navigation/authorize_approach
+    cancel_disarm_service: /semantic_navigation/cancel_and_disarm
+    safety_arm_service: /safety/arm
+    safety_disarm_service: /safety/disarm
+    navigation_frame: odom
+    planner_id: GridBased
+    confirmation_snapshots: 2
+    # Phase 4B's first executable scope is restricted to static targets. The
+    # 4 s budget covers the measured 3.51 s worst inference gap on Orin while
+    # remaining bounded; non-static policy instances retain the 1 s cap.
+    static_target_mode: true
+    # During one supervised run, a stationary object remains the same physical
+    # target even if the upstream visual/global ID is recreated. Reacquisition
+    # is allowed only inside the same memory/localization/query domain and near
+    # the original odom anchor.
+    static_target_position_reacquisition_enabled: true
+    static_target_reacquisition_radius_m: 0.45
+    # Keep the already safety-gated Nav2 goal through one short inference gap.
+    # Odometry, RC, E-stop and base-health failures still cancel immediately.
+    target_dropout_grace_sec: 1.0
+    maximum_target_age_sec: 4.0
+    maximum_goal_age_sec: 0.5
+    maximum_diagnostics_age_sec: 0.5
+    maximum_odom_age_sec: 0.25
+    transform_timeout_sec: 0.10
+    supervision_rate_hz: 10.0

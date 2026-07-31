@@ -379,6 +379,50 @@ TEST(RosConversions, ConvertsBoundedCameraObservationWithoutLidarGeometry)
   EXPECT_EQ(output.semantic_labels[0].label, "blue bottle");
 }
 
+TEST(RosConversions, ConvertsStereoDepthGeometryIntoCameraObservation)
+{
+  interfaces::SemanticObservation observation;
+  observation.producer_epoch_id = 20U;
+  observation.observation_id = 30U;
+  observation.visual_candidate_id = 40U;
+  observation.query_id = 50U;
+  observation.query_version = 1U;
+  observation.camera_stamp.sec = 1;
+  observation.image_width = 1280U;
+  observation.image_height = 720U;
+  observation.roi.width = 80U;
+  observation.roi.height = 120U;
+  observation.language_relevance = 0.8F;
+  observation.position_valid = true;
+  observation.position_frame_id = "base_link";
+  observation.localization_epoch_id = 7U;
+  observation.position.x = 2.3;
+  observation.position.y = 0.2;
+  observation.position.z = 0.5;
+  observation.position_covariance = {
+    0.04F, 0.0F, 0.0F,
+    0.0F, 0.04F, 0.0F,
+    0.0F, 0.0F, 0.09F};
+  observation.geometry_confidence = 0.9F;
+  observation.evidence_flags =
+    interfaces::SemanticObservation::EVIDENCE_CAMERA |
+    interfaces::SemanticObservation::EVIDENCE_STEREO_DEPTH;
+  const semantic_memory::VisualAssociationKey visual_key{
+    semantic_memory::VisualAssociationKind::kCameraTrack, 20U, 7U};
+
+  const auto output =
+    semantic_memory::camera_observation_from_semantic_observation(
+    observation, visual_key, false);
+
+  EXPECT_TRUE(output.position_valid);
+  EXPECT_EQ(output.position_frame_id, "base_link");
+  EXPECT_EQ(output.localization_epoch_id, 7U);
+  EXPECT_DOUBLE_EQ(output.position[0], 2.3);
+  EXPECT_DOUBLE_EQ(output.position_covariance[8], 0.09F);
+  EXPECT_DOUBLE_EQ(output.geometry_confidence, 0.9F);
+  EXPECT_TRUE(output.stereo_depth_evidence);
+}
+
 TEST(RosConversions, PreservesInvalidAssociationTermsAsNanInShadowDebug)
 {
   semantic_memory::PairAssociationScore score;

@@ -390,6 +390,27 @@ CameraObservation camera_observation_from_semantic_observation(
   output.roi_y = observation.roi.y_offset;
   output.roi_width = observation.roi.width;
   output.roi_height = observation.roi.height;
+  output.position_valid = observation.position_valid;
+  if (observation.position_valid) {
+    output.position_frame_id = observation.position_frame_id;
+    output.localization_epoch_id = observation.localization_epoch_id;
+    output.position = {
+      observation.position.x,
+      observation.position.y,
+      observation.position.z};
+    for (std::size_t index = 0U;
+      index < output.position_covariance.size(); ++index)
+    {
+      output.position_covariance[index] =
+        static_cast<double>(observation.position_covariance[index]);
+    }
+    output.geometry_confidence =
+      static_cast<double>(observation.geometry_confidence);
+    output.stereo_depth_evidence =
+      (observation.evidence_flags &
+      track_robot_interfaces::msg::SemanticObservation::EVIDENCE_STEREO_DEPTH)
+      != 0U;
+  }
   if (appearance_memory_enabled &&
     !observation.appearance_descriptor.values.empty())
   {
@@ -451,23 +472,25 @@ track_robot_interfaces::msg::SemanticObject semantic_object_from_memory(
   output.memory_mode = static_cast<std::uint8_t>(domain.mode());
   output.localization_epoch_id = domain.localization_epoch_id();
   output.position_frame_id = domain.canonical_frame_id();
-  output.position_valid = object.lidar_key.has_value();
+  output.position_valid = object.position_valid;
   output.velocity_valid = object.lidar_key.has_value();
   output.extent_valid = object.lidar_key.has_value();
-  if (object.lidar_key.has_value()) {
+  if (object.position_valid) {
     output.position.x = object.position[0];
     output.position.y = object.position[1];
     output.position.z = object.position[2];
+    for (std::size_t index = 0U; index < object.position_covariance.size(); ++index) {
+      output.position_covariance[index] =
+        static_cast<float>(object.position_covariance[index]);
+    }
+  }
+  if (object.lidar_key.has_value()) {
     output.velocity.x = object.velocity[0];
     output.velocity.y = object.velocity[1];
     output.velocity.z = object.velocity[2];
     output.extent.x = object.extent[0];
     output.extent.y = object.extent[1];
     output.extent.z = object.extent[2];
-    for (std::size_t index = 0U; index < object.position_covariance.size(); ++index) {
-      output.position_covariance[index] =
-        static_cast<float>(object.position_covariance[index]);
-    }
   }
   output.lifecycle_state = static_cast<std::uint8_t>(object.lifecycle);
   output.support_state = static_cast<std::uint8_t>(object.support);

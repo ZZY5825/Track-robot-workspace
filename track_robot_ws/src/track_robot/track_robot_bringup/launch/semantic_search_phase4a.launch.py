@@ -97,8 +97,15 @@ def _launch_runtime(context):
                     LaunchConfiguration('dino_repo_path').perform(context),
                 'dino_checkpoint':
                     LaunchConfiguration('dino_checkpoint').perform(context),
-                'dino_enabled': 'true',
+                'dino_enabled': LaunchConfiguration('dino_enabled'),
             },
+        ),
+        Node(
+            package='track_robot_semantic_search',
+            executable='semantic_search_spatial_observation',
+            name='semantic_depth_enricher',
+            output='screen',
+            parameters=[search_config],
         ),
         _include(
             'track_robot_lidar_tracking',
@@ -118,6 +125,9 @@ def _launch_runtime(context):
                 'config_file': memory_config,
                 'enable_test_camera_attachment': 'true',
                 'allow_degraded_calibration': 'true',
+                # Phase 4B only visualizes the selected target and approach;
+                # drawing every memory object creates irrelevant box clutter.
+                'start_visualizer': 'false',
             },
         ),
         Node(
@@ -177,6 +187,7 @@ def generate_launch_description():
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
         DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
+        DeclareLaunchArgument('dino_enabled', default_value='false'),
         DeclareLaunchArgument(
             'lidar_config_path',
             default_value=PathJoinSubstitution([

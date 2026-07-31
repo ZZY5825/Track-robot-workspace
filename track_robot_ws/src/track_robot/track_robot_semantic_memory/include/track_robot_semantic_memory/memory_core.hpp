@@ -59,6 +59,13 @@ struct CameraObservation
   std::uint32_t roi_y{0U};
   std::uint32_t roi_width{0U};
   std::uint32_t roi_height{0U};
+  bool position_valid{false};
+  std::string position_frame_id;
+  std::uint64_t localization_epoch_id{0U};
+  std::array<double, 3> position{};
+  std::array<double, 9> position_covariance{};
+  double geometry_confidence{0.0};
+  bool stereo_depth_evidence{false};
   std::optional<AppearanceDescriptor> appearance_descriptor;
   double appearance_quality{0.0};
   std::vector<MemorySemanticEvidence> semantic_labels;
@@ -99,6 +106,7 @@ struct MemoryObject
 {
   GlobalObjectKey key;
   std::optional<ProducerObjectKey> lidar_key;
+  bool position_valid{false};
   std::array<double, 3> position{};
   std::array<double, 3> velocity{};
   std::array<double, 3> extent{};
