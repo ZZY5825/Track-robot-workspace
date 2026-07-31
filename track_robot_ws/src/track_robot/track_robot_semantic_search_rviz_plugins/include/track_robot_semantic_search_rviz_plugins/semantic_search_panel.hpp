@@ -113,6 +113,7 @@ private:
   std::mutex reference_mutex_;
   std::optional<TargetReference> best_reference_;
   std::optional<TargetReference> selected_reference_;
+  bool approach_request_active_{false};
 
   std::string query_topic_;
   std::string diagnostic_topic_;

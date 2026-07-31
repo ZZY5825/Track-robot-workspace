@@ -38,12 +38,25 @@ def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
     assert 'SUPERVISED SEMANTIC APPROACH' in source
     assert 'Start Approach' in source
     assert 'Cancel & Disarm' in source
-    assert 'authorization candidate is not correlated' in source
+    assert 'selected target is not ready' in source
+    assert 'authorization candidate is not correlated' not in source
     assert 'AuthorizeSemanticApproach' in source
+    assert 'approach_request_active_' in source
+    assert 'starting approach' in source
+    assert 'if (request_active)' in source
+    assert 'approach_request_active_ = false' in source
+    assert 'safety_arm_pending' not in source
+    assert 'approach enabled (supervised)' in source
     assert 'Diagnostic ranking' in source
     assert 'support=' in source
     assert 'query=' in source
     assert 'relevance=' in source
+
+    start_body = source.split(
+        'void SemanticSearchPanel::start_approach()', 1)[1].split(
+        'void SemanticSearchPanel::cancel_and_disarm()', 1)[0]
+    assert 'selected_reference_.has_value()' in start_body
+    assert 'best_reference_->same_identity' not in start_body
 
     for forbidden in (
             'cmd_vel',
@@ -52,6 +65,18 @@ def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
             'rclcpp_action',
             'inspection'):
         assert forbidden not in source
+
+
+def test_phase4b_rviz_hides_unselected_semantic_memory_boxes():
+    rviz = (
+        PACKAGE_ROOT.parent
+        / 'track_robot_bringup'
+        / 'rviz'
+        / 'semantic_search_phase4b.rviz'
+    ).read_text(encoding='utf-8')
+
+    assert '/semantic_memory/markers' not in rviz
+    assert '/semantic_search/phase4/markers' in rviz
 
 
 def test_package_exports_pluginlib_metadata_and_installs_headers():

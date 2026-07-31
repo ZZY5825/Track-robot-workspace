@@ -80,7 +80,7 @@ def generate_launch_description():
                 'semantic_search_phase4b.rviz',
             ]),
         ],
-        condition=IfCondition(LaunchConfiguration('start_rviz')),
+        condition=IfCondition(LaunchConfiguration('start_phase4b_rviz')),
     )
     overlay = Node(
         package='track_robot_semantic_search',
@@ -95,7 +95,10 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'enable_semantic_execution', default_value='false'),
         DeclareLaunchArgument('start_base', default_value='false'),
-        DeclareLaunchArgument('start_rviz', default_value='true'),
+        # This name must remain distinct from Phase 4A's start_rviz argument.
+        # Foxy include arguments share launch context and Phase 4A is
+        # intentionally forced to false above.
+        DeclareLaunchArgument('start_phase4b_rviz', default_value='true'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('autostart', default_value='true'),
         DeclareLaunchArgument('configure_network', default_value='true'),

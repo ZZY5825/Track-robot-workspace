@@ -66,7 +66,8 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert 'runtime_mode:=SEMANTIC_ACTIVE' in command
     assert 'enable_semantic_execution:=true' in command
     assert 'start_base:=true' in command
-    assert 'start_rviz:=true' in command
+    assert 'start_phase4b_rviz:=true' in command
+    assert 'start_rviz:=true' not in command
     assert 'extrinsic_mode:=prototype' in command
     assert not any('imu' in value.lower() for value in command)
 

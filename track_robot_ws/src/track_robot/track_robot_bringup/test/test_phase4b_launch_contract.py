@@ -33,6 +33,12 @@ def test_phase4b_composes_phase4a_nav2_platform_and_rviz():
     assert "'runtime_mode': LaunchConfiguration('runtime_mode')" in source
     assert "'enable_semantic_execution':" in source
     assert "LaunchConfiguration('enable_semantic_execution')" in source
+    assert "'start_rviz': 'false'" in source
+    assert "'start_phase4b_rviz', default_value='true'" in source
+    assert (
+        "condition=IfCondition(LaunchConfiguration('start_phase4b_rviz'))"
+        in source
+    )
     assert ast.parse(source)
 
 

@@ -120,7 +120,7 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   best_status_ = new QLabel(tr("unavailable"), this);
   diagnostic_ranking_status_ = new QLabel(tr("waiting"), this);
   motion_status_ = new QLabel(
-    tr("authorization candidate is not correlated"), this);
+    tr("selected target is not ready"), this);
   diagnostic_ranking_status_->setStyleSheet(
     "QLabel { color: #d8b4fe; font-weight: bold; }");
   for (auto * label : {
@@ -283,16 +283,14 @@ void SemanticSearchPanel::start_approach()
   std::optional<TargetReference> reference;
   {
     std::lock_guard<std::mutex> lock(reference_mutex_);
-    if (
-      best_reference_.has_value() && selected_reference_.has_value() &&
-      best_reference_->same_identity(*selected_reference_))
-    {
+    if (selected_reference_.has_value()) {
       reference = selected_reference_;
+      approach_request_active_ = true;
     }
   }
   if (!reference.has_value()) {
     motion_status_->setText(
-      tr("authorization candidate is not correlated"));
+      tr("selected target is not ready"));
     start_approach_button_->setEnabled(false);
     return;
   }
@@ -309,7 +307,7 @@ void SemanticSearchPanel::start_approach()
   request->query_version = reference->query_version;
   request->snapshot_sequence = reference->snapshot_sequence;
   start_approach_button_->setEnabled(false);
-  motion_status_->setText(tr("authorization request pending"));
+  motion_status_->setText(tr("starting approach"));
   authorize_client_->async_send_request(
     request,
     [this](
@@ -319,35 +317,37 @@ void SemanticSearchPanel::start_approach()
     {
       try {
         const auto response = future.get();
+        if (!response->accepted) {
+          {
+            std::lock_guard<std::mutex> lock(reference_mutex_);
+            approach_request_active_ = false;
+          }
+          refresh_authorization_state();
+        }
         queue_label(
           motion_status_,
-          tr("%1: %2")
-          .arg(response->accepted ? tr("accepted") : tr("rejected"))
-          .arg(QString::fromStdString(response->reason)));
-        if (!response->accepted) {
-          QMetaObject::invokeMethod(
-            this,
-            [this]() {
-              start_approach_button_->setEnabled(true);
-            },
-            Qt::QueuedConnection);
-        }
+          response->accepted ?
+          tr("approach enabled (supervised)") :
+          tr("rejected: %1").arg(QString::fromStdString(response->reason)));
       } catch (const std::exception & error) {
+        {
+          std::lock_guard<std::mutex> lock(reference_mutex_);
+          approach_request_active_ = false;
+        }
+        refresh_authorization_state();
         queue_label(
           motion_status_,
           tr("authorization call failed: %1").arg(error.what()));
-        QMetaObject::invokeMethod(
-          this,
-          [this]() {
-            start_approach_button_->setEnabled(true);
-          },
-          Qt::QueuedConnection);
       }
     });
 }
 
 void SemanticSearchPanel::cancel_and_disarm()
 {
+  {
+    std::lock_guard<std::mutex> lock(reference_mutex_);
+    approach_request_active_ = false;
+  }
   if (!cancel_disarm_client_ ||
     !cancel_disarm_client_->service_is_ready())
   {
@@ -360,17 +360,18 @@ void SemanticSearchPanel::cancel_and_disarm()
     [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
       try {
         const auto response = future.get();
+        refresh_authorization_state();
         queue_label(
           motion_status_,
           tr("%1: %2")
           .arg(response->success ? tr("accepted") : tr("failed"))
           .arg(QString::fromStdString(response->message)));
       } catch (const std::exception & error) {
+        refresh_authorization_state();
         queue_label(
           motion_status_,
           tr("cancel/disarm call failed: %1").arg(error.what()));
       }
-      refresh_authorization_state();
     });
 }
 
@@ -398,6 +399,7 @@ void SemanticSearchPanel::publish_query(bool revision)
       std::lock_guard<std::mutex> lock(reference_mutex_);
       best_reference_.reset();
       selected_reference_.reset();
+      approach_request_active_ = false;
     }
     refresh_authorization_state();
     query_status_->setText(
@@ -502,26 +504,30 @@ void SemanticSearchPanel::on_selected_target(
 void SemanticSearchPanel::refresh_authorization_state()
 {
   bool ready = false;
+  bool request_active = false;
   std::uint64_t object_id = 0U;
   {
     std::lock_guard<std::mutex> lock(reference_mutex_);
-    ready =
-      best_reference_.has_value() && selected_reference_.has_value() &&
-      best_reference_->same_identity(*selected_reference_);
+    ready = selected_reference_.has_value();
     if (ready) {
       object_id = selected_reference_->global_object_id;
     }
+    request_active = approach_request_active_;
   }
   QMetaObject::invokeMethod(
     this,
-    [this, ready, object_id]() {
+    [this, ready, request_active, object_id]() {
+      if (request_active) {
+        start_approach_button_->setEnabled(false);
+        return;
+      }
       start_approach_button_->setEnabled(ready);
       if (ready) {
         motion_status_->setText(
           tr("ready for operator authorization: object %1").arg(object_id));
       } else {
         motion_status_->setText(
-          tr("authorization candidate is not correlated"));
+          tr("selected target is not ready"));
       }
     },
     Qt::QueuedConnection);

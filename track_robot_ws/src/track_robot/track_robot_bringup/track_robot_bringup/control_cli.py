@@ -314,7 +314,7 @@ def build_phase4b_launch_argv(args, paths):
         'runtime_mode:=SEMANTIC_ACTIVE',
         'enable_semantic_execution:=true',
         'start_base:=true',
-        'start_rviz:=true',
+        'start_phase4b_rviz:=true',
         'extrinsic_mode:={}'.format(args.extrinsic_mode),
         'dino_enabled:={}'.format(
             str(bool(args.dino_enabled)).lower()),
