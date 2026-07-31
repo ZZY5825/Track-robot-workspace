@@ -125,6 +125,9 @@ def _launch_runtime(context):
                 'config_file': memory_config,
                 'enable_test_camera_attachment': 'true',
                 'allow_degraded_calibration': 'true',
+                # Phase 4B only visualizes the selected target and approach;
+                # drawing every memory object creates irrelevant box clutter.
+                'start_visualizer': 'false',
             },
         ),
         Node(

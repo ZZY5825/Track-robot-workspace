@@ -1,5 +1,6 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -31,12 +32,14 @@ def generate_launch_description():
         name='semantic_memory_visualizer',
         output='screen',
         parameters=[config_file],
+        condition=IfCondition(LaunchConfiguration('start_visualizer')),
     )
     return LaunchDescription([
         DeclareLaunchArgument('enable_test_camera_attachment',
                               default_value='false'),
         DeclareLaunchArgument('allow_degraded_calibration',
                               default_value='false'),
+        DeclareLaunchArgument('start_visualizer', default_value='true'),
         DeclareLaunchArgument(
             'config_file',
             default_value=PathJoinSubstitution([

@@ -137,11 +137,11 @@ local_costmap:
           raytrace_max_range: 8.0
           observation_persistence: 0.0
           expected_update_rate: 0.20
-          clearing: false
+          clearing: true
           marking: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        inflation_radius: 0.1625
+        inflation_radius: 0.105625
         cost_scaling_factor: 5.0
       always_send_full_costmap: true
 
@@ -189,10 +189,10 @@ global_costmap:
           raytrace_max_range: 8.0
           observation_persistence: 0.0
           expected_update_rate: 0.20
-          clearing: false
+          clearing: true
           marking: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        inflation_radius: 0.1625
+        inflation_radius: 0.105625
         cost_scaling_factor: 5.0
       always_send_full_costmap: true

@@ -56,12 +56,6 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: Semantic Memory Objects
-      Topic:
-        Value: /semantic_memory/markers
-      Value: true
-    - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
       Name: Phase 4 Target and Approach Goals
       Topic:
         Value: /semantic_search/phase4/markers

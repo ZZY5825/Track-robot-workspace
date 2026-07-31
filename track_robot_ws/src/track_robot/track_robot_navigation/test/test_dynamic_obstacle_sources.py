@@ -24,5 +24,7 @@ def test_dynamic_obstacles_use_current_filtered_marks_and_raw_clear_rays():
         assert raw['obstacle_max_range'] == 8.0
         assert filtered['data_type'] == 'PointCloud2'
         assert filtered['obstacle_max_range'] == 8.0
+        assert filtered['clearing'] is True
+        assert filtered['marking'] is True
         assert raw['observation_persistence'] == 0.0
         assert filtered['observation_persistence'] == 0.0

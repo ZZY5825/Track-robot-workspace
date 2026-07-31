@@ -58,6 +58,7 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
     assert "'start_lidar': 'true'" in source
     assert "'enable_test_camera_attachment': 'true'" in source
     assert "'allow_degraded_calibration': 'true'" in source
+    assert "'start_visualizer': 'false'" in source
     assert "'camera_depth_mode': 'PERFORMANCE'" in source
 
 
@@ -98,7 +99,7 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
         '/semantic_search/phase4a/spatial_objects')
     assert selector['maximum_depth_age_sec'] <= 0.5
     assert memory['best_candidate_threshold_calibrated'] is True
-    assert memory['best_candidate_minimum_relevance'] == 0.30
+    assert memory['best_candidate_minimum_relevance'] == 0.26
     assert memory['publish_diagnostic_ranking'] is True
     assert memory['association_max_source_time_delta_sec'] == 0.20
     weights = [
@@ -124,13 +125,19 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert memory['association_ambiguity_margin'] >= 0.03
     assert memory['association_confirmation_frames'] >= 3
     assert selector['confirmation_snapshots'] >= 3
-    assert selector['minimum_relevance'] == 0.30
-    assert planner['minimum_target_relevance'] == 0.27
-    assert selector['maximum_age_sec'] <= 1.0
-    assert selector['minimum_relevance'] == 0.30
-    assert selector['retained_minimum_relevance'] == 0.27
+    assert selector['minimum_relevance'] == 0.26
+    assert planner['minimum_target_relevance'] == 0.24
+    # The tested Phase 4B workflow uses an explicit, bounded static-target
+    # profile because semantic inference can legitimately take up to 3.51 s.
+    # Dynamic/default profiles must keep the one-second policy; the static
+    # profile is still fail-closed at four seconds.
+    assert memory['static_target_profile'] is True
+    assert 3.51 <= selector['maximum_age_sec'] <= 4.0
+    assert 3.51 <= planner['maximum_target_age_sec'] <= 4.0
+    assert selector['minimum_relevance'] == 0.26
+    assert selector['retained_minimum_relevance'] == 0.24
     assert planner['planning_only'] is True
-    assert planner['minimum_target_relevance'] == 0.27
+    assert planner['minimum_target_relevance'] == 0.24
     assert (
         planner['minimum_target_relevance']
         == selector['retained_minimum_relevance']

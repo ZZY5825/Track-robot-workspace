@@ -52,7 +52,7 @@ def test_costmaps_are_short_range_rolling_odom_maps():
         assert isinstance(params['height'], int)
         assert params['width'] <= 12.0
         assert params['height'] <= 12.0
-        assert params['inflation_layer']['inflation_radius'] == 0.1625
+        assert params['inflation_layer']['inflation_radius'] == 0.105625
 
 
 def test_costmaps_use_standard_lidar_layers():
@@ -69,7 +69,7 @@ def test_costmaps_use_standard_lidar_layers():
     assert local['voxel_layer']['raw_clear']['marking'] is False
     assert local['voxel_layer']['filtered_mark']['topic'] == (
         '/safety/filtered_obstacle_points')
-    assert local['voxel_layer']['filtered_mark']['clearing'] is False
+    assert local['voxel_layer']['filtered_mark']['clearing'] is True
     assert local['voxel_layer']['filtered_mark']['marking'] is True
     assert (
         global_map['obstacle_layer']['plugin']
@@ -83,7 +83,7 @@ def test_costmaps_use_standard_lidar_layers():
     assert global_map['obstacle_layer']['raw_clear']['marking'] is False
     assert global_map['obstacle_layer']['filtered_mark']['topic'] == (
         '/safety/filtered_obstacle_points')
-    assert global_map['obstacle_layer']['filtered_mark']['clearing'] is False
+    assert global_map['obstacle_layer']['filtered_mark']['clearing'] is True
     assert global_map['obstacle_layer']['filtered_mark']['marking'] is True
     for layer in (local['voxel_layer'], global_map['obstacle_layer']):
         for source_name in ('raw_clear', 'filtered_mark'):
@@ -124,7 +124,11 @@ def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
     assert params['semantic_execution_enabled'] is False
     assert params['navigation_frame'] == 'odom'
     assert params['confirmation_snapshots'] >= 2
-    assert params['maximum_target_age_sec'] <= 1.0
+    assert params['static_target_mode'] is True
+    assert params['static_target_position_reacquisition_enabled'] is True
+    assert 0.0 < params['static_target_reacquisition_radius_m'] <= 0.50
+    assert 0.0 < params['target_dropout_grace_sec'] <= 1.0
+    assert params['maximum_target_age_sec'] <= 4.0
     assert params['maximum_goal_age_sec'] <= 0.5
     assert params['maximum_diagnostics_age_sec'] <= 0.5
     assert params['maximum_odom_age_sec'] <= 0.25
