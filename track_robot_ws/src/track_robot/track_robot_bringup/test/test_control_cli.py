@@ -69,7 +69,21 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert 'start_phase4b_rviz:=true' in command
     assert 'start_rviz:=true' not in command
     assert 'extrinsic_mode:=prototype' in command
+    assert 'dino_enabled:=true' in command
     assert not any('imu' in value.lower() for value in command)
+
+
+def test_phase4b_run_allows_explicit_dino_fallback(tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', 'phase4b',
+        '--workspace-root', str(tmp_path),
+        '--no-dino',
+    ])
+
+    command = control_cli.build_phase4b_launch_argv(
+        args, control_cli.default_workspace_paths(tmp_path))
+
+    assert 'dino_enabled:=false' in command
 
 
 def test_phase4b_shutdown_requests_cancel_and_disarm_in_domain20(tmp_path):

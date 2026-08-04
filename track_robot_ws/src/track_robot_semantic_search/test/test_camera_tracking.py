@@ -19,6 +19,17 @@ def _config():
     )
 
 
+def _appearance_recovery_config():
+    return CameraTrackingConfig(
+        minimum_iou=0.20,
+        maximum_normalized_center_distance=0.30,
+        ambiguity_margin=0.05,
+        minimum_appearance_similarity=0.80,
+        maximum_missed_frames=4,
+        maximum_tracks=8,
+    )
+
+
 def _input(
         x1, y1, x2, y2, score=0.8, descriptor=None,
         label='blue bottle'):
@@ -179,4 +190,46 @@ def test_camera_track_never_crosses_detector_labels():
             _input(0, 0, 20, 20, label='green bag'),))
 
     assert second.candidates[0].camera_track_id != (
+        first.candidates[0].camera_track_id)
+
+
+def test_dino_identity_recovers_track_after_geometry_no_longer_overlaps():
+    manager = CameraTrackManager(_appearance_recovery_config())
+    first = manager.update(
+        1_000_000_000, (10, 1), (
+            _input(
+                0, 0, 20, 20,
+                descriptor=_descriptor([1.0, 0.0])),
+        ))
+    manager.update(2_000_000_000, (10, 1), ())
+
+    recovered = manager.update(
+        3_000_000_000, (10, 1), (
+            _input(
+                80, 0, 100, 20,
+                descriptor=_descriptor([0.99, 0.10])),
+        ))
+
+    assert recovered.candidates[0].camera_track_id == (
+        first.candidates[0].camera_track_id)
+
+
+def test_dino_identity_does_not_recover_dissimilar_target():
+    manager = CameraTrackManager(_appearance_recovery_config())
+    first = manager.update(
+        1_000_000_000, (10, 1), (
+            _input(
+                0, 0, 20, 20,
+                descriptor=_descriptor([1.0, 0.0])),
+        ))
+    manager.update(2_000_000_000, (10, 1), ())
+
+    different = manager.update(
+        3_000_000_000, (10, 1), (
+            _input(
+                80, 0, 100, 20,
+                descriptor=_descriptor([0.0, 1.0])),
+        ))
+
+    assert different.candidates[0].camera_track_id != (
         first.candidates[0].camera_track_id)

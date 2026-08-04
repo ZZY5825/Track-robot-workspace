@@ -80,7 +80,8 @@ class CameraTrackingConfig:
     minimum_iou: float = 0.20
     maximum_normalized_center_distance: float = 0.30
     ambiguity_margin: float = 0.05
-    maximum_missed_frames: int = 2
+    minimum_appearance_similarity: float = 0.80
+    maximum_missed_frames: int = 8
     maximum_tracks: int = 64
 
     def __post_init__(self):
@@ -88,6 +89,7 @@ class CameraTrackingConfig:
             self.minimum_iou,
             self.maximum_normalized_center_distance,
             self.ambiguity_margin,
+            self.minimum_appearance_similarity,
         )
         if any(
                 not isinstance(value, (int, float)) or
@@ -237,17 +239,23 @@ class CameraTrackManager:
         overlap = _iou(predicted, detection.detection)
         distance = _normalized_center_distance(
             predicted, detection.detection)
-        if (
-                overlap < self._config.minimum_iou and
-                distance > self._config.maximum_normalized_center_distance):
-            return None
         center_score = max(0.0, 1.0 - distance)
         geometry = 0.65 * overlap + 0.35 * center_score
         appearance = _descriptor_cosine(
             track.descriptor, detection.descriptor)
+        geometry_match = (
+            overlap >= self._config.minimum_iou or
+            distance <= self._config.maximum_normalized_center_distance)
+        appearance_match = (
+            appearance is not None and
+            appearance >= self._config.minimum_appearance_similarity)
+        if not geometry_match and not appearance_match:
+            return None
         if appearance is None:
             return geometry
-        return 0.50 * geometry + 0.50 * max(0.0, appearance)
+        # Geometry is useful for ordinary frame-to-frame motion, while DINOv3
+        # is the stronger identity cue after a detector gap or a camera turn.
+        return 0.25 * geometry + 0.75 * max(0.0, appearance)
 
     def update(self, stamp_ns, query_key, detections):
         self._validate_query_key(query_key)

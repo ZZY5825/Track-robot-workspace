@@ -151,8 +151,10 @@ class YoloWorldPerceptionNode(Node):
                         'tracking_maximum_center_distance', 0.30).value),
                 ambiguity_margin=float(self.declare_parameter(
                     'tracking_ambiguity_margin', 0.05).value),
+                minimum_appearance_similarity=float(self.declare_parameter(
+                    'tracking_minimum_appearance_similarity', 0.80).value),
                 maximum_missed_frames=int(self.declare_parameter(
-                    'tracking_maximum_missed_frames', 2).value),
+                    'tracking_maximum_missed_frames', 8).value),
                 maximum_tracks=self._max_detections,
             ))
             self._core = YoloWorldPerceptionCore(

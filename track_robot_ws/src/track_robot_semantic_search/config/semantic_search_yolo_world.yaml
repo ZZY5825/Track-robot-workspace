@@ -22,7 +22,8 @@ semantic_search_yolo_world_perception:
     tracking_minimum_iou: 0.20
     tracking_maximum_center_distance: 0.30
     tracking_ambiguity_margin: 0.05
-    tracking_maximum_missed_frames: 2
+    tracking_minimum_appearance_similarity: 0.80
+    tracking_maximum_missed_frames: 8
     dino_enabled: true
     dino_local_repo: ''
     dino_checkpoint: ''

@@ -42,11 +42,11 @@ def test_phase4b_composes_phase4a_nav2_platform_and_rviz():
     assert ast.parse(source)
 
 
-def test_phase4b_preserves_tested_dino_default_and_starts_platform_first():
+def test_phase4b_enables_dino_identity_evidence_and_starts_platform_first():
     source = _source(LAUNCH)
 
     assert "'dino_enabled': LaunchConfiguration('dino_enabled')" in source
-    assert "'dino_enabled', default_value='false'" in source
+    assert "'dino_enabled', default_value='true'" in source
     assert 'platform,\n        phase4a,' in source
 
 

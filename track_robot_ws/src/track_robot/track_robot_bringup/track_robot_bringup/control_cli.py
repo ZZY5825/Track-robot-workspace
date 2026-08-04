@@ -144,7 +144,12 @@ def build_parser():
         default='prototype',
     )
     run.add_argument('--extrinsic-file', default='')
-    run.add_argument('--dino-enabled', action='store_true')
+    dino = run.add_mutually_exclusive_group()
+    dino.add_argument(
+        '--dino-enabled', dest='dino_enabled', action='store_true')
+    dino.add_argument(
+        '--no-dino', dest='dino_enabled', action='store_false')
+    run.set_defaults(dino_enabled=True)
 
     stop = commands.add_parser(
         'stop', help='stop only a verified managed process group')

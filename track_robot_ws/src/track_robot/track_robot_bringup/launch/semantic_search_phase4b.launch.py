@@ -108,7 +108,7 @@ def generate_launch_description():
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
         DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
-        DeclareLaunchArgument('dino_enabled', default_value='false'),
+        DeclareLaunchArgument('dino_enabled', default_value='true'),
         DeclareLaunchArgument(
             'lidar_config_path',
             default_value=PathJoinSubstitution([
