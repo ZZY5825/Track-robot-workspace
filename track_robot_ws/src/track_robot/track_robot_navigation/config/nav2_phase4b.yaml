@@ -51,7 +51,7 @@ controller_server:
       use_cost_regulated_linear_velocity_scaling: true
       cost_scaling_dist: 0.50
       cost_scaling_gain: 1.0
-      inflation_cost_scaling_factor: 5.0
+      inflation_cost_scaling_factor: 12.0
       regulated_linear_scaling_min_radius: 0.90
       regulated_linear_scaling_min_speed: 0.03
       use_rotate_to_heading: true
@@ -143,10 +143,13 @@ local_costmap:
           marking: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # Test mode: use the physical footprint without extra clearance.
-        enabled: false
-        inflation_radius: 0.0
-        cost_scaling_factor: 5.0
+        # Reserve only the Bunker's physical 0.88 x 0.80 m body for Navfn.
+        # The safety supervisor's separate extra margin remains disabled.
+        enabled: true
+        inflation_radius: 0.60
+        # Decay soft obstacle costs faster while preserving the 0.60 m
+        # physical collision reserve for the rectangular footprint.
+        cost_scaling_factor: 12.0
       always_send_full_costmap: true
 
 global_costmap:
@@ -199,8 +202,10 @@ global_costmap:
           marking: true
       inflation_layer:
         plugin: nav2_costmap_2d::InflationLayer
-        # Test mode: use the physical footprint without extra clearance.
-        enabled: false
-        inflation_radius: 0.0
-        cost_scaling_factor: 5.0
+        # Reserve only the Bunker's physical 0.88 x 0.80 m body for Navfn.
+        # The safety supervisor's separate extra margin remains disabled.
+        enabled: true
+        inflation_radius: 0.60
+        # Keep this synchronized with the local costmap and controller.
+        cost_scaling_factor: 12.0
       always_send_full_costmap: true

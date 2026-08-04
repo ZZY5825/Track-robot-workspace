@@ -32,6 +32,7 @@ def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
     assert controller['rotate_to_heading_angular_vel'] == 0.40
     assert controller['max_linear_decel'] == 0.25
     assert controller['max_angular_accel'] == 0.50
+    assert controller['inflation_cost_scaling_factor'] == 12.0
     assert controller_params['progress_checker']['movement_time_allowance'] == 30.0
 
 
@@ -53,8 +54,13 @@ def test_costmaps_are_short_range_rolling_odom_maps():
         assert isinstance(params['height'], int)
         assert params['width'] <= 12.0
         assert params['height'] <= 12.0
-        assert params['inflation_layer']['inflation_radius'] == 0.0
-        assert params['inflation_layer']['enabled'] is False
+        # Navfn plans on a point grid.  Keep the safety supervisor's extra
+        # margin disabled, but reserve the Bunker's 0.88 x 0.80 m physical
+        # body in each Nav2 costmap so a centre-line path cannot clip an
+        # obstacle.
+        assert params['inflation_layer']['inflation_radius'] == 0.60
+        assert params['inflation_layer']['cost_scaling_factor'] == 12.0
+        assert params['inflation_layer']['enabled'] is True
 
 
 def test_costmaps_use_standard_lidar_layers():
@@ -137,3 +143,5 @@ def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
     assert params['maximum_diagnostics_age_sec'] <= 0.5
     assert params['maximum_odom_age_sec'] <= 0.25
     assert params['maximum_nav2_retries'] == 2
+    assert params['nav2_retry_cooldown_sec'] >= 2.0
+    assert params['preserve_authorization_after_retry_exhaustion'] is True
