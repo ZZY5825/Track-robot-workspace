@@ -121,6 +121,9 @@ class _ResultHarness:
         self._authorized_reference = REFERENCE
         self._nav2_retry_count = retry_count
         self._maximum_nav2_retries = maximum_retries
+        self._nav2_retry_cooldown_sec = 2.0
+        self._nav2_retry_not_before_s = 0.0
+        self._preserve_authorization_after_retry_exhaustion = True
         self._policy = _ResultPolicy()
         self.cleared_reason = None
         self.disarm_requests = 0
@@ -151,12 +154,13 @@ def test_nav2_abort_retries_without_clearing_operator_authorization():
         harness, _ResultFuture(GoalStatus.STATUS_ABORTED))
 
     assert harness._nav2_retry_count == 1
+    assert harness._nav2_retry_not_before_s > 0.0
     assert harness._policy.dispatch_failures == 1
     assert harness.cleared_reason is None
     assert harness.disarm_requests == 0
 
 
-def test_nav2_success_and_exhausted_abort_end_the_authorized_mission():
+def test_nav2_success_ends_mission_but_exhausted_abort_enters_cooldown():
     succeeded = _ResultHarness(retry_count=1)
     supervisor.SemanticNavigationSupervisorNode._on_action_result(
         succeeded, _ResultFuture(GoalStatus.STATUS_SUCCEEDED))
@@ -169,5 +173,7 @@ def test_nav2_success_and_exhausted_abort_end_the_authorized_mission():
     supervisor.SemanticNavigationSupervisorNode._on_action_result(
         exhausted, _ResultFuture(GoalStatus.STATUS_ABORTED))
 
-    assert exhausted.cleared_reason == 'nav2_retry_exhausted'
-    assert exhausted.disarm_requests == 1
+    assert exhausted._nav2_retry_count == 0
+    assert exhausted._nav2_retry_not_before_s > 0.0
+    assert exhausted.cleared_reason is None
+    assert exhausted.disarm_requests == 0

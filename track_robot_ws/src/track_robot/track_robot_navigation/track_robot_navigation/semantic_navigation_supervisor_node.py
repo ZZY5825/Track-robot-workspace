@@ -237,6 +237,16 @@ class SemanticNavigationSupervisorNode(Node):
             'maximum_nav2_retries', 2).value)
         if not 0 <= self._maximum_nav2_retries <= 5:
             raise ValueError('maximum_nav2_retries must be in [0, 5]')
+        self._nav2_retry_cooldown_sec = float(self.declare_parameter(
+            'nav2_retry_cooldown_sec', 2.0).value)
+        if (
+                not math.isfinite(self._nav2_retry_cooldown_sec)
+                or not 0.1 <= self._nav2_retry_cooldown_sec <= 10.0):
+            raise ValueError('nav2_retry_cooldown_sec must be in [0.1, 10.0]')
+        self._preserve_authorization_after_retry_exhaustion = bool(
+            self.declare_parameter(
+                'preserve_authorization_after_retry_exhaustion',
+                False).value)
         supervision_rate_hz = float(self.declare_parameter(
             'supervision_rate_hz', 10.0).value)
         static_target_mode = bool(self.declare_parameter(
@@ -306,6 +316,7 @@ class SemanticNavigationSupervisorNode(Node):
         self._cancel_when_accepted = False
         self._cancel_preserves_authorization = False
         self._nav2_retry_count = 0
+        self._nav2_retry_not_before_s = 0.0
         self._authorized_reference = None
         self._pending_authorization = None
         self._authorized_target_anchor_xy = None
@@ -566,11 +577,13 @@ class SemanticNavigationSupervisorNode(Node):
         self._mission_goal = None
         self._pending_mission_goal = None
         self._nav2_retry_count = 0
+        self._nav2_retry_not_before_s = 0.0
         self._target_grace.reset()
 
     def _lock_static_mission(
             self, reference, target_anchor_xy, mission_goal):
         self._nav2_retry_count = 0
+        self._nav2_retry_not_before_s = 0.0
         self._authorized_reference = reference
         self._pending_authorization = None
         self._authorized_target_anchor_xy = target_anchor_xy
@@ -903,6 +916,10 @@ class SemanticNavigationSupervisorNode(Node):
                 or self._active_goal_handle is not None):
             self._policy.mark_dispatch_failed()
             return
+        if (
+                action is GoalAction.NAVIGATE
+                and time.monotonic() < self._nav2_retry_not_before_s):
+            return
         goal = self._goal_in_navigation_frame()
         if goal is None:
             return
@@ -992,12 +1009,29 @@ class SemanticNavigationSupervisorNode(Node):
             )
             if disposition == 'retry':
                 self._nav2_retry_count += 1
+                self._nav2_retry_not_before_s = (
+                    time.monotonic() + self._nav2_retry_cooldown_sec)
                 self._policy.mark_dispatch_failed()
                 self.get_logger().warn(
                     'Nav2 aborted; preserving operator authorization for '
-                    'bounded retry {}/{}'.format(
+                    'bounded retry {}/{} after {:.1f}s cooldown'.format(
                         self._nav2_retry_count,
-                        self._maximum_nav2_retries))
+                        self._maximum_nav2_retries,
+                        self._nav2_retry_cooldown_sec))
+                return
+            if (
+                    status == GoalStatus.STATUS_ABORTED
+                    and self._preserve_authorization_after_retry_exhaustion
+                    and self._authorized_reference is not None):
+                self._nav2_retry_count = 0
+                cooldown_sec = 2.0 * self._nav2_retry_cooldown_sec
+                self._nav2_retry_not_before_s = (
+                    time.monotonic() + cooldown_sec)
+                self._policy.mark_dispatch_failed()
+                self.get_logger().warn(
+                    'Nav2 retry cycle exhausted; preserving operator '
+                    'authorization and retrying after {:.1f}s cooldown'.format(
+                        cooldown_sec))
                 return
             reason = 'nav2_action_failed'
             if disposition == 'complete':
@@ -1007,6 +1041,7 @@ class SemanticNavigationSupervisorNode(Node):
             elif status == GoalStatus.STATUS_CANCELED:
                 reason = 'nav2_action_canceled'
             self._nav2_retry_count = 0
+            self._nav2_retry_not_before_s = 0.0
             self._clear_authorization(reason)
             self._request_safety_disarm()
 

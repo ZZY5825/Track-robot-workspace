@@ -34,8 +34,11 @@ semantic_navigation_supervisor:
     maximum_goal_age_sec: 0.5
     maximum_diagnostics_age_sec: 0.5
     maximum_odom_age_sec: 0.25
-    # One operator authorization survives at most two terminal Nav2 aborts.
-    # Each Nav2 action already performs one bounded clear/wait/replan recovery.
+    # Do not re-dispatch while BT Navigator is still cleaning up an aborted
+    # action. One operator authorization remains valid across retry cycles;
+    # explicit cancel, RC override and E-stop still terminate immediately.
     maximum_nav2_retries: 2
+    nav2_retry_cooldown_sec: 2.0
+    preserve_authorization_after_retry_exhaustion: true
     transform_timeout_sec: 0.10
     supervision_rate_hz: 10.0
