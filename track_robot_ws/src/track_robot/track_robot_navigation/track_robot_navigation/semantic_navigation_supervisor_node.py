@@ -18,6 +18,7 @@ import tf2_geometry_msgs  # noqa: F401 - registers PoseStamped transforms
 from tf2_ros import Buffer, TransformException, TransformListener
 from track_robot_interfaces.msg import (
     SafetyState,
+    SemanticLocalizationState,
     SemanticObject,
     SemanticObjectArray,
 )
@@ -28,6 +29,11 @@ from .semantic_goal_policy import (
     GoalAction,
     SemanticGoalPolicy,
     SemanticGoalSnapshot,
+)
+from .static_target_mission import (
+    StaticMissionSnapshot,
+    StaticTargetMissionPolicy,
+    static_mission_reference_failure,
 )
 
 
@@ -200,6 +206,9 @@ class SemanticNavigationSupervisorNode(Node):
             '/semantic_search/phase4/diagnostics').value
         odometry_topic = self.declare_parameter(
             'odometry_topic', '/odom').value
+        localization_state_topic = self.declare_parameter(
+            'localization_state_topic',
+            '/semantic_search/phase4a/localization_state').value
         safety_state_topic = self.declare_parameter(
             'safety_state_topic', '/safety/state').value
         shadow_path_topic = self.declare_parameter(
@@ -260,6 +269,8 @@ class SemanticNavigationSupervisorNode(Node):
         self._target_grace = _TransientTargetGrace(
             target_dropout_grace_sec if static_target_mode else 0.0)
 
+        maximum_odom_age_sec = float(self.declare_parameter(
+            'maximum_odom_age_sec', 0.25).value)
         self._policy = SemanticGoalPolicy(
             runtime_mode=mode.value,
             semantic_execution_enabled=self._semantic_execution_enabled,
@@ -271,15 +282,17 @@ class SemanticNavigationSupervisorNode(Node):
                 'maximum_goal_age_sec', 0.5).value),
             maximum_diagnostics_age_sec=float(self.declare_parameter(
                 'maximum_diagnostics_age_sec', 0.5).value),
-            maximum_odom_age_sec=float(self.declare_parameter(
-                'maximum_odom_age_sec', 0.25).value),
+            maximum_odom_age_sec=maximum_odom_age_sec,
             static_target_mode=static_target_mode,
         )
+        self._mission_policy = StaticTargetMissionPolicy(
+            maximum_odom_age_sec=maximum_odom_age_sec)
 
         self._target_array = None
         self._target = None
         self._goal = None
         self._odom = None
+        self._localization_state = None
         self._safety = None
         self._planner_ok = False
         self._planner_reference = (0, 0, 0, 0, 0)
@@ -297,6 +310,8 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_authorization = None
         self._authorized_target_anchor_xy = None
         self._pending_target_anchor_xy = None
+        self._mission_goal = None
+        self._pending_mission_goal = None
 
         target_qos = QoSProfile(depth=1)
         target_qos.reliability = ReliabilityPolicy.RELIABLE
@@ -315,6 +330,11 @@ class SemanticNavigationSupervisorNode(Node):
             10)
         self._odom_subscription = self.create_subscription(
             Odometry, odometry_topic, self._on_odom, 10)
+        self._localization_state_subscription = self.create_subscription(
+            SemanticLocalizationState,
+            localization_state_topic,
+            self._on_localization_state,
+            target_qos)
         self._safety_subscription = self.create_subscription(
             SafetyState, safety_state_topic, self._on_safety, 10)
 
@@ -359,6 +379,18 @@ class SemanticNavigationSupervisorNode(Node):
         current_reference = (
             _target_reference(message, self._target)
             if self._target is not None else None)
+        if (
+                self._mission_goal is not None
+                and self._authorized_reference is not None):
+            mission_failure = static_mission_reference_failure(
+                self._authorized_reference,
+                current_reference,
+            )
+            if mission_failure is not None:
+                self._clear_authorization(mission_failure)
+                self._cancel_action(mission_failure)
+                self._request_safety_disarm()
+            return
         expected_reference = self._authorized_reference
         if expected_reference is None and self._pending_authorization is not None:
             expected_reference = self._pending_authorization[0]
@@ -406,6 +438,9 @@ class SemanticNavigationSupervisorNode(Node):
         self._odom = message
         self._odom_received_s = time.monotonic()
 
+    def _on_localization_state(self, message):
+        self._localization_state = message
+
     def _on_safety(self, message):
         self._safety = message
         hard_stop = (
@@ -423,12 +458,11 @@ class SemanticNavigationSupervisorNode(Node):
             current_reference, _current_sequence = (
                 self._current_reference_and_sequence())
             if current_reference == pending_reference:
-                self._nav2_retry_count = 0
-                self._authorized_reference = pending_reference
-                self._pending_authorization = None
-                self._authorized_target_anchor_xy = (
-                    self._pending_target_anchor_xy)
-                self._pending_target_anchor_xy = None
+                self._lock_static_mission(
+                    pending_reference,
+                    self._pending_target_anchor_xy,
+                    self._pending_mission_goal,
+                )
                 self.get_logger().warn(
                     'Operator authorized semantic approach for object '
                     '{}'.format(pending_reference[1]))
@@ -529,8 +563,20 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_authorization = None
         self._authorized_target_anchor_xy = None
         self._pending_target_anchor_xy = None
+        self._mission_goal = None
+        self._pending_mission_goal = None
         self._nav2_retry_count = 0
         self._target_grace.reset()
+
+    def _lock_static_mission(
+            self, reference, target_anchor_xy, mission_goal):
+        self._nav2_retry_count = 0
+        self._authorized_reference = reference
+        self._pending_authorization = None
+        self._authorized_target_anchor_xy = target_anchor_xy
+        self._pending_target_anchor_xy = None
+        self._mission_goal = mission_goal
+        self._pending_mission_goal = None
 
     def _target_anchor_in_navigation_frame(self, target):
         if (
@@ -579,6 +625,16 @@ class SemanticNavigationSupervisorNode(Node):
             int(request.query_id),
             int(request.query_version),
         )
+        if (
+                self._mission_goal is not None
+                and self._authorized_reference is not None):
+            response.accepted = (
+                requested_reference == self._authorized_reference)
+            response.reason = (
+                'mission_already_active'
+                if response.accepted
+                else 'different_mission_already_active')
+            return response
         if not _authorization_reference_is_current(
                 current_reference,
                 current_sequence,
@@ -601,7 +657,8 @@ class SemanticNavigationSupervisorNode(Node):
             response.accepted = False
             response.reason = preflight_failure
             return response
-        if self._goal_in_navigation_frame() is None:
+        mission_goal = self._goal_in_navigation_frame()
+        if mission_goal is None:
             response.accepted = False
             response.reason = 'goal_transform_unavailable'
             return response
@@ -614,11 +671,11 @@ class SemanticNavigationSupervisorNode(Node):
             response.reason = 'target_anchor_transform_unavailable'
             return response
         if self._safety and self._safety.armed:
-            self._nav2_retry_count = 0
-            self._authorized_reference = current_reference
-            self._pending_authorization = None
-            self._authorized_target_anchor_xy = target_anchor_xy
-            self._pending_target_anchor_xy = None
+            self._lock_static_mission(
+                current_reference,
+                target_anchor_xy,
+                mission_goal,
+            )
             response.accepted = True
             response.reason = 'authorized'
             return response
@@ -633,6 +690,7 @@ class SemanticNavigationSupervisorNode(Node):
             current_sequence,
         )
         self._pending_target_anchor_xy = target_anchor_xy
+        self._pending_mission_goal = mission_goal
         future = self._safety_arm_client.call_async(Trigger.Request())
         future.add_done_callback(self._on_arm_result)
         response.accepted = True
@@ -646,8 +704,7 @@ class SemanticNavigationSupervisorNode(Node):
         try:
             result = future.result()
         except Exception as error:
-            self._pending_authorization = None
-            self._pending_target_anchor_xy = None
+            self._clear_authorization('safety_arm_request_failed')
             self.get_logger().error(
                 'Safety arm request failed: {}'.format(error))
             return
@@ -655,16 +712,14 @@ class SemanticNavigationSupervisorNode(Node):
             self._current_reference_and_sequence())
         pending_reference, pending_sequence = pending
         if not result.success:
-            self._pending_authorization = None
-            self._pending_target_anchor_xy = None
+            self._clear_authorization('safety_arm_rejected')
             self.get_logger().warn(
                 'Safety arm rejected: {}'.format(result.message))
             return
         if (
                 current_reference != pending_reference
                 or current_sequence < pending_sequence):
-            self._pending_authorization = None
-            self._pending_target_anchor_xy = None
+            self._clear_authorization('target_changed_while_safety_arming')
             self.get_logger().warn(
                 'Safety armed after target changed; disarming fail-closed')
             self._request_safety_disarm()
@@ -705,7 +760,67 @@ class SemanticNavigationSupervisorNode(Node):
             self.get_logger().error(
                 'Safety disarm rejected: {}'.format(result.message))
 
+    def _supervise_static_mission(self):
+        mission_snapshot = self._static_mission_snapshot()
+        if mission_snapshot is None:
+            return False
+        decision = self._mission_policy.evaluate(mission_snapshot)
+        self._publish_diagnostics(
+            decision.action,
+            decision.reason,
+            mission_snapshot.key,
+        )
+        if decision.terminate_mission:
+            self._clear_authorization(decision.reason)
+            self._cancel_action(decision.reason)
+            self._request_safety_disarm()
+        elif decision.action is GoalAction.CANCEL:
+            self._cancel_action(decision.reason)
+        elif decision.action is GoalAction.NAVIGATE:
+            self._dispatch(decision.action)
+        return True
+
+    def _static_mission_snapshot(self):
+        if self._authorized_reference is None or self._mission_goal is None:
+            return None
+        odom_age_sec = float('inf')
+        if self._odom is not None:
+            odom_age_sec = self._age_from_stamp(
+                self._odom.header.stamp,
+                self._odom_received_s,
+            )
+        observed_localization_epoch_id = (
+            int(self._localization_state.localization_epoch_id)
+            if self._localization_state is not None
+            else 0)
+        safety_armed = bool(self._safety and self._safety.armed)
+        safety_temporarily_blocked = bool(
+            self._safety
+            and self._safety.armed
+            and self._safety.state == SafetyState.STATE_BLOCKED)
+        safety_permits_motion = bool(
+            self._safety
+            and self._safety.state in (
+                SafetyState.STATE_CLEAR,
+                SafetyState.STATE_SLOWDOWN,
+                SafetyState.STATE_AVOIDING))
+        return StaticMissionSnapshot(
+            memory_epoch_id=int(self._authorized_reference[0]),
+            global_object_id=int(self._authorized_reference[1]),
+            localization_epoch_id=int(self._authorized_reference[2]),
+            observed_localization_epoch_id=observed_localization_epoch_id,
+            odom_age_sec=odom_age_sec,
+            safety_armed=safety_armed,
+            safety_permits_motion=safety_permits_motion,
+            safety_temporarily_blocked=safety_temporarily_blocked,
+            goal_in_flight=bool(
+                self._pending_goal_kind is not None
+                or self._active_goal_handle is not None),
+        )
+
     def _supervise(self):
+        if self._supervise_static_mission():
+            return
         snapshot = self._snapshot()
         if snapshot is None:
             if (
@@ -769,6 +884,8 @@ class SemanticNavigationSupervisorNode(Node):
             self._dispatch(decision.action)
 
     def _goal_in_navigation_frame(self):
+        if self._mission_goal is not None:
+            return self._mission_goal
         try:
             return self._tf_buffer.transform(
                 self._goal,

@@ -125,6 +125,8 @@ def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
     assert params['runtime_mode'] == 'SEMANTIC_SHADOW'
     assert params['semantic_execution_enabled'] is False
     assert params['navigation_frame'] == 'odom'
+    assert params['localization_state_topic'] == (
+        '/semantic_search/phase4a/localization_state')
     assert params['confirmation_snapshots'] >= 2
     assert params['static_target_mode'] is True
     assert params['static_target_position_reacquisition_enabled'] is True

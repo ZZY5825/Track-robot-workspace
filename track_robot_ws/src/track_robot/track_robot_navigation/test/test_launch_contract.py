@@ -129,3 +129,16 @@ def test_bt_navigator_receives_supervised_tree_as_an_explicit_parameter():
         "                    LaunchConfiguration('default_bt_xml_filename')"
         in source
     )
+
+
+def test_phase5a_freezes_an_odom_goal_before_motion_authorization():
+    source = (
+        PACKAGE_ROOT
+        / 'track_robot_navigation'
+        / 'semantic_navigation_supervisor_node.py'
+    ).read_text()
+
+    assert 'mission_goal = self._goal_in_navigation_frame()' in source
+    assert 'self._pending_mission_goal = mission_goal' in source
+    assert 'self._lock_static_mission(' in source
+    assert 'if self._supervise_static_mission():' in source

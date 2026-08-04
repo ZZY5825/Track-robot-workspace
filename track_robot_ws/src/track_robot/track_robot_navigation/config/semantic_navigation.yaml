@@ -6,6 +6,7 @@ semantic_navigation_supervisor:
     selected_goal_topic: /semantic_search/phase4/selected_goal
     planner_diagnostics_topic: /semantic_search/phase4/diagnostics
     odometry_topic: /odom
+    localization_state_topic: /semantic_search/phase4a/localization_state
     safety_state_topic: /safety/state
     shadow_path_topic: /semantic_navigation/shadow_path
     diagnostics_topic: /semantic_navigation/diagnostics
