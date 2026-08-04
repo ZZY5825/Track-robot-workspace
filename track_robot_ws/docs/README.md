@@ -7,6 +7,7 @@ Package-only documentation remains beside its package under `src/`.
 
 - [Phase 0–4 planning-only integration test](guides/semantic-search/phase0-4-planning-only-test.md)
 - [Phase 0–4A fixed-base minimal-system test](guides/semantic-search/phase4a-fixed-base-test.md)
+- [Phase 4B/5A supervised Nav2 semantic approach test](guides/semantic-search/phase4b-nav2-supervised-test.md)
 - [Phase 0–3 YOLO-World test procedure](guides/semantic-search/phase0-3-yolo-world-test.md)
 - [R0C Orin YOLO-World zero-shot candidate](guides/semantic-search/r0c-orin-yolo-world.md)
 - [R0B zero-shot Grounding DINO desktop teacher](guides/semantic-search/r0b-zero-shot-teacher.md)

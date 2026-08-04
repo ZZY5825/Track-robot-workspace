@@ -30,7 +30,7 @@ Nav2 controller 和 recovery server 都重映射到 `/nav2/cmd_vel_raw`。最终
 ## 3. 标准重复测试流程（首选）
 
 ```bash
-cd ~/track_robot_ws/.worktrees/phase4b-nav2/track_robot_ws
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
 
 source /opt/ros/foxy/setup.bash
 source install/setup.bash
@@ -54,6 +54,8 @@ ros2 run track_robot_bringup semantic_search_ctl run phase4b
 - RViz 由同一条受管命令启动，并继承相同的 Domain 20 和 Fast DDS
   配置；不要另外手动运行 `rviz2`，否则可能进入隔离的 ROS 图；
 - 不使用 IMU；
+- Phase 4B 默认启用 DINOv3 目标裁剪特征；YOLO-World 仍是唯一的文本条件
+  检测器，DINOv3 只用于短时视觉身份关联；
 - 运行 `SEMANTIC_ACTIVE`，但启动后没有操作员授权，因此机器人保持静止；
 - 所有速度仍走 Nav2 → safety supervisor → cmd_vel gate → Bunker；
 - `Ctrl-C` 或 `semantic_search_ctl stop` 会先请求
@@ -75,18 +77,28 @@ RViz 内按以下固定顺序操作：
 `Start Approach` 不是直接发速度。它把当前
 `memory/global/localization/query/version/snapshot` 精确引用交给监督器；
 监督器再次核对 Phase 4A planner 和当前目标，安全链成功武装后才允许
-Nav2 goal。同一次运行内，静态目标会在 `odom` 中建立位置锚点；上游
-global ID 发生重建时，只有 memory/localization/query 域不变且新位置距离
-锚点不超过 `0.45 m` 才视为同一物体。远处目标、query 改变、定位重置、
-RC 接管、E-stop、底盘故障仍会撤销授权。
+Nav2 goal。授权成功时会冻结当前 `odom` 中的接近位姿，形成一次静态目标
+任务。之后即使目标暂时离开相机、YOLO-World 相关度波动或上游 global ID
+重建，Nav2 仍按冻结位姿继续。memory/localization/query 域改变、人工取消、
+RC 接管、E-stop 或底盘故障仍会撤销任务。
+
+若 DINOv3 因本地运行时问题需要排查，可显式回退到纯 YOLO-World 几何
+跟踪：
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl run phase4b --no-dino
+```
+
+该回退只关闭外观身份特征，不改变 YOLO-World 检测、Nav2 或安全链。
 
 需要 LiDAR 时，确认 `eth0` 是 `192.168.1.102/24`。组合 launch 会沿用已有的网络配置入口。
 
 当前整机测试使用显式 `static_target_profile`。实测语义输出最大间隔为
 3.51 s，因此 Phase 2、Phase 3、Phase 4A 和 Phase 4B 的目标证据有效期统一为
 4.0 s；该模式仅用于静态目标且有硬上限，不代表支持移动目标。
-已授权目标允许最多 `1.0 s` 的目标输入短暂中断，期间保持已有的受监督
-Nav2 goal；odom、RC、E-stop、底盘健康和安全状态不使用该宽限。
+目标尚未授权时，仍使用 4.0 s 的新鲜度边界。目标授权并冻结为 5A 静态
+任务后，不再依赖持续的相机目标心跳；odom、RC、E-stop、底盘健康和安全
+状态始终使用各自的实时门控，不使用目标宽限。
 
 Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 `/semantic_memory/markers`。Phase 2 的对象记忆仍用于目标评分和 ID 管理，
@@ -94,15 +106,16 @@ Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 
 ## 4. RViz 蓝色/粉色区域是什么
 
-蓝色和粉色区域是 Nav2 global/local costmap 中的障碍代价与 inflation，
+蓝色和粉色区域是 Nav2 global/local costmap 中的障碍代价，
 不是语义目标框。它们会影响 Phase 4B 是否可规划、是否暂停：
 
 - 原始 `/rslidar_points` 只用于 raytracing clearing；
 - `/safety/filtered_obstacle_points` 同时用于 raytracing clearing 和 marking；
 - 两个 observation source 的 persistence 均为 `0`；
 - 人离开后，来自同一过滤点源的后续射线应清除旧代价，不应永久留下脚印；
-- local/global costmap 的 inflation radius 为 `0.105625 m`，比上一版
-  `0.1625 m` 再缩小 35%，机器人实体 footprint 仍为 `1.20 x 1.00 m`。
+- 当前测试配置的 local/global costmap `inflation_radius=0.0`、
+  `footprint_padding=0.0`；碰撞体仍保留实物矩形 footprint
+  `0.88 x 0.80 m`，并没有把机器人当成一个点。
 
 若痕迹持续不清除，先检查原始点云和 costmap 更新率；这属于
 Phase 4B 动态障碍清除失败，不能靠解锁绕过。
@@ -129,8 +142,9 @@ ros2 run track_robot_bringup semantic_search_ctl query "green bottle"
 期望：
 
 - Phase 1 overlay 显示候选框；
-- Phase 2 优先保持同一个 `(memory_epoch_id, global_object_id)`；若上游 ID
-  重建，Phase 4B 只允许在同一 query 域和同一 `odom` 位置锚点内重关联；
+- Phase 2 优先保持同一个 `(memory_epoch_id, global_object_id)`；DINOv3
+  在相机侧提供最多 8 帧的有界身份重关联，但未经标定的 Phase 2 re-ID
+  仍为 shadow，不会直接合并或改写 global ID；
 - Phase 4A 显示接近候选、橙色建议路径；
 - `/semantic_navigation/shadow_path` 显示青色 Nav2 路径；
 - `/semantic_navigation/diagnostics` 从 `confirming_target_reference` 进入 `goal_accepted` 或 `goal_already_dispatched`；
@@ -221,13 +235,12 @@ ros2 launch track_robot_bringup semantic_search_phase4b.launch.py \
 - 当前精确目标已由操作员通过 RViz 按钮授权；
 - 安全状态为 CLEAR、SLOWDOWN 或 AVOIDING。
 
-目标输入短暂中断或无效位置有最多 `1.0 s` 的静态目标宽限；超时、远处
-目标替换、TF 失败、odom 陈旧、RC 接管、Bunker 故障或 E-stop 会拒绝或
-取消语义 Nav2 goal。BLOCKED 会保持安全暂停并继续重算。2026-07-31 的实机
-测试仍发现一项未关闭问题：空旷环境中可能持续进入
-`safety_obstacle_blocked`，最终由 Nav2 `SimpleProgressChecker` 在 30 s 后以
-`Failed to make progress` 终止 action。在该问题关闭前，不能把“障碍清除后
-一定自动恢复”作为已验证结论。
+授权前的目标输入短暂中断仍受新鲜度门控。授权后使用冻结的 `odom` 接近
+位姿，不因暂时看不见目标而取消。odom 陈旧和普通安全暂停会取消当前 Nav2
+action，但保留任务并在状态恢复后重新派发。Nav2 `ABORTED` 最多自动重试
+2 次；每次使用有界的 local/global costmap clear、等待 1 秒和重新规划，
+不执行自动旋转或倒车。重试耗尽后才终止任务并解除武装。该恢复逻辑已通过
+离线状态机与 launch 合同测试，仍需实机确认真实障碍清除和底盘连续运动。
 SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav2。
 
 ## 8. 失败测试
@@ -235,9 +248,11 @@ SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav
 按顺序执行，每项都必须安全停止或拒绝：
 
 1. 不输入目标：`waiting_for_correlated_inputs`，无 motion；
-2. 用手遮挡/移走目标超过 4 s：取消语义 goal；
+2. 授权前遮挡/移走目标超过 4 s：拒绝授权；授权后遮挡目标：冻结任务继续，
+   但 localization/query 改变必须取消；
 3. 停止 odom：0.25 s 后监督器取消，安全链输出零；
-4. 在通道放置障碍：Nav2 重规划；无路时 clear、wait 后 abort；
+4. 在通道放置障碍：Nav2 重规划；无路时执行有界 clear、wait、重规划；
+   不应要求操作员重复点击 `Cancel & Disarm` 和 `Start Approach`；
 5. 操作 RC：进入 `RC_OVERRIDE` 并取消；
 6. 调用 E-stop：立即锁存零速度并取消；
 7. 改变 localization epoch 或 TF：旧目标引用不得继续执行。
@@ -258,4 +273,6 @@ ps -eo pid,ppid,stat,cmd | grep -E \
 - `SEMANTIC_SHADOW` 运行时零运动图验证：PASS；
 - 本次 Camera+Stereo Phase 2、costmap 清除和 RViz 授权改动：离线回归通过后仍需按本页流程做一次实机验收，不能仅凭代码宣称实机通过。
 
-初始 footprint `1.20 x 1.00 m` 来自现有配置，不替代实物复测。Phase 4B 仍使用现有 prototype Camera–LiDAR 外参；在主动实机验收前必须用实际安装外参复核目标位置和障碍投影。
+当前 footprint `0.88 x 0.80 m` 来自本轮明确的测试假设，不替代实物复测。
+Phase 4B 仍使用现有 prototype Camera–LiDAR 外参；在主动实机验收前必须用
+实际安装外参复核目标位置和障碍投影。

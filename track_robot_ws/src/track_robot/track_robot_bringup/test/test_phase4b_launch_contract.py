@@ -5,6 +5,10 @@ from pathlib import Path
 PACKAGE = Path(__file__).resolve().parents[1]
 LAUNCH = PACKAGE / 'launch' / 'semantic_search_phase4b.launch.py'
 RVIZ = PACKAGE / 'rviz' / 'semantic_search_phase4b.rviz'
+GUIDE = (
+    PACKAGE.parents[2] / 'docs' / 'guides' / 'semantic-search' /
+    'phase4b-nav2-supervised-test.md'
+)
 
 
 def _source(path):
@@ -64,3 +68,13 @@ def test_phase4b_rviz_exposes_semantic_and_nav2_evidence():
         assert topic in source
     assert 'Fixed Frame: odom' in source
     assert 'nav2_rviz_plugins/GoalTool' in source
+
+
+def test_phase4b_operator_guide_matches_static_mission_and_dino_defaults():
+    guide = _source(GUIDE)
+
+    assert '.worktrees/main-integration/track_robot_ws' in guide
+    assert 'run phase4b --no-dino' in guide
+    assert '冻结当前 `odom` 中的接近位姿' in guide
+    assert '`inflation_radius=0.0`' in guide
+    assert '`0.88 x 0.80 m`' in guide
