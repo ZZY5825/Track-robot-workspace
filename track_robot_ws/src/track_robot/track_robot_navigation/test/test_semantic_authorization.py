@@ -1,4 +1,6 @@
 import track_robot_navigation.semantic_navigation_supervisor_node as supervisor
+from action_msgs.msg import GoalStatus
+from types import SimpleNamespace
 
 from track_robot_navigation.semantic_navigation_supervisor_node import (
     _authorization_reference_is_current,
@@ -72,3 +74,100 @@ def test_target_dropout_grace_is_bounded_and_target_only():
     assert not grace.should_hold('target_position_invalid', 11.01)
     grace.reset()
     assert not grace.should_hold('odometry_stale', 20.0)
+
+
+def test_nav2_abort_preserves_authorization_while_retry_budget_remains():
+    classify = getattr(supervisor, '_classify_nav2_result', None)
+    assert classify is not None
+
+    assert classify(GoalStatus.STATUS_ABORTED, 0, 2) == 'retry'
+    assert classify(GoalStatus.STATUS_ABORTED, 1, 2) == 'retry'
+
+
+def test_nav2_terminal_result_only_retries_bounded_aborts():
+    classify = getattr(supervisor, '_classify_nav2_result', None)
+    assert classify is not None
+
+    assert classify(GoalStatus.STATUS_SUCCEEDED, 0, 2) == 'complete'
+    assert classify(GoalStatus.STATUS_ABORTED, 2, 2) == 'stop'
+    assert classify(GoalStatus.STATUS_CANCELED, 0, 2) == 'stop'
+    assert classify(GoalStatus.STATUS_UNKNOWN, 0, 2) == 'stop'
+
+
+class _ResultPolicy:
+    def __init__(self):
+        self.dispatch_failures = 0
+
+    def mark_dispatch_failed(self):
+        self.dispatch_failures += 1
+
+
+class _ResultLogger:
+    def info(self, _message):
+        pass
+
+    def warn(self, _message):
+        pass
+
+    def error(self, _message):
+        pass
+
+
+class _ResultHarness:
+    def __init__(self, retry_count=0, maximum_retries=2):
+        self._pending_goal_kind = supervisor.GoalAction.NAVIGATE
+        self._active_goal_handle = object()
+        self._cancel_preserves_authorization = False
+        self._authorized_reference = REFERENCE
+        self._nav2_retry_count = retry_count
+        self._maximum_nav2_retries = maximum_retries
+        self._policy = _ResultPolicy()
+        self.cleared_reason = None
+        self.disarm_requests = 0
+
+    def get_logger(self):
+        return _ResultLogger()
+
+    def _clear_authorization(self, reason):
+        self.cleared_reason = reason
+        self._authorized_reference = None
+
+    def _request_safety_disarm(self):
+        self.disarm_requests += 1
+
+
+class _ResultFuture:
+    def __init__(self, status):
+        self._status = status
+
+    def result(self):
+        return SimpleNamespace(status=self._status, result=None)
+
+
+def test_nav2_abort_retries_without_clearing_operator_authorization():
+    harness = _ResultHarness()
+
+    supervisor.SemanticNavigationSupervisorNode._on_action_result(
+        harness, _ResultFuture(GoalStatus.STATUS_ABORTED))
+
+    assert harness._nav2_retry_count == 1
+    assert harness._policy.dispatch_failures == 1
+    assert harness.cleared_reason is None
+    assert harness.disarm_requests == 0
+
+
+def test_nav2_success_and_exhausted_abort_end_the_authorized_mission():
+    succeeded = _ResultHarness(retry_count=1)
+    supervisor.SemanticNavigationSupervisorNode._on_action_result(
+        succeeded, _ResultFuture(GoalStatus.STATUS_SUCCEEDED))
+
+    assert succeeded._nav2_retry_count == 0
+    assert succeeded.cleared_reason == 'nav2_action_succeeded'
+    assert succeeded.disarm_requests == 1
+
+    exhausted = _ResultHarness(retry_count=2)
+    supervisor.SemanticNavigationSupervisorNode._on_action_result(
+        exhausted, _ResultFuture(GoalStatus.STATUS_ABORTED))
+
+    assert exhausted.cleared_reason == 'nav2_retry_exhausted'
+    assert exhausted.disarm_requests == 1

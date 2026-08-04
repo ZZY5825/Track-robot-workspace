@@ -1,16 +1,25 @@
 <!--
-  Short-range supervised navigation using the minimal Foxy-compatible
-  replanning pipeline. Automatic recovery, Spin, and BackUp are intentionally
-  absent: a failed plan or controller aborts and leaves the safety chain
-  disarmed until the operator explicitly retries.
+  Short-range supervised navigation with one bounded, non-motion recovery.
+  A failed plan or controller clears both rolling costmaps, waits one second,
+  and replans once. Spin and BackUp remain intentionally absent.
 -->
 <root main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <PipelineSequence name="NavigateWithReplanning">
-      <RateController hz="1.0">
-        <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
-      </RateController>
-      <FollowPath path="{path}" controller_id="FollowPath"/>
-    </PipelineSequence>
+    <RecoveryNode number_of_retries="1" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithReplanning">
+        <RateController hz="1.0">
+          <ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+        </RateController>
+        <FollowPath path="{path}" controller_id="FollowPath"/>
+      </PipelineSequence>
+      <ReactiveFallback name="RecoveryFallback">
+        <GoalUpdated/>
+        <SequenceStar name="ClearWaitAndReplan">
+          <ClearEntireCostmap name="ClearLocalCostmap" service_name="local_costmap/clear_entirely_local_costmap"/>
+          <ClearEntireCostmap name="ClearGlobalCostmap" service_name="global_costmap/clear_entirely_global_costmap"/>
+          <Wait wait_duration="1"/>
+        </SequenceStar>
+      </ReactiveFallback>
+    </RecoveryNode>
   </BehaviorTree>
 </root>

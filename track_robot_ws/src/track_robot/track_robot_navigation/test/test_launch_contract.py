@@ -100,7 +100,7 @@ def test_operator_authorization_is_reference_bound_and_uses_safety_services():
     assert "'/cmd_vel'" not in source
 
 
-def test_supervised_behavior_tree_uses_minimal_foxy_compatible_pipeline():
+def test_supervised_behavior_tree_has_bounded_non_motion_recovery():
     tree = (
         PACKAGE_ROOT
         / 'behavior_trees'
@@ -111,9 +111,9 @@ def test_supervised_behavior_tree_uses_minimal_foxy_compatible_pipeline():
     assert '<FollowPath' in tree
     assert '<RateController ' in tree
     assert '<PipelineSequence ' in tree
-    assert '<RecoveryNode ' not in tree
-    assert '<ClearEntireCostmap ' not in tree
-    assert '<Wait ' not in tree
+    assert '<RecoveryNode number_of_retries="1"' in tree
+    assert tree.count('<ClearEntireCostmap ') == 2
+    assert '<Wait wait_duration="1"' in tree
     assert '<Spin ' not in tree
     assert '<BackUp ' not in tree
 

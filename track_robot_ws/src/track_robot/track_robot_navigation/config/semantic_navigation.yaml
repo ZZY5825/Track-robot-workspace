@@ -33,5 +33,8 @@ semantic_navigation_supervisor:
     maximum_goal_age_sec: 0.5
     maximum_diagnostics_age_sec: 0.5
     maximum_odom_age_sec: 0.25
+    # One operator authorization survives at most two terminal Nav2 aborts.
+    # Each Nav2 action already performs one bounded clear/wait/replan recovery.
+    maximum_nav2_retries: 2
     transform_timeout_sec: 0.10
     supervision_rate_hz: 10.0

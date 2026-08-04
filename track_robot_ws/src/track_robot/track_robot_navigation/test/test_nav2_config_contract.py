@@ -134,3 +134,4 @@ def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
     assert params['maximum_goal_age_sec'] <= 0.5
     assert params['maximum_diagnostics_age_sec'] <= 0.5
     assert params['maximum_odom_age_sec'] <= 0.25
+    assert params['maximum_nav2_retries'] == 2

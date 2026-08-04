@@ -3,6 +3,7 @@
 import math
 import time
 
+from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import ComputePathToPose, NavigateToPose
@@ -94,6 +95,21 @@ def _authorization_survives_interruption(reason):
         'timestamp_regression',
         'waiting_for_correlated_inputs',
     }
+
+
+def _classify_nav2_result(status, retry_count, maximum_retries):
+    """Classify a terminal Nav2 result without conflating abort and success."""
+
+    status = int(status)
+    retry_count = max(0, int(retry_count))
+    maximum_retries = max(0, int(maximum_retries))
+    if status == GoalStatus.STATUS_SUCCEEDED:
+        return 'complete'
+    if (
+            status == GoalStatus.STATUS_ABORTED
+            and retry_count < maximum_retries):
+        return 'retry'
+    return 'stop'
 
 
 def _same_static_target_location(
@@ -208,6 +224,10 @@ class SemanticNavigationSupervisorNode(Node):
             'planner_id', 'GridBased').value)
         self._transform_timeout_sec = float(self.declare_parameter(
             'transform_timeout_sec', 0.10).value)
+        self._maximum_nav2_retries = int(self.declare_parameter(
+            'maximum_nav2_retries', 2).value)
+        if not 0 <= self._maximum_nav2_retries <= 5:
+            raise ValueError('maximum_nav2_retries must be in [0, 5]')
         supervision_rate_hz = float(self.declare_parameter(
             'supervision_rate_hz', 10.0).value)
         static_target_mode = bool(self.declare_parameter(
@@ -272,6 +292,7 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_goal_kind = None
         self._cancel_when_accepted = False
         self._cancel_preserves_authorization = False
+        self._nav2_retry_count = 0
         self._authorized_reference = None
         self._pending_authorization = None
         self._authorized_target_anchor_xy = None
@@ -402,6 +423,7 @@ class SemanticNavigationSupervisorNode(Node):
             current_reference, _current_sequence = (
                 self._current_reference_and_sequence())
             if current_reference == pending_reference:
+                self._nav2_retry_count = 0
                 self._authorized_reference = pending_reference
                 self._pending_authorization = None
                 self._authorized_target_anchor_xy = (
@@ -507,6 +529,7 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_authorization = None
         self._authorized_target_anchor_xy = None
         self._pending_target_anchor_xy = None
+        self._nav2_retry_count = 0
         self._target_grace.reset()
 
     def _target_anchor_in_navigation_frame(self, target):
@@ -591,6 +614,7 @@ class SemanticNavigationSupervisorNode(Node):
             response.reason = 'target_anchor_transform_unavailable'
             return response
         if self._safety and self._safety.armed:
+            self._nav2_retry_count = 0
             self._authorized_reference = current_reference
             self._pending_authorization = None
             self._authorized_target_anchor_xy = target_anchor_xy
@@ -840,7 +864,33 @@ class SemanticNavigationSupervisorNode(Node):
             return
         self._cancel_preserves_authorization = False
         if action is GoalAction.NAVIGATE:
-            self._clear_authorization('nav2_action_finished')
+            status = (
+                int(wrapped.status)
+                if wrapped is not None
+                else GoalStatus.STATUS_UNKNOWN)
+            disposition = _classify_nav2_result(
+                status,
+                self._nav2_retry_count,
+                self._maximum_nav2_retries,
+            )
+            if disposition == 'retry':
+                self._nav2_retry_count += 1
+                self._policy.mark_dispatch_failed()
+                self.get_logger().warn(
+                    'Nav2 aborted; preserving operator authorization for '
+                    'bounded retry {}/{}'.format(
+                        self._nav2_retry_count,
+                        self._maximum_nav2_retries))
+                return
+            reason = 'nav2_action_failed'
+            if disposition == 'complete':
+                reason = 'nav2_action_succeeded'
+            elif status == GoalStatus.STATUS_ABORTED:
+                reason = 'nav2_retry_exhausted'
+            elif status == GoalStatus.STATUS_CANCELED:
+                reason = 'nav2_action_canceled'
+            self._nav2_retry_count = 0
+            self._clear_authorization(reason)
             self._request_safety_disarm()
 
     def _cancel_action(self, reason):
