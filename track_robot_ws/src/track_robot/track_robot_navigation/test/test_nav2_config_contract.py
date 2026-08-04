@@ -45,14 +45,16 @@ def test_costmaps_are_short_range_rolling_odom_maps():
         assert params['rolling_window'] is True
         assert params['resolution'] == 0.05
         assert params['footprint'] == (
-            '[[-0.60,-0.50],[-0.60,0.50],'
-            '[0.60,0.50],[0.60,-0.50]]'
+            '[[-0.44,-0.40],[-0.44,0.40],'
+            '[0.44,0.40],[0.44,-0.40]]'
         )
+        assert params['footprint_padding'] == 0.0
         assert isinstance(params['width'], int)
         assert isinstance(params['height'], int)
         assert params['width'] <= 12.0
         assert params['height'] <= 12.0
-        assert params['inflation_layer']['inflation_radius'] == 0.105625
+        assert params['inflation_layer']['inflation_radius'] == 0.0
+        assert params['inflation_layer']['enabled'] is False
 
 
 def test_costmaps_use_standard_lidar_layers():

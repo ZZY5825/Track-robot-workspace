@@ -34,7 +34,9 @@ def test_phase4b_config_routes_nav2_through_supervisor():
     assert params['allow_arm_without_command'] is True
     assert params['max_linear_x'] == 0.15
     assert params['max_angular_z'] == 0.50
-    assert params['safety_inflation'] == 0.13
+    assert params['footprint_length'] == 0.88
+    assert params['footprint_width'] == 0.80
+    assert params['safety_inflation'] == 0.0
     assert params['bounded_rotation_collision_enabled'] is True
     assert params['angular_braking_deceleration'] == 0.80
     assert params['fixed_rotation_margin'] == 0.05
@@ -46,15 +48,15 @@ def test_phase4b_config_routes_nav2_through_supervisor():
     assert abs(stopping_distance - 0.5325) < 1e-9
 
 
-def test_phase4b_obstacle_visualization_uses_reduced_inflation():
+def test_phase4b_obstacle_visualization_uses_physical_footprint_only():
     config = yaml.safe_load(
         (PACKAGE_ROOT / 'config' / 'local_obstacle_map.yaml').read_text()
     )
     params = config['local_obstacle_map_node']['ros__parameters']
 
-    assert params['footprint_length'] == 1.20
-    assert params['footprint_width'] == 1.00
-    assert params['safety_inflation'] == 0.13
+    assert params['footprint_length'] == 0.88
+    assert params['footprint_width'] == 0.80
+    assert params['safety_inflation'] == 0.0
 
 
 def test_existing_supervisor_defaults_remain_unchanged():

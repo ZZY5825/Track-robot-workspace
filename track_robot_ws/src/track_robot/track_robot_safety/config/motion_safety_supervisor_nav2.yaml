@@ -39,9 +39,10 @@ motion_safety_supervisor_node:
     max_lookahead_distance: 1.5
     max_lookahead_time_sec: 10.0
 
-    footprint_length: 1.20
-    footprint_width: 1.00
-    safety_inflation: 0.13
+    # Match both Nav2 costmaps: physical body only, no extra inflation.
+    footprint_length: 0.88
+    footprint_width: 0.80
+    safety_inflation: 0.0
     rc_override_deadband: 10
 
     arm_service: /safety/arm
