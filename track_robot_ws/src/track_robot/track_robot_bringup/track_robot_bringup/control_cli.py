@@ -858,7 +858,7 @@ def main(
             environment = _environment(base_environment, paths)
             if state.stage == 'phase4b':
                 request_phase4b_cancel_disarm(runner, environment)
-            else:
+            elif 'base' in getattr(state, 'owned_modules', ()):
                 request_phase5a_cancel_disarm(runner, environment)
         stopped = process_manager.stop_owned()
         if stopped:

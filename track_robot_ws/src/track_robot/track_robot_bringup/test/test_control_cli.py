@@ -1403,6 +1403,60 @@ def test_stop_does_not_report_success_when_verified_process_survives():
     assert 'remains alive' in stderr.getvalue()
 
 
+def test_phase5a_passive_stop_does_not_wait_for_absent_motion_services():
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, 'success: true', '')
+
+    class Manager:
+        last_stop_error = None
+
+        def verified_state(self):
+            return SimpleNamespace(
+                stage='phase5a', owned_modules=('camera', 'lidar'))
+
+        def stop_owned(self):
+            return True
+
+    code = control_cli.main(
+        ['stop'], manager=Manager(), runner=runner,
+        environ={'PATH': '/bin'},
+    )
+
+    assert code == 0
+    assert calls == []
+
+
+def test_phase5a_active_stop_cancels_and_disarms_before_process_stop():
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, 'success: true', '')
+
+    class Manager:
+        last_stop_error = None
+
+        def verified_state(self):
+            return SimpleNamespace(
+                stage='phase5a',
+                owned_modules=('camera', 'lidar', 'base'))
+
+        def stop_owned(self):
+            return True
+
+    code = control_cli.main(
+        ['stop'], manager=Manager(), runner=runner,
+        environ={'PATH': '/bin'},
+    )
+
+    assert code == 0
+    assert [call[3] for call in calls] == [
+        '/semantic_search/active_search/cancel', '/safety/disarm']
+
+
 @pytest.mark.parametrize('status, expected', [
     (CheckStatus.PASS, 0),
     (CheckStatus.NOT_READY, 2),
