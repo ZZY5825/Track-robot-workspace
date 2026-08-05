@@ -13,7 +13,7 @@ TEST(ActiveSearchSession, BeginsOnceAndRejectsDuplicateStart)
   EXPECT_FALSE(session.begin().has_value());
 }
 
-TEST(ActiveSearchSession, AuthorizesOnlyOnceAfterWaitingFeedback)
+TEST(ActiveSearchSession, WaitingFeedbackNeedsNoSecondAuthorization)
 {
   plugin::ActiveSearchSession session;
   const auto generation = *session.begin();
@@ -22,14 +22,12 @@ TEST(ActiveSearchSession, AuthorizesOnlyOnceAfterWaitingFeedback)
   const auto observing = session.on_feedback(
     generation, 44U, "PASSIVE_OBSERVATION");
   EXPECT_TRUE(observing.adopt_query);
-  EXPECT_FALSE(observing.authorize_rotation);
 
   const auto waiting = session.on_feedback(
     generation, 44U, "WAITING_FOR_AUTHORIZATION");
-  EXPECT_TRUE(waiting.authorize_rotation);
-  const auto repeated = session.on_feedback(
-    generation, 44U, "WAITING_FOR_AUTHORIZATION");
-  EXPECT_FALSE(repeated.authorize_rotation);
+  EXPECT_TRUE(waiting.accepted);
+  EXPECT_FALSE(waiting.adopt_query);
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::SEARCHING);
 }
 
 TEST(ActiveSearchSession, StopBeforeGoalResponseRemainsCancelled)
@@ -42,18 +40,17 @@ TEST(ActiveSearchSession, StopBeforeGoalResponseRemainsCancelled)
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
 }
 
-TEST(ActiveSearchSession, AcceptsStopRetriesWhileCancellationIsPending)
+TEST(ActiveSearchSession, OneStopFinishesLocallyWithoutRetryState)
 {
   plugin::ActiveSearchSession session;
   const auto generation = *session.begin();
 
   EXPECT_TRUE(session.request_stop());
-  EXPECT_TRUE(session.request_stop());
+  EXPECT_FALSE(session.request_stop());
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
-  EXPECT_TRUE(session.cancellation_deadline_elapsed(generation));
-  EXPECT_FALSE(session.cancellation_deadline_elapsed(generation + 1U));
-  EXPECT_TRUE(session.on_goal_response(generation, true));
-  EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
+  EXPECT_TRUE(session.finish(generation));
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::IDLE);
+  EXPECT_FALSE(session.request_stop());
 }
 
 TEST(ActiveSearchSession, LocksManualQueryOwnershipUntilTerminalFinish)
@@ -89,7 +86,6 @@ TEST(ActiveSearchSession, RejectsFeedbackBeforeGoalAcceptance)
     generation, 44U, "WAITING_FOR_AUTHORIZATION");
   EXPECT_FALSE(decision.accepted);
   EXPECT_FALSE(decision.adopt_query);
-  EXPECT_FALSE(decision.authorize_rotation);
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::GOAL_PENDING);
 }
 
@@ -105,7 +101,7 @@ TEST(ActiveSearchSession, IgnoresStaleCallbacksAndResetsOnFinish)
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::IDLE);
 }
 
-TEST(ActiveSearchSession, RejectsZeroQueryIdAndTransitionsOnAuthorizationResult)
+TEST(ActiveSearchSession, RejectsZeroQueryIdWithoutBlockingValidSearchFeedback)
 {
   plugin::ActiveSearchSession session;
   const auto generation = *session.begin();
@@ -115,14 +111,12 @@ TEST(ActiveSearchSession, RejectsZeroQueryIdAndTransitionsOnAuthorizationResult)
     generation, 0U, "WAITING_FOR_AUTHORIZATION");
   EXPECT_FALSE(invalid.accepted);
   EXPECT_FALSE(invalid.adopt_query);
-  EXPECT_FALSE(invalid.authorize_rotation);
 
   const auto waiting = session.on_feedback(
     generation, 7U, "WAITING_FOR_AUTHORIZATION");
-  ASSERT_TRUE(waiting.authorize_rotation);
-  EXPECT_EQ(session.state(), plugin::ActiveSearchState::AUTHORIZATION_PENDING);
-  EXPECT_TRUE(session.on_authorization_result(generation, true));
-  EXPECT_EQ(session.state(), plugin::ActiveSearchState::AUTHORIZED);
+  ASSERT_TRUE(waiting.accepted);
+  EXPECT_TRUE(waiting.adopt_query);
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::SEARCHING);
 }
 
 TEST(ActiveSearchSession, RejectsMismatchedQueryFeedbackWithoutAuthorization)
@@ -140,7 +134,6 @@ TEST(ActiveSearchSession, RejectsMismatchedQueryFeedbackWithoutAuthorization)
     generation, 8U, "WAITING_FOR_AUTHORIZATION");
   EXPECT_FALSE(mismatch.accepted);
   EXPECT_FALSE(mismatch.adopt_query);
-  EXPECT_FALSE(mismatch.authorize_rotation);
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::SEARCHING);
 }
 
@@ -151,7 +144,7 @@ TEST(ActiveSearchSession, MapsManagerFeedbackToBoundedOperatorStatus)
     "passive observation");
   EXPECT_EQ(
     plugin::active_search_feedback_status("WAITING_FOR_AUTHORIZATION"),
-    "waiting for rotation authorization");
+    "starting bounded rotation");
   EXPECT_EQ(
     plugin::active_search_feedback_status("ROTATING"),
     "rotating in place");

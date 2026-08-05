@@ -42,16 +42,17 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
 
     for interface in (
             '/semantic_search/search_for_object',
-            '/semantic_search/active_search/authorize_rotation',
             '/semantic_search/active_search/cancel'):
         assert interface in source
+
+    assert '/semantic_search/active_search/authorize_rotation' not in source
 
     assert 'SUPERVISED SEMANTIC CONTROL' in source
     assert 'Start Approach' in source
     assert 'Cancel & Disarm' in source
     assert 'Start Finding' in source
     assert 'Stop Finding' in source
-    assert 'WAITING_FOR_AUTHORIZATION' in source
+    assert 'WAITING_FOR_AUTHORIZATION' not in source
     assert 'selected target is not ready' in source
     assert 'authorization candidate is not correlated' not in source
     assert 'AuthorizeSemanticApproach' in source
@@ -74,13 +75,11 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     assert 'weak_lifetime.lock()' in source
     assert 'lifetime->alive = false' in source
     assert 'std::lock_guard<std::mutex> callback_lock(lifetime->mutex)' in source
-    assert 'QTimer' in header
-    assert 'kCancellationDeadlineMs = 3000' in source
-    assert 'Retry Stop' in source
-    assert ('cancellation unconfirmed — retry Stop; '
-            'RC/E-stop remain authoritative') in source
-    assert 'cancellation_timer_->start(kCancellationDeadlineMs)' in source
-    assert 'cancellation_deadline_elapsed' in source
+    assert 'QTimer' not in header
+    assert 'kCancellationDeadlineMs' not in source
+    assert 'Retry Stop' not in source
+    assert 'cancellation_timer_' not in source
+    assert 'cancellation_deadline_elapsed' not in source
     assert 'async_cancel_goal' in source
     assert 'handle,' in source
     assert 'set_query_controls_enabled(false)' in source
@@ -107,19 +106,17 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     assert finding_start_body.index('QuerySession::normalize_query') < (
         finding_start_body.index('finding_session_.begin()'))
 
-    authorization_body = source.split(
-        'void SemanticSearchPanel::authorize_rotation(', 1)[1].split(
-        'void SemanticSearchPanel::render_finding_state(', 1)[0]
-    assert 'try {' in authorization_body
-    assert 'authorize_rotation_client_->async_send_request' in authorization_body
-    assert 'on_authorization_result(generation, false)' in authorization_body
-
     cancel_body = source.split(
         'void SemanticSearchPanel::stop_finding()', 1)[1].split(
-        'void SemanticSearchPanel::authorize_rotation(', 1)[0]
+        'void SemanticSearchPanel::render_finding_state(', 1)[0]
     assert 'try {\n    cancel_search_client_->async_send_request' in cancel_body
     assert 'active-search cancellation service send failed' in cancel_body
     assert 'weak_lifetime, generation' in cancel_body
+    assert 'finish_finding(generation, tr("search stopped"))' not in cancel_body
+
+    assert 'authorize_rotation_client_' not in header
+    assert 'authorize_rotation(' not in header
+    assert 'authorize_rotation_service_' not in header
 
     for forbidden in (
             'cmd_vel',

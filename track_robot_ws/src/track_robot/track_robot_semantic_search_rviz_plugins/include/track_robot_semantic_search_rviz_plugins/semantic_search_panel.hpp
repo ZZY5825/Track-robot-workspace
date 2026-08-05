@@ -9,7 +9,6 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QTimer>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -84,12 +83,10 @@ private:
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void start_finding();
   void stop_finding();
-  void on_cancellation_deadline();
   void send_action_cancel(
     std::uint64_t generation,
     const SearchGoalHandle::SharedPtr & handle);
   void send_explicit_cancel(std::uint64_t generation);
-  void authorize_rotation(std::uint64_t generation);
   void render_finding_state(const QString & status);
   void render_finding_state(std::uint64_t generation, const QString & status);
   void finish_finding(std::uint64_t generation, const QString & status);
@@ -125,8 +122,6 @@ private:
     authorize_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr cancel_disarm_client_;
   rclcpp_action::Client<SearchForObject>::SharedPtr search_client_;
-  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr
-    authorize_rotation_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr cancel_search_client_;
   SearchGoalHandle::SharedPtr search_goal_handle_;
   ActiveSearchSession finding_session_;
@@ -147,8 +142,6 @@ private:
   QLabel * diagnostic_ranking_status_{nullptr};
   QLabel * finding_status_{nullptr};
   QLabel * motion_status_{nullptr};
-  QTimer * cancellation_timer_{nullptr};
-  std::uint64_t cancellation_generation_{0U};
 
   std::mutex reference_mutex_;
   std::optional<TargetReference> best_reference_;
@@ -165,7 +158,6 @@ private:
   std::string authorize_service_;
   std::string cancel_disarm_service_;
   std::string search_action_;
-  std::string authorize_rotation_service_;
   std::string cancel_search_service_;
 };
 

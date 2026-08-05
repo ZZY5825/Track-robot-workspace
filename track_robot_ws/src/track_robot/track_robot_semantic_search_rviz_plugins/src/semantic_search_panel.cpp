@@ -43,14 +43,11 @@ constexpr const char * kCancelDisarmService =
   "/semantic_navigation/cancel_and_disarm";
 constexpr const char * kSearchAction =
   "/semantic_search/search_for_object";
-constexpr const char * kAuthorizeRotationService =
-  "/semantic_search/active_search/authorize_rotation";
 constexpr const char * kCancelSearchService =
   "/semantic_search/active_search/cancel";
 constexpr std::int32_t kSearchTimeoutSec = 60;
 constexpr float kMaximumSearchAngleRad = 1.5708F;
 constexpr int kMaximumResultReasonCharacters = 256;
-constexpr int kCancellationDeadlineMs = 3000;
 
 QString compact_reason(const std::string & reason)
 {
@@ -142,7 +139,6 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   authorize_service_(kAuthorizeService),
   cancel_disarm_service_(kCancelDisarmService),
   search_action_(kSearchAction),
-  authorize_rotation_service_(kAuthorizeRotationService),
   cancel_search_service_(kCancelSearchService)
 {
   auto * safety = new QLabel(
@@ -185,8 +181,6 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   best_status_ = new QLabel(tr("unavailable"), this);
   diagnostic_ranking_status_ = new QLabel(tr("waiting"), this);
   finding_status_ = new QLabel(tr("idle"), this);
-  cancellation_timer_ = new QTimer(this);
-  cancellation_timer_->setSingleShot(true);
   motion_status_ = new QLabel(
     tr("selected target is not ready"), this);
   diagnostic_ranking_status_->setStyleSheet(
@@ -235,9 +229,6 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
     finding_button_, &QPushButton::clicked,
     this, &SemanticSearchPanel::toggle_finding);
   connect(
-    cancellation_timer_, &QTimer::timeout,
-    this, &SemanticSearchPanel::on_cancellation_deadline);
-  connect(
     start_approach_button_, &QPushButton::clicked,
     this, &SemanticSearchPanel::start_approach);
   connect(
@@ -247,7 +238,6 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
 
 SemanticSearchPanel::~SemanticSearchPanel()
 {
-  cancellation_timer_->stop();
   const auto lifetime = callback_lifetime_;
   if (lifetime) {
     std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
@@ -259,7 +249,6 @@ SemanticSearchPanel::~SemanticSearchPanel()
     search_goal_handle_.reset();
   }
   search_client_.reset();
-  authorize_rotation_client_.reset();
   cancel_search_client_.reset();
   callback_lifetime_.reset();
 }
@@ -363,8 +352,6 @@ void SemanticSearchPanel::onInitialize()
     cancel_disarm_service_);
   search_client_ = rclcpp_action::create_client<SearchForObject>(
     node_, search_action_);
-  authorize_rotation_client_ = node_->create_client<std_srvs::srv::Trigger>(
-    authorize_rotation_service_);
   cancel_search_client_ = node_->create_client<std_srvs::srv::Trigger>(
     cancel_search_service_);
 }
@@ -481,7 +468,6 @@ void SemanticSearchPanel::start_finding()
                 return;
               }
               search_goal_handle_.reset();
-              cancellation_timer_->stop();
               finding_button_->setText(tr("Start Finding"));
               finding_button_->setEnabled(true);
               finding_status_->setText(tr("active-search goal was rejected"));
@@ -630,11 +616,6 @@ void SemanticSearchPanel::start_finding()
         generation,
         QString::fromStdString(
           active_search_feedback_status(feedback->current_reason)));
-      if (decision.authorize_rotation &&
-        feedback->current_reason == "WAITING_FOR_AUTHORIZATION")
-      {
-        authorize_rotation(generation);
-      }
     };
   options.result_callback =
     [this, weak_lifetime, generation = *generation](
@@ -677,29 +658,12 @@ void SemanticSearchPanel::stop_finding()
     generation = finding_session_.generation();
   }
   finding_button_->setEnabled(false);
-  finding_button_->setText(tr("Stop Finding"));
   finding_status_->setText(tr("cancelling search"));
-  cancellation_generation_ = generation;
-  cancellation_timer_->start(kCancellationDeadlineMs);
 
   if (handle) {
     send_action_cancel(generation, handle);
   }
   send_explicit_cancel(generation);
-}
-
-void SemanticSearchPanel::on_cancellation_deadline()
-{
-  std::lock_guard<std::mutex> lock(finding_mutex_);
-  if (!finding_session_.cancellation_deadline_elapsed(
-      cancellation_generation_))
-  {
-    return;
-  }
-  finding_button_->setText(tr("Retry Stop"));
-  finding_button_->setEnabled(true);
-  finding_status_->setText(
-    tr("cancellation unconfirmed — retry Stop; RC/E-stop remain authoritative"));
 }
 
 void SemanticSearchPanel::send_action_cancel(
@@ -708,7 +672,7 @@ void SemanticSearchPanel::send_action_cancel(
 {
   if (!search_client_ || !handle) {
     render_finding_state(
-      generation, tr("action cancellation unavailable; awaiting deadline"));
+      generation, tr("action cancellation unavailable"));
     return;
   }
   const auto weak_lifetime =
@@ -733,13 +697,13 @@ void SemanticSearchPanel::send_action_cancel(
         render_finding_state(
           generation,
           accepted ?
-          tr("action cancellation accepted; awaiting terminal result") :
-          tr("action cancellation rejected; awaiting deadline"));
+          tr("action cancellation accepted") :
+          tr("action cancellation rejected"));
       });
   } catch (const std::exception & error) {
     render_finding_state(
       generation,
-      tr("action cancellation request failed: %1; awaiting deadline")
+      tr("action cancellation request failed: %1")
       .arg(error.what()));
   }
 }
@@ -751,7 +715,7 @@ void SemanticSearchPanel::send_explicit_cancel(const std::uint64_t generation)
   if (!cancel_search_client_ || !cancel_search_client_->service_is_ready()) {
     render_finding_state(
       generation,
-      tr("active-search cancellation service unavailable; awaiting deadline"));
+      tr("active-search cancellation service unavailable"));
     return;
   }
   try {
@@ -773,216 +737,21 @@ void SemanticSearchPanel::send_explicit_cancel(const std::uint64_t generation)
         render_finding_state(
           generation,
           response->success ?
-          tr("explicit cancellation accepted; awaiting terminal result") :
-          tr("active-search cancellation service rejected: %1; "
-            "awaiting deadline").arg(
+          tr("explicit cancellation accepted") :
+          tr("active-search cancellation service rejected: %1").arg(
               QString::fromStdString(response->message)));
       } catch (const std::exception & error) {
         render_finding_state(
           generation,
-          tr("active-search cancellation service failed: %1; awaiting deadline")
+          tr("active-search cancellation service failed: %1")
           .arg(error.what()));
       }
       });
   } catch (const std::exception & error) {
     render_finding_state(
       generation,
-      tr("active-search cancellation service send failed: %1; awaiting deadline")
+      tr("active-search cancellation service send failed: %1")
       .arg(error.what()));
-  }
-}
-
-void SemanticSearchPanel::authorize_rotation(const std::uint64_t generation)
-{
-  const auto weak_lifetime =
-    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
-  if (!authorize_rotation_client_ ||
-    !authorize_rotation_client_->service_is_ready())
-  {
-    QMetaObject::invokeMethod(
-      this,
-      [this, weak_lifetime, generation]() {
-        const auto lifetime = weak_lifetime.lock();
-        if (!lifetime) {
-          return;
-        }
-        std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-        if (!lifetime->alive) {
-          return;
-        }
-        bool stop = false;
-        {
-          std::lock_guard<std::mutex> lock(finding_mutex_);
-          if (finding_session_.generation() != generation ||
-            finding_session_.state() != ActiveSearchState::AUTHORIZATION_PENDING)
-          {
-            return;
-          }
-          stop = finding_session_.on_authorization_result(generation, false);
-        }
-        if (stop) {
-          stop_finding();
-          finding_status_->setText(
-            tr("active-search authorization service is unavailable"));
-        }
-      },
-      Qt::QueuedConnection);
-    return;
-  }
-
-  try {
-    authorize_rotation_client_->async_send_request(
-      std::make_shared<std_srvs::srv::Trigger::Request>(),
-      [this, weak_lifetime, generation](
-        rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future)
-      {
-        const auto lifetime = weak_lifetime.lock();
-        if (!lifetime) {
-          return;
-        }
-        std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-        if (!lifetime->alive) {
-          return;
-        }
-        try {
-          const auto response = future.get();
-          bool stop = false;
-          {
-            std::lock_guard<std::mutex> lock(finding_mutex_);
-            if (finding_session_.generation() != generation ||
-              !finding_session_.on_authorization_result(
-                generation, response->success))
-            {
-              return;
-            }
-            stop = !response->success;
-          }
-          if (stop) {
-            QMetaObject::invokeMethod(
-              this,
-              [this, weak_lifetime, generation,
-                reason = QString::fromStdString(response->message)]() {
-                const auto lifetime = weak_lifetime.lock();
-                if (!lifetime) {
-                  return;
-                }
-                std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-                if (!lifetime->alive) {
-                  return;
-                }
-                {
-                  std::lock_guard<std::mutex> lock(finding_mutex_);
-                  if (finding_session_.generation() != generation ||
-                    !finding_session_.active())
-                  {
-                    return;
-                  }
-                }
-                stop_finding();
-                finding_status_->setText(
-                  tr("active-search authorization failed: %1").arg(reason));
-              },
-              Qt::QueuedConnection);
-            return;
-          }
-          QMetaObject::invokeMethod(
-            this,
-            [this, weak_lifetime, generation]() {
-              const auto lifetime = weak_lifetime.lock();
-              if (!lifetime) {
-                return;
-              }
-              std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-              if (!lifetime->alive) {
-                return;
-              }
-              std::lock_guard<std::mutex> lock(finding_mutex_);
-              if (finding_session_.generation() != generation ||
-                !finding_session_.active())
-              {
-                return;
-              }
-              finding_status_->setText(tr("rotation authorized"));
-            },
-            Qt::QueuedConnection);
-        } catch (const std::exception & error) {
-          QMetaObject::invokeMethod(
-            this,
-            [this, weak_lifetime, generation,
-              reason = QString::fromUtf8(error.what())]() {
-              const auto lifetime = weak_lifetime.lock();
-              if (!lifetime) {
-                return;
-              }
-              std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-              if (!lifetime->alive) {
-                return;
-              }
-              bool stop = false;
-              {
-                std::lock_guard<std::mutex> lock(finding_mutex_);
-                if (finding_session_.generation() != generation ||
-                  !finding_session_.on_authorization_result(generation, false))
-                {
-                  return;
-                }
-                stop = true;
-              }
-              if (stop) {
-                {
-                  std::lock_guard<std::mutex> lock(finding_mutex_);
-                  if (finding_session_.generation() != generation ||
-                    !finding_session_.active())
-                  {
-                    return;
-                  }
-                }
-                stop_finding();
-                finding_status_->setText(
-                  tr("active-search authorization failed: %1").arg(reason));
-              }
-            },
-            Qt::QueuedConnection);
-        }
-      });
-  } catch (const std::exception & error) {
-    QMetaObject::invokeMethod(
-      this,
-      [this, weak_lifetime, generation,
-        reason = QString::fromUtf8(error.what())]() {
-        const auto lifetime = weak_lifetime.lock();
-        if (!lifetime) {
-          return;
-        }
-        std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
-        if (!lifetime->alive) {
-          return;
-        }
-        bool stop = false;
-        {
-          std::lock_guard<std::mutex> lock(finding_mutex_);
-          if (finding_session_.generation() != generation ||
-            !finding_session_.on_authorization_result(generation, false))
-          {
-            return;
-          }
-          stop = true;
-        }
-        if (stop) {
-          {
-            std::lock_guard<std::mutex> lock(finding_mutex_);
-            if (finding_session_.generation() != generation ||
-              !finding_session_.active())
-            {
-              return;
-            }
-          }
-          stop_finding();
-          finding_status_->setText(
-            tr("active-search authorization failed: %1").arg(reason));
-        }
-      },
-      Qt::QueuedConnection);
   }
 }
 
@@ -1054,7 +823,6 @@ void SemanticSearchPanel::finish_finding(
         return;
       }
       search_goal_handle_.reset();
-      cancellation_timer_->stop();
       finding_button_->setText(tr("Start Finding"));
       finding_button_->setEnabled(true);
       finding_status_->setText(status);
@@ -1411,9 +1179,6 @@ void SemanticSearchPanel::load(const rviz_common::Config & config)
   if (config.mapGetString("search_action", &value)) {
     search_action_ = value.toStdString();
   }
-  if (config.mapGetString("authorize_rotation_service", &value)) {
-    authorize_rotation_service_ = value.toStdString();
-  }
   if (config.mapGetString("cancel_search_service", &value)) {
     cancel_search_service_ = value.toStdString();
   }
@@ -1440,9 +1205,6 @@ void SemanticSearchPanel::save(rviz_common::Config config) const
   config.mapSetValue(
     "cancel_disarm_service", QString::fromStdString(cancel_disarm_service_));
   config.mapSetValue("search_action", QString::fromStdString(search_action_));
-  config.mapSetValue(
-    "authorize_rotation_service",
-    QString::fromStdString(authorize_rotation_service_));
   config.mapSetValue(
     "cancel_search_service", QString::fromStdString(cancel_search_service_));
 }

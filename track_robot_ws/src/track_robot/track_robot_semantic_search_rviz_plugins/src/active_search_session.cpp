@@ -9,7 +9,7 @@ std::string active_search_feedback_status(const std::string & reason)
     return "passive observation";
   }
   if (reason == "WAITING_FOR_AUTHORIZATION") {
-    return "waiting for rotation authorization";
+    return "starting bounded rotation";
   }
   if (reason.find("ROTATING") == 0U) {
     return "rotating in place";
@@ -34,25 +34,18 @@ std::optional<std::uint64_t> ActiveSearchSession::begin()
 
   ++generation_;
   adopted_query_id_ = 0U;
-  authorization_requested_ = false;
   state_ = ActiveSearchState::GOAL_PENDING;
   return generation_;
 }
 
 bool ActiveSearchSession::request_stop()
 {
-  if (!active()) {
+  if (!active() || state_ == ActiveSearchState::CANCEL_PENDING) {
     return false;
   }
 
   state_ = ActiveSearchState::CANCEL_PENDING;
   return true;
-}
-
-bool ActiveSearchSession::cancellation_deadline_elapsed(
-  const std::uint64_t generation) const
-{
-  return generation == generation_ && state_ == ActiveSearchState::CANCEL_PENDING;
 }
 
 bool ActiveSearchSession::on_goal_response(const std::uint64_t generation, const bool accepted)
@@ -67,7 +60,6 @@ bool ActiveSearchSession::on_goal_response(const std::uint64_t generation, const
     if (!accepted) {
       state_ = ActiveSearchState::IDLE;
       adopted_query_id_ = 0U;
-      authorization_requested_ = false;
     }
     return true;
   }
@@ -83,9 +75,7 @@ ActiveSearchFeedbackDecision ActiveSearchSession::on_feedback(
 {
   ActiveSearchFeedbackDecision decision;
   if (generation != generation_ || query_id == 0U ||
-    (state_ != ActiveSearchState::SEARCHING &&
-    state_ != ActiveSearchState::AUTHORIZATION_PENDING &&
-    state_ != ActiveSearchState::AUTHORIZED))
+    state_ != ActiveSearchState::SEARCHING)
   {
     return decision;
   }
@@ -100,22 +90,8 @@ ActiveSearchFeedbackDecision ActiveSearchSession::on_feedback(
     decision.adopt_query = true;
   }
 
-  if (reason == "WAITING_FOR_AUTHORIZATION" && !authorization_requested_) {
-    authorization_requested_ = true;
-    state_ = ActiveSearchState::AUTHORIZATION_PENDING;
-    decision.authorize_rotation = true;
-  }
+  (void)reason;
   return decision;
-}
-
-bool ActiveSearchSession::on_authorization_result(const std::uint64_t generation, const bool accepted)
-{
-  if (generation != generation_ || state_ != ActiveSearchState::AUTHORIZATION_PENDING) {
-    return false;
-  }
-
-  state_ = accepted ? ActiveSearchState::AUTHORIZED : ActiveSearchState::SEARCHING;
-  return true;
 }
 
 bool ActiveSearchSession::finish(const std::uint64_t generation)
@@ -126,7 +102,6 @@ bool ActiveSearchSession::finish(const std::uint64_t generation)
 
   state_ = ActiveSearchState::IDLE;
   adopted_query_id_ = 0U;
-  authorization_requested_ = false;
   return true;
 }
 
