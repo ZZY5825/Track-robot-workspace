@@ -11,16 +11,22 @@
 #include <QPushButton>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 #include "rviz_common/panel.hpp"
 #include "std_srvs/srv/trigger.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "track_robot_interfaces/action/search_for_object.hpp"
 #include "track_robot_interfaces/msg/semantic_object_array.hpp"
 #include "track_robot_interfaces/msg/semantic_region_array.hpp"
 #include "track_robot_interfaces/srv/authorize_semantic_approach.hpp"
+#include "track_robot_semantic_search_rviz_plugins/active_search_session.hpp"
 #include "track_robot_semantic_search_rviz_plugins/query_session.hpp"
 
 namespace track_robot_semantic_search_rviz_plugins
 {
+
+using SearchForObject = track_robot_interfaces::action::SearchForObject;
+using SearchGoalHandle = rclcpp_action::ClientGoalHandle<SearchForObject>;
 
 class SemanticSearchPanel final : public rviz_common::Panel
 {
@@ -37,6 +43,7 @@ public:
 private Q_SLOTS:
   void submit_new_query();
   void submit_revision();
+  void toggle_finding();
   void start_approach();
   void cancel_and_disarm();
 
@@ -68,6 +75,11 @@ private:
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void on_diagnostic_ranking(
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
+  void start_finding();
+  void stop_finding();
+  void authorize_rotation(std::uint64_t generation);
+  void render_finding_state(const QString & status);
+  void finish_finding(std::uint64_t generation, const QString & status);
   void refresh_authorization_state();
   void queue_label(QLabel * label, const QString & value);
 
@@ -95,10 +107,18 @@ private:
     track_robot_interfaces::srv::AuthorizeSemanticApproach>::SharedPtr
     authorize_client_;
   rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr cancel_disarm_client_;
+  rclcpp_action::Client<SearchForObject>::SharedPtr search_client_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr
+    authorize_rotation_client_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr cancel_search_client_;
+  SearchGoalHandle::SharedPtr search_goal_handle_;
+  ActiveSearchSession finding_session_;
+  std::mutex finding_mutex_;
 
   QLineEdit * query_input_{nullptr};
   QPushButton * new_button_{nullptr};
   QPushButton * revise_button_{nullptr};
+  QPushButton * finding_button_{nullptr};
   QPushButton * start_approach_button_{nullptr};
   QPushButton * cancel_disarm_button_{nullptr};
   QLabel * query_status_{nullptr};
@@ -108,6 +128,7 @@ private:
   QLabel * object_status_{nullptr};
   QLabel * best_status_{nullptr};
   QLabel * diagnostic_ranking_status_{nullptr};
+  QLabel * finding_status_{nullptr};
   QLabel * motion_status_{nullptr};
 
   std::mutex reference_mutex_;
@@ -124,6 +145,9 @@ private:
   std::string diagnostic_ranking_topic_;
   std::string authorize_service_;
   std::string cancel_disarm_service_;
+  std::string search_action_;
+  std::string authorize_rotation_service_;
+  std::string cancel_search_service_;
 };
 
 }  // namespace track_robot_semantic_search_rviz_plugins

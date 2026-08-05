@@ -18,7 +18,7 @@ def test_plugin_exports_the_semantic_search_panel():
     assert exported.attrib['base_class_type'] == 'rviz_common::Panel'
 
 
-def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
+def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_search_panel.cpp'
     ).read_text(encoding='utf-8')
@@ -35,12 +35,23 @@ def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
             '/semantic_navigation/cancel_and_disarm'):
         assert topic in source
 
+    for interface in (
+            '/semantic_search/search_for_object',
+            '/semantic_search/active_search/authorize_rotation',
+            '/semantic_search/active_search/cancel'):
+        assert interface in source
+
     assert 'SUPERVISED SEMANTIC APPROACH' in source
     assert 'Start Approach' in source
     assert 'Cancel & Disarm' in source
+    assert 'Start Finding' in source
+    assert 'Stop Finding' in source
+    assert 'WAITING_FOR_AUTHORIZATION' in source
     assert 'selected target is not ready' in source
     assert 'authorization candidate is not correlated' not in source
     assert 'AuthorizeSemanticApproach' in source
+    assert 'SearchForObject' in source
+    assert 'rclcpp_action' in source
     assert 'approach_request_active_' in source
     assert 'starting approach' in source
     assert 'if (request_active)' in source
@@ -62,7 +73,6 @@ def test_panel_uses_reference_bound_supervised_services_and_no_velocity_api():
             'cmd_vel',
             'SearchMotionIntent',
             'geometry_msgs',
-            'rclcpp_action',
             'inspection'):
         assert forbidden not in source
 
@@ -87,6 +97,8 @@ def test_package_exports_pluginlib_metadata_and_installs_headers():
     assert 'pluginlib_export_plugin_description_file' in cmake
     assert 'CMAKE_AUTOMOC ON' in cmake
     assert 'DESTINATION include' in cmake
+    assert 'rclcpp_action' in cmake
+    assert package.find("depend[.='rclcpp_action']") is not None
     export = package.find('export')
     assert export is not None
     assert export.find('build_type').text == 'ament_cmake'
