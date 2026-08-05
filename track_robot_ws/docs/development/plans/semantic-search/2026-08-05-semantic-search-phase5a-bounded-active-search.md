@@ -8,6 +8,8 @@
 
 **Tech Stack:** Ubuntu/Jetson runtime already used by the workspace, ROS 2 Foxy, Python 3.8, `rclpy`, ROS 2 actions, `nav2_msgs/action/Spin`, `nav2_recoveries/Spin`, `std_srvs/Trigger`, `diagnostic_msgs/DiagnosticArray`, RViz2, pytest, colcon.
 
+**Execution status (2026-08-05):** Tasks 1–8 and the Task 9 operator guide are implemented on `feature/phase5a-active-search`. Software regression is `1135 passed, 4 skipped`; the 24-case deterministic replay passes identically on repeated runs and all seven affected packages build. PASSIVE_ONLY/SEARCH_SHADOW live sensor validation and all physical Spin/safety measurements remain `NOT EVALUATED`; therefore the full Phase 5A physical Definition of Done has not yet been claimed.
+
 ## Global Constraints
 
 - Work from the tested official `main` baseline at commit `76c8ead` in a dedicated `feature/phase5a-active-search` worktree.
