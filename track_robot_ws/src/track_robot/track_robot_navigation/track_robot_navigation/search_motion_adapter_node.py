@@ -171,6 +171,9 @@ class SearchMotionAdapter(Node):
             with self._lock:
                 transition = self._policy.accept_intent(
                     request, time.monotonic())
+                start_automatically = (
+                    transition.reason == 'authorized_intent_ready')
+                self._arming = start_automatically
         except (TypeError, ValueError) as error:
             self._publish_status(
                 int(message.query_id), 'REJECTED', str(error), error=True)
@@ -188,7 +191,7 @@ class SearchMotionAdapter(Node):
             transition.reason,
             error=not transition.accepted,
         )
-        if transition.reason == 'authorized_intent_ready':
+        if start_automatically:
             self._arm_and_start_pending_spin()
 
     def _safety_and_odom_ready_locked(self):
@@ -217,9 +220,11 @@ class SearchMotionAdapter(Node):
         with self._lock:
             pending = self._policy.pending
             if pending is None:
+                self._arming = False
                 return False, 'no_pending_rotation_intent'
             ready, reason = self._safety_and_odom_ready_locked()
             if not ready:
+                self._arming = False
                 self._policy.cancel(reason)
                 self._publish_status(
                     pending.query_id,
@@ -232,6 +237,7 @@ class SearchMotionAdapter(Node):
                 transition = self._policy.authorize(
                     pending.query_id, time.monotonic())
                 if not transition.accepted:
+                    self._arming = False
                     return False, transition.reason
             self._arming = True
 

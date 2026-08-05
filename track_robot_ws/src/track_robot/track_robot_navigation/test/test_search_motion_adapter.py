@@ -196,6 +196,8 @@ def test_adapter_arms_and_starts_executable_intent_without_panel_rpc():
 
     assert "transition.reason == 'authorized_intent_ready'" in intent_body
     assert 'self._arm_and_start_pending_spin()' in intent_body
+    assert intent_body.index('self._arming = start_automatically') < (
+        intent_body.index('self._arm_and_start_pending_spin()'))
 
 
 def test_adapter_config_has_bounded_freshness_and_service_names():
