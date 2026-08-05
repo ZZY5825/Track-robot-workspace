@@ -42,6 +42,8 @@ setup(
             'track_robot_semantic_search.yolo_world_perception_node:main',
             'semantic_search_query = '
             'track_robot_semantic_search.query_cli:main',
+            'semantic_search_active_manager = '
+            'track_robot_semantic_search.active_search_manager_node:main',
             'semantic_search_live_overlay = '
             'track_robot_semantic_search.live_overlay:main',
             'semantic_search_phase1_baselines = '

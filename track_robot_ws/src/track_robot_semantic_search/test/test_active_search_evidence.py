@@ -108,7 +108,11 @@ def test_unfinished_search_without_confirmation_keeps_observing():
 
 
 def test_epoch_or_query_change_invalidates_the_bound_domain():
+    unbound = BoundedEvidenceBook(EvidenceConfig.defaults())
+    assert not unbound.is_bound
+
     book = _bound_book()
+    assert book.is_bound
 
     assert not book.domain_changed(4, 7, 100, 1)
     assert book.domain_changed(5, 7, 100, 1)

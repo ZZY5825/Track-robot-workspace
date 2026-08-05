@@ -136,6 +136,10 @@ class BoundedEvidenceBook:
         return len(self._records)
 
     @property
+    def is_bound(self):
+        return self._domain is not None
+
+    @property
     def covered_heading_count(self):
         return len(self._covered_headings)
 
