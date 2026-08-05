@@ -74,6 +74,16 @@ if(BUILD_TESTING)
     test/test_phase4b_launch_contract.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_phase5a_launch_contract
+    test/test_phase5a_launch_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
+    test_phase5a_no_motion_contract
+    test/test_phase5a_no_motion_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()

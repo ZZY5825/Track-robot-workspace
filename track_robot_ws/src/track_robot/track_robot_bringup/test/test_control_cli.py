@@ -23,6 +23,9 @@ from track_robot_bringup.readiness import CheckResult, CheckStatus, ReadinessRep
     ['visualize', 'phase2'],
     ['test', 'phase1', 'blue chair'],
     ['run', 'phase4b'],
+    ['run', 'phase5a'],
+    ['run', 'phase5a', '--search-shadow'],
+    ['run', 'phase5a', '--rotation-supervised'],
     ['stop'],
 ])
 def test_parser_supports_every_command_and_fixed_domain(command):
@@ -84,6 +87,50 @@ def test_phase4b_run_allows_explicit_dino_fallback(tmp_path):
         args, control_cli.default_workspace_paths(tmp_path))
 
     assert 'dino_enabled:=false' in command
+
+
+def test_phase5a_run_is_passive_and_stationary_by_default(tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--workspace-root', str(tmp_path),
+    ])
+
+    command = control_cli.build_phase5a_launch_argv(
+        args, control_cli.default_workspace_paths(tmp_path))
+
+    assert command[:4] == [
+        'ros2', 'launch', 'track_robot_bringup',
+        'semantic_search_phase5a.launch.py',
+    ]
+    assert 'search_mode:=PASSIVE_ONLY' in command
+    assert 'rotation_runtime_mode:=PLANNING_ONLY' in command
+    assert 'enable_rotation_execution:=false' in command
+    assert 'start_base:=false' in command
+    assert 'start_phase5a_rviz:=true' in command
+
+
+def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
+        tmp_path):
+    shadow = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--search-shadow',
+        '--workspace-root', str(tmp_path),
+    ])
+    active = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--rotation-supervised',
+        '--workspace-root', str(tmp_path),
+    ])
+
+    shadow_command = control_cli.build_phase5a_launch_argv(
+        shadow, control_cli.default_workspace_paths(tmp_path))
+    active_command = control_cli.build_phase5a_launch_argv(
+        active, control_cli.default_workspace_paths(tmp_path))
+
+    assert 'search_mode:=SEARCH_SHADOW' in shadow_command
+    assert 'enable_rotation_execution:=false' in shadow_command
+    assert 'start_base:=false' in shadow_command
+    assert 'search_mode:=ROTATION_SUPERVISED' in active_command
+    assert 'rotation_runtime_mode:=ROTATION_ONLY_ACTIVE' in active_command
+    assert 'enable_rotation_execution:=true' in active_command
+    assert 'start_base:=true' in active_command
 
 
 def test_phase4b_shutdown_requests_cancel_and_disarm_in_domain20(tmp_path):
