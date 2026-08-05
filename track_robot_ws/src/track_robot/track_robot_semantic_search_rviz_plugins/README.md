@@ -10,7 +10,8 @@ for its existing query flow. It displays correlated perception diagnostics,
 semantic-region counts, active semantic-memory objects, and the zero-or-one
 fail-closed best candidate.
 
-For bounded Phase 5A finding, the panel owns only these ROS clients:
+For the Phase 5A **Start Finding** / **Stop Finding** path, the panel uses
+only these ROS clients:
 
 - `SearchForObject` at `/semantic_search/search_for_object`;
 - `Trigger` authorization at
@@ -19,7 +20,8 @@ For bounded Phase 5A finding, the panel owns only these ROS clients:
 
 It publishes no velocity and does not start Phase 4B approach automatically.
 **Start Finding** / **Stop Finding** controls only a bounded, rotation-only
-search; **Start Approach** remains the separate explicit operator action.
+search. The existing Phase 4B **Start Approach** and **Cancel & Disarm**
+clients remain separate explicit operator controls.
 
 Use the installed bringup entry point instead of loading the plugin manually:
 
