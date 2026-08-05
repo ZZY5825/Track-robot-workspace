@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <QString>
 
+#include "track_robot_semantic_search_rviz_plugins/active_search_session.hpp"
 #include "track_robot_semantic_search_rviz_plugins/query_session.hpp"
 
 namespace plugin = track_robot_semantic_search_rviz_plugins;
@@ -77,6 +78,29 @@ TEST(QuerySession, SharedNormalizationAccepts512AndRejects513CodePoints)
   EXPECT_THROW(
     (void)plugin::QuerySession::normalize_query(QString(513, QChar('x'))),
     std::invalid_argument);
+}
+
+TEST(QuerySession, ActiveFindingPreservesManagerOwnedIdentity)
+{
+  plugin::QuerySession queries;
+  plugin::ActiveSearchSession finding;
+  const auto generation = *finding.begin();
+  ASSERT_TRUE(finding.on_goal_response(generation, true));
+  const auto feedback = finding.on_feedback(
+    generation, 901U, "PASSIVE_OBSERVATION");
+  ASSERT_TRUE(feedback.adopt_query);
+  const auto manager_query = queries.adopt_query(
+    "green bottle", feedback.query_id, 1U);
+
+  if (finding.manual_query_allowed()) {
+    (void)queries.new_query("operator overwrite", 902U);
+  }
+
+  const auto current = queries.current();
+  ASSERT_TRUE(current.has_value());
+  EXPECT_EQ(current->query_id, manager_query.query_id);
+  EXPECT_EQ(current->query_version, manager_query.query_version);
+  EXPECT_EQ(current->normalized_text, "green bottle");
 }
 
 TEST(QuerySession, CorrelatesOnlyMatchingDiagnostics)

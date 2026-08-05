@@ -77,6 +77,7 @@ if(BUILD_TESTING)
   target_link_libraries(
     test_query_session
     query_session
+    active_search_session
     Qt5::Core
     nlohmann_json::nlohmann_json
   )

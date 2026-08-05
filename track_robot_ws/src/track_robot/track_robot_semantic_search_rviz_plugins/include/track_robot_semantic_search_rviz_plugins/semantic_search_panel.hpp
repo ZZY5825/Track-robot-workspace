@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QTimer>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -83,9 +84,16 @@ private:
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void start_finding();
   void stop_finding();
+  void on_cancellation_deadline();
+  void send_action_cancel(
+    std::uint64_t generation,
+    const SearchGoalHandle::SharedPtr & handle);
+  void send_explicit_cancel(std::uint64_t generation);
   void authorize_rotation(std::uint64_t generation);
   void render_finding_state(const QString & status);
+  void render_finding_state(std::uint64_t generation, const QString & status);
   void finish_finding(std::uint64_t generation, const QString & status);
+  void set_query_controls_enabled(bool enabled);
   void refresh_authorization_state();
   void queue_label(QLabel * label, const QString & value);
 
@@ -139,6 +147,8 @@ private:
   QLabel * diagnostic_ranking_status_{nullptr};
   QLabel * finding_status_{nullptr};
   QLabel * motion_status_{nullptr};
+  QTimer * cancellation_timer_{nullptr};
+  std::uint64_t cancellation_generation_{0U};
 
   std::mutex reference_mutex_;
   std::optional<TargetReference> best_reference_;
