@@ -4,11 +4,25 @@ from dataclasses import dataclass
 import math
 
 
+_ROS_FLOAT32_REL_TOL = 1e-6
+_ROS_FLOAT32_ABS_TOL = 1e-7
+
+
 def _finite(value, name):
     parsed = float(value)
     if not math.isfinite(parsed):
         raise ValueError('{} must be finite'.format(name))
     return parsed
+
+
+def _exceeds_ros_float32_limit(value, limit):
+    """Compare a float32 message value with a double-precision parameter."""
+    return value > limit and not math.isclose(
+        value,
+        limit,
+        rel_tol=_ROS_FLOAT32_REL_TOL,
+        abs_tol=_ROS_FLOAT32_ABS_TOL,
+    )
 
 
 @dataclass(frozen=True)
@@ -124,10 +138,11 @@ class SearchMotionPolicy:
         allowed_angle = min(
             requested_limit,
             self._limits.maximum_individual_rotation_rad)
-        if requested_limit <= 0.0 or abs(angle) > allowed_angle + 1e-9:
+        if requested_limit <= 0.0 or _exceeds_ros_float32_limit(
+                abs(angle), allowed_angle):
             return MotionTransition(False, 'rotation_angle_limit_exceeded')
-        if speed <= 0.0 or speed > (
-                self._limits.maximum_angular_speed_rad_s + 1e-9):
+        if speed <= 0.0 or _exceeds_ros_float32_limit(
+                speed, self._limits.maximum_angular_speed_rad_s):
             return MotionTransition(False, 'rotation_speed_limit_exceeded')
         if deadline <= now:
             return MotionTransition(False, 'intent_deadline_expired')

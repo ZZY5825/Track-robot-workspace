@@ -1,5 +1,6 @@
 import math
 from pathlib import Path
+import struct
 
 import pytest
 import yaml
@@ -23,6 +24,7 @@ CONFIG = PACKAGE_ROOT / 'config' / 'active_search_motion.yaml'
 def _intent(
         query_id=44,
         angle=math.radians(45.0),
+        rotation_limit=math.radians(90.0),
         speed=0.30,
         deadline=20.0,
         rotation_permitted=True,
@@ -31,7 +33,7 @@ def _intent(
     return MotionIntentRequest(
         query_id=query_id,
         signed_rotation_rad=angle,
-        maximum_rotation_rad=math.radians(90.0),
+        maximum_rotation_rad=rotation_limit,
         maximum_angular_speed_rad_s=speed,
         deadline_monotonic=deadline,
         rotation_permitted=rotation_permitted,
@@ -95,6 +97,32 @@ def test_angle_speed_and_deadline_limits_are_fail_closed():
     assert policy.accept_intent(
         _intent(deadline=9.9), 10.0
     ).reason == 'intent_deadline_expired'
+
+
+def test_configured_speed_limit_survives_ros_float32_round_trip():
+    policy = SearchMotionPolicy(MotionLimits.defaults())
+    ros_float32_speed = struct.unpack('f', struct.pack('f', 0.30))[0]
+
+    result = policy.accept_intent(
+        _intent(speed=ros_float32_speed), now_monotonic=10.0)
+
+    assert result.accepted
+    assert result.reason == 'authorization_required'
+
+
+def test_configured_angle_limit_survives_ros_float32_round_trip():
+    policy = SearchMotionPolicy(MotionLimits.defaults())
+    ros_float32_angle = struct.unpack(
+        'f', struct.pack('f', math.radians(90.0)))[0]
+
+    result = policy.accept_intent(
+        _intent(
+            angle=ros_float32_angle,
+            rotation_limit=ros_float32_angle),
+        now_monotonic=10.0)
+
+    assert result.accepted
+    assert result.reason == 'authorization_required'
 
 
 def test_safety_fault_clears_authorization_and_requests_stop():
