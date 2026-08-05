@@ -1,15 +1,25 @@
 # Track Robot Semantic Search RViz Plugins
 
-This ROS 2 Foxy package provides the passive
+This ROS 2 Foxy package provides the
 `track_robot_semantic_search_rviz_plugins/SemanticSearchPanel` RViz panel.
 It is intentionally separate from the Python model runtime so Qt and RViz
 dependencies do not enter semantic inference.
 
-The panel publishes canonical language-query JSON only to
-`/semantic_search/query`. It displays correlated perception diagnostics,
+The panel publishes canonical language-query JSON to `/semantic_search/query`
+for its existing query flow. It displays correlated perception diagnostics,
 semantic-region counts, active semantic-memory objects, and the zero-or-one
-fail-closed best candidate. It does not own an action client or any robot
-motion interface.
+fail-closed best candidate.
+
+For bounded Phase 5A finding, the panel owns only these ROS clients:
+
+- `SearchForObject` at `/semantic_search/search_for_object`;
+- `Trigger` authorization at
+  `/semantic_search/active_search/authorize_rotation`; and
+- `Trigger` cancellation at `/semantic_search/active_search/cancel`.
+
+It publishes no velocity and does not start Phase 4B approach automatically.
+**Start Finding** / **Stop Finding** controls only a bounded, rotation-only
+search; **Start Approach** remains the separate explicit operator action.
 
 Use the installed bringup entry point instead of loading the plugin manually:
 

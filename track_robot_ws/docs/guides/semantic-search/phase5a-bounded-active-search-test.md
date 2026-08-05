@@ -56,6 +56,36 @@ ros2 run track_robot_bringup semantic_search_ctl doctor phase3
 ros2 run track_robot_bringup semantic_search_ctl stop
 ```
 
+## RViz 一键 Finding 验收（需人工监督）
+
+本节是 Phase 5A RViz 面板的操作验收，不属于自动化测试，也不声称已
+完成硬件运动验收。首次物理旋转前必须可靠架空机器人，保持 RC 和 E-stop
+可用。
+
+在同一工作树中启动监督旋转模式：
+
+```bash
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+export TRACK_ROBOT_WS=~/track_robot_ws
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervised
+```
+
+在 RViz 面板中输入 `green bottle`。先把瓶子放在初始相机视野外、但位于
+有界原地旋转可见的范围内；点击 **Start Finding**。确认按钮变为
+**Stop Finding**，并确认机器人只原地旋转。结果应显示已确认的全局对象 ID，
+或一个有界的终止失败原因；不得自动开始接近。
+
+第二次运行时，在正在旋转期间点击 **Stop Finding**。确认动作和待执行旋转
+意图均被取消，取消后没有命令的旋转。最后，在没有目标的情况下再运行一次：
+它必须在 60 秒内结束，并且整个过程不得平移。
+
+这些项目须由操作者观察并记录；自动 build/test 只能验证软件契约，不能验证
+底盘的实际运动、停止延迟、RC 接管或 E-stop。
+
 ## 测试 1：PASSIVE_ONLY
 
 目标先放在相机视野内。启动：
