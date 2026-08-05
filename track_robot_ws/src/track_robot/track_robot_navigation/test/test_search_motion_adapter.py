@@ -45,7 +45,10 @@ def _intent(
 def test_authorization_is_bound_once_to_one_pending_query():
     policy = SearchMotionPolicy(MotionLimits.defaults())
     assert policy.limits == MotionLimits.defaults()
-    assert policy.accept_intent(_intent(), now_monotonic=10.0).accepted
+    accepted = policy.accept_intent(_intent(), now_monotonic=10.0)
+    assert accepted.accepted
+    assert accepted.reason == 'authorized_intent_ready'
+    assert policy.authorized_query_id == 44
 
     assert policy.authorize(query_id=44, now_monotonic=10.1).accepted
     assert policy.authorized_query_id == 44
@@ -107,7 +110,7 @@ def test_configured_speed_limit_survives_ros_float32_round_trip():
         _intent(speed=ros_float32_speed), now_monotonic=10.0)
 
     assert result.accepted
-    assert result.reason == 'authorization_required'
+    assert result.reason == 'authorized_intent_ready'
 
 
 def test_configured_angle_limit_survives_ros_float32_round_trip():
@@ -122,7 +125,18 @@ def test_configured_angle_limit_survives_ros_float32_round_trip():
         now_monotonic=10.0)
 
     assert result.accepted
-    assert result.reason == 'authorization_required'
+    assert result.reason == 'authorized_intent_ready'
+
+
+def test_executable_intent_can_begin_spin_without_second_authorization_rpc():
+    policy = SearchMotionPolicy(MotionLimits.defaults())
+
+    accepted = policy.accept_intent(_intent(), now_monotonic=10.0)
+    started = policy.begin_spin(44, now_monotonic=10.1)
+
+    assert accepted.reason == 'authorized_intent_ready'
+    assert started.accepted
+    assert started.reason == 'spin_ready'
 
 
 def test_safety_fault_clears_authorization_and_requests_stop():
@@ -173,6 +187,15 @@ def test_adapter_source_uses_spin_but_has_no_velocity_or_pose_client():
         / 'track_robot_navigation'
         / 'search_motion_adapter.py'
     ).read_text()
+
+
+def test_adapter_arms_and_starts_executable_intent_without_panel_rpc():
+    source = NODE_SOURCE.read_text()
+    intent_body = source.split('def _on_intent(', 1)[1].split(
+        'def _safety_and_odom_ready_locked', 1)[0]
+
+    assert "transition.reason == 'authorized_intent_ready'" in intent_body
+    assert 'self._arm_and_start_pending_spin()' in intent_body
 
 
 def test_adapter_config_has_bounded_freshness_and_service_names():

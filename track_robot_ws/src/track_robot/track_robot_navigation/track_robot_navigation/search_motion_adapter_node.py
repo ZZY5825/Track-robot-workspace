@@ -189,7 +189,7 @@ class SearchMotionAdapter(Node):
             error=not transition.accepted,
         )
         if transition.reason == 'authorized_intent_ready':
-            self._start_pending_spin()
+            self._arm_and_start_pending_spin()
 
     def _safety_and_odom_ready_locked(self):
         now = time.monotonic()
@@ -208,23 +208,31 @@ class SearchMotionAdapter(Node):
         return True, 'ready'
 
     def _authorize_rotation(self, _request, response):
+        success, message = self._arm_and_start_pending_spin()
+        response.success = success
+        response.message = message
+        return response
+
+    def _arm_and_start_pending_spin(self):
         with self._lock:
             pending = self._policy.pending
             if pending is None:
-                response.success = False
-                response.message = 'no_pending_rotation_intent'
-                return response
+                return False, 'no_pending_rotation_intent'
             ready, reason = self._safety_and_odom_ready_locked()
             if not ready:
-                response.success = False
-                response.message = reason
-                return response
-            transition = self._policy.authorize(
-                pending.query_id, time.monotonic())
-            if not transition.accepted:
-                response.success = False
-                response.message = transition.reason
-                return response
+                self._policy.cancel(reason)
+                self._publish_status(
+                    pending.query_id,
+                    'SAFETY_REJECTED',
+                    reason,
+                    error=True,
+                )
+                return False, reason
+            if self._policy.authorized_query_id != pending.query_id:
+                transition = self._policy.authorize(
+                    pending.query_id, time.monotonic())
+                if not transition.accepted:
+                    return False, transition.reason
             self._arming = True
 
         success, message = self._call_trigger(self._arm_client)
@@ -232,23 +240,21 @@ class SearchMotionAdapter(Node):
             self._arming = False
             if not success:
                 self._policy.cancel('safety_arm_rejected')
-                response.success = False
-                response.message = message or 'safety_arm_rejected'
+                reason = message or 'safety_arm_rejected'
                 self._publish_status(
                     pending.query_id,
                     'SAFETY_REJECTED',
-                    response.message,
+                    reason,
                     error=True,
                 )
-                return response
+                return False, reason
         self._publish_status(
             pending.query_id, 'AUTHORIZED', 'rotation_authorized')
         started = self._start_pending_spin()
-        response.success = started
-        response.message = (
+        message = (
             'rotation_authorized_and_spin_requested'
             if started else 'rotation_authorized_but_spin_unavailable')
-        return response
+        return started, message
 
     def _cancel_search(self, _request, response):
         with self._lock:

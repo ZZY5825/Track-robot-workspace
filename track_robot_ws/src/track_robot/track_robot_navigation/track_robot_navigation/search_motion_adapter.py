@@ -151,11 +151,8 @@ class SearchMotionPolicy:
                 intent.query_id != self._authorized_query_id):
             return MotionTransition(False, 'authorized_query_conflict')
         self._pending = intent
-        reason = (
-            'authorized_intent_ready'
-            if self._authorized_query_id == intent.query_id
-            else 'authorization_required')
-        return MotionTransition(True, reason)
+        self._authorized_query_id = intent.query_id
+        return MotionTransition(True, 'authorized_intent_ready')
 
     def authorize(self, query_id, now_monotonic):
         now = _finite(now_monotonic, 'now_monotonic')
