@@ -90,6 +90,32 @@ TEST(QuerySession, CorrelatesOnlyMatchingDiagnostics)
   EXPECT_EQ(matched->query_id, command.query_id);
 }
 
+TEST(QuerySession, AdoptsExternallyAllocatedQueryForCorrelation)
+{
+  plugin::QuerySession session;
+
+  const auto adopted = session.adopt_query("  green   bottle  ", 901U, 1U);
+
+  EXPECT_EQ(adopted.normalized_text, "green bottle");
+  EXPECT_EQ(adopted.query_id, 901U);
+  EXPECT_EQ(adopted.query_version, 1U);
+  ASSERT_TRUE(session.correlate_diagnostic(
+    R"({"state":"query_accepted","query_id":901,"query_version":1})")
+    .has_value());
+}
+
+TEST(QuerySession, RejectsInvalidExternalQueryIdentity)
+{
+  plugin::QuerySession session;
+
+  EXPECT_THROW((void)session.adopt_query("bottle", 0U, 1U),
+    std::invalid_argument);
+  EXPECT_THROW((void)session.adopt_query("bottle", 1U, 0U),
+    std::invalid_argument);
+  EXPECT_THROW((void)session.adopt_query("   ", 1U, 1U),
+    std::invalid_argument);
+}
+
 TEST(QuerySession, RejectsIdentifierAndVersionOverflow)
 {
   plugin::QuerySession session;

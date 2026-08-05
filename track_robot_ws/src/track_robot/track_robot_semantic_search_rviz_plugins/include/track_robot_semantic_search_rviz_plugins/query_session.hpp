@@ -33,6 +33,10 @@ public:
   QueryCommand new_query(
     const QString & text,
     std::uint64_t timestamp_seed);
+  QueryCommand adopt_query(
+    const QString & text,
+    std::uint64_t query_id,
+    std::uint64_t query_version);
   QueryCommand revise(const QString & text);
 
   [[nodiscard]] std::optional<QueryCommand> current() const;
