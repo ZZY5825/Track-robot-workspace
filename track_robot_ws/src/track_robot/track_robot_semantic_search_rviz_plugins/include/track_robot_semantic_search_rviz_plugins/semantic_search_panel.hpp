@@ -34,7 +34,7 @@ class SemanticSearchPanel final : public rviz_common::Panel
 
 public:
   explicit SemanticSearchPanel(QWidget * parent = nullptr);
-  ~SemanticSearchPanel() override = default;
+  ~SemanticSearchPanel() override;
 
   void onInitialize() override;
   void load(const rviz_common::Config & config) override;
@@ -48,6 +48,12 @@ private Q_SLOTS:
   void cancel_and_disarm();
 
 private:
+  struct CallbackLifetime
+  {
+    std::mutex mutex;
+    bool alive{true};
+  };
+
   struct TargetReference
   {
     std::uint64_t memory_epoch_id{0U};
@@ -84,6 +90,9 @@ private:
   void queue_label(QLabel * label, const QString & value);
 
   QuerySession session_;
+  std::mutex session_mutex_;
+  std::shared_ptr<CallbackLifetime> callback_lifetime_{
+    std::make_shared<CallbackLifetime>()};
   rclcpp::Node::SharedPtr node_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr query_publisher_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr

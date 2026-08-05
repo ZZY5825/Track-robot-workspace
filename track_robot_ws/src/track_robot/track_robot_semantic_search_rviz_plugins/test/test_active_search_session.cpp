@@ -42,6 +42,18 @@ TEST(ActiveSearchSession, StopBeforeGoalResponseRemainsCancelled)
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
 }
 
+TEST(ActiveSearchSession, AcceptsExactlyOneStopWhileGoalIsPending)
+{
+  plugin::ActiveSearchSession session;
+  const auto generation = *session.begin();
+
+  EXPECT_TRUE(session.request_stop());
+  EXPECT_FALSE(session.request_stop());
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
+  EXPECT_TRUE(session.on_goal_response(generation, true));
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
+}
+
 TEST(ActiveSearchSession, StopBeforeRejectedGoalResponseResetsToIdle)
 {
   plugin::ActiveSearchSession session;

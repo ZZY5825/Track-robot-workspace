@@ -22,6 +22,11 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_search_panel.cpp'
     ).read_text(encoding='utf-8')
+    header = (
+        PACKAGE_ROOT / 'include'
+        / 'track_robot_semantic_search_rviz_plugins'
+        / 'semantic_search_panel.hpp'
+    ).read_text(encoding='utf-8')
 
     for topic in (
             '/semantic_search/query',
@@ -62,12 +67,32 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     assert 'support=' in source
     assert 'query=' in source
     assert 'relevance=' in source
+    assert '~SemanticSearchPanel() override;' in header
+    assert 'CallbackLifetime' in header
+    assert 'callback_lifetime_' in header
+    assert 'session_mutex_' in header
+    assert 'weak_lifetime.lock()' in source
+    assert 'lifetime->alive = false' in source
+    assert 'std::lock_guard<std::mutex> callback_lock(lifetime->mutex)' in source
 
     start_body = source.split(
         'void SemanticSearchPanel::start_approach()', 1)[1].split(
         'void SemanticSearchPanel::cancel_and_disarm()', 1)[0]
     assert 'selected_reference_.has_value()' in start_body
     assert 'best_reference_->same_identity' not in start_body
+
+    finding_start_body = source.split(
+        'void SemanticSearchPanel::start_finding()', 1)[1].split(
+        'void SemanticSearchPanel::stop_finding()', 1)[0]
+    assert 'finding_button_->setEnabled(false)' not in finding_start_body
+    assert 'finding_button_->setEnabled(true)' in finding_start_body
+
+    authorization_body = source.split(
+        'void SemanticSearchPanel::authorize_rotation(', 1)[1].split(
+        'void SemanticSearchPanel::render_finding_state(', 1)[0]
+    assert 'try {' in authorization_body
+    assert 'authorize_rotation_client_->async_send_request' in authorization_body
+    assert 'on_authorization_result(generation, false)' in authorization_body
 
     for forbidden in (
             'cmd_vel',
