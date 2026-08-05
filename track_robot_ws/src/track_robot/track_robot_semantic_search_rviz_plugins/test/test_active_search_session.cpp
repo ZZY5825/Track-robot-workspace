@@ -42,6 +42,30 @@ TEST(ActiveSearchSession, StopBeforeGoalResponseRemainsCancelled)
   EXPECT_EQ(session.state(), plugin::ActiveSearchState::CANCEL_PENDING);
 }
 
+TEST(ActiveSearchSession, StopBeforeRejectedGoalResponseResetsToIdle)
+{
+  plugin::ActiveSearchSession session;
+  const auto generation = *session.begin();
+  ASSERT_TRUE(session.request_stop());
+
+  ASSERT_TRUE(session.on_goal_response(generation, false));
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::IDLE);
+  EXPECT_FALSE(session.active());
+}
+
+TEST(ActiveSearchSession, RejectsFeedbackBeforeGoalAcceptance)
+{
+  plugin::ActiveSearchSession session;
+  const auto generation = *session.begin();
+
+  const auto decision = session.on_feedback(
+    generation, 44U, "WAITING_FOR_AUTHORIZATION");
+  EXPECT_FALSE(decision.accepted);
+  EXPECT_FALSE(decision.adopt_query);
+  EXPECT_FALSE(decision.authorize_rotation);
+  EXPECT_EQ(session.state(), plugin::ActiveSearchState::GOAL_PENDING);
+}
+
 TEST(ActiveSearchSession, IgnoresStaleCallbacksAndResetsOnFinish)
 {
   plugin::ActiveSearchSession session;

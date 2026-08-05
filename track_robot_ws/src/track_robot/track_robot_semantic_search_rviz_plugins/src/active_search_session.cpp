@@ -35,6 +35,11 @@ bool ActiveSearchSession::on_goal_response(const std::uint64_t generation, const
   }
 
   if (state_ == ActiveSearchState::CANCEL_PENDING) {
+    if (!accepted) {
+      state_ = ActiveSearchState::IDLE;
+      adopted_query_id_ = 0U;
+      authorization_requested_ = false;
+    }
     return true;
   }
 
@@ -48,7 +53,11 @@ ActiveSearchFeedbackDecision ActiveSearchSession::on_feedback(
   const std::string & reason)
 {
   ActiveSearchFeedbackDecision decision;
-  if (generation != generation_ || !active() || state_ == ActiveSearchState::CANCEL_PENDING || query_id == 0U) {
+  if (generation != generation_ || query_id == 0U ||
+    (state_ != ActiveSearchState::SEARCHING &&
+    state_ != ActiveSearchState::AUTHORIZATION_PENDING &&
+    state_ != ActiveSearchState::AUTHORIZED))
+  {
     return decision;
   }
 
