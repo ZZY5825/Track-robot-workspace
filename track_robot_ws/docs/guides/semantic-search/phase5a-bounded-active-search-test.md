@@ -76,12 +76,21 @@ ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervis
 
 在 RViz 面板中输入 `green bottle`。先把瓶子放在初始相机视野外、但位于
 有界原地旋转可见的范围内；点击 **Start Finding**。确认按钮变为
-**Stop Finding**，并确认机器人只原地旋转。结果应显示已确认的全局对象 ID，
-或一个有界的终止失败原因；不得自动开始接近。
+**Stop Finding**，查询输入框、**New Query** 和 **Revise Query** 均禁用，并确认
+机器人只原地旋转。面板顶部须明确显示：平移/接近只会在点击
+**Start Approach** 后开始；**Start Finding** 可能触发有界原地旋转，RC 接管和
+E-stop 始终具有最高权限。结果应显示已确认的全局对象 ID，或一个有界的终止
+失败原因；不得自动开始接近。
 
 第二次运行时，在正在旋转期间点击 **Stop Finding**。确认动作和待执行旋转
-意图均被取消，取消后没有命令的旋转。最后，在没有目标的情况下再运行一次：
-它必须在 60 秒内结束，并且整个过程不得平移。
+意图均收到取消请求。若三秒内未收到 action 终态，面板必须显示
+**Retry Stop** 和
+`cancellation unconfirmed — retry Stop; RC/E-stop remain authoritative`。
+这表示取消尚未确认，不能据此判断机器人已经停止；立即使用 RC 或 E-stop
+保持安全。点击 **Retry Stop** 后，确认 action cancel 和显式 cancel service
+都被再次请求，按钮重新进入三秒等待期，且查询控件仍保持禁用。只有收到
+action 终态后，按钮和查询控件才恢复空闲状态。最后，在没有目标的情况下再
+运行一次：它必须在 60 秒内结束，并且整个过程不得平移。
 
 这些项目须由操作者观察并记录；自动 build/test 只能验证软件契约，不能验证
 底盘的实际运动、停止延迟、RC 接管或 E-stop。

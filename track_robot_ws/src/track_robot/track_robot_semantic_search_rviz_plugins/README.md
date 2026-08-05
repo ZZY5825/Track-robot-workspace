@@ -23,6 +23,19 @@ It publishes no velocity and does not start Phase 4B approach automatically.
 search. The existing Phase 4B **Start Approach** and **Cancel & Disarm**
 clients remain separate explicit operator controls.
 
+The Finding path applies the same NFKC normalization and 512-Unicode-codepoint
+limit as **New Query** and **Revise Query** before it sends a goal. While a
+Finding task is active, the query field and both manual query buttons are
+disabled: the active-search manager owns the authoritative query ID/version
+until the action reaches a terminal result.
+
+**Stop Finding** sends both action cancellation and the explicit cancellation
+service request. If no terminal action result arrives within three seconds,
+the button becomes **Retry Stop** and the panel reports that cancellation is
+unconfirmed. Retry sends both cancellation requests again and restarts the
+deadline. An accepted cancellation request is not proof that motion has
+stopped; RC override and E-stop remain authoritative throughout.
+
 Use the installed bringup entry point instead of loading the plugin manually:
 
 ```bash

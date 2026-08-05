@@ -58,8 +58,18 @@ The stop flow is:
 
 1. Request cancellation of the active action goal.
 2. Call `/semantic_search/active_search/cancel` as a bounded explicit stop.
-3. Keep the button disabled while cancellation is pending.
-4. Restore the idle state after the action result or a bounded local failure.
+3. Keep the button disabled while cancellation is pending and start a
+   three-second client-side confirmation deadline.
+4. If no terminal action result arrives by the deadline, show **Retry Stop**
+   with `cancellation unconfirmed — retry Stop; RC/E-stop remain authoritative`.
+5. A retry sends both cancellation requests again and restarts the deadline.
+6. Restore the idle state only after the action reaches a terminal result (or
+   the pending goal is explicitly rejected).
+
+Action-cancel and explicit-service acceptance are request acknowledgements,
+not evidence that motion has stopped. Server loss, unavailable services,
+rejection, exceptions, and an action goal that is still pending all converge
+to the retryable deadline state rather than permanently disabling the control.
 
 ## 4. UI and state model
 
@@ -81,6 +91,11 @@ Only `IDLE` may send a new goal. Any active state makes the same button a stop
 control, preventing duplicate concurrent searches. A pure C++ state helper
 owns these transitions and the one-shot authorization decision; ROS callbacks
 only translate action/service events into state-machine events.
+
+While any non-idle state is active, the query field, **New Query**, and
+**Revise Query** are disabled and the manual publish path independently
+rejects attempts. They remain disabled through cancellation retries and are
+restored on rejected/terminal completion.
 
 Representative status text includes:
 
@@ -104,6 +119,10 @@ The Phase 5A manager, not the panel, allocates the query ID and publishes the
 canonical `/semantic_search/query` message. Therefore **Start Finding** must
 not invoke the existing **New Query** publisher first.
 
+Before opening the local session or sending the action goal, Finding reuses
+`QuerySession` normalization and validation. The 512-Unicode-codepoint limit
+is inclusive; 513 codepoints are rejected locally without starting a session.
+
 When the first valid action feedback supplies its non-zero query ID, the panel
 adopts `{query_text, query_id, query_version=1}` in `QuerySession`. This lets
 the existing region and diagnostic displays accept only Phase 5A output for
@@ -126,10 +145,14 @@ search's UI.
   action and the active-search motion adapter; it is never retried in a loop.
 - Stop remains safe when only one of action cancellation or the explicit
   cancel service is available.
+- Failure to confirm cancellation within three seconds remains
+  `CANCEL_PENDING`; it exposes **Retry Stop** and never implies a confirmed
+  stop.
 - Unknown feedback reasons are displayed but never interpreted as permission
   to rotate.
 - Panel destruction does not dereference stale Qt widgets from late callbacks;
-  callbacks are associated with the current search generation.
+  callbacks are associated with the current search generation and the Qt
+  cancellation timer is stopped during destruction.
 
 ## 7. Configuration and compatibility
 
@@ -155,7 +178,8 @@ Pure tests cover:
 - rejection of duplicate starts;
 - one-shot authorization only for `WAITING_FOR_AUTHORIZATION`;
 - query-ID adoption without publication;
-- cancellation and terminal reset;
+- manual query ownership locking through terminal completion;
+- cancellation deadline, retry, and terminal-only reset;
 - stale-generation callback rejection.
 
 Plugin contract tests cover action/service names, `rclcpp_action` dependency,
@@ -166,7 +190,9 @@ Runtime acceptance uses the Phase 5A rotation-supervised launch and verifies:
 1. one click starts passive observation;
 2. a blind target causes one authorized bounded rotation sequence;
 3. the button shows **Stop Finding** during the task;
-4. pressing it stops the task and rotation;
+4. pressing it sends both stop paths; if the action does not terminate within
+   three seconds the panel shows **Retry Stop** without claiming motion is
+   stopped;
 5. finding a target reports the returned global object ID;
 6. no-target search ends within 60 seconds;
 7. **Start Approach** remains a separate explicit operator action;
