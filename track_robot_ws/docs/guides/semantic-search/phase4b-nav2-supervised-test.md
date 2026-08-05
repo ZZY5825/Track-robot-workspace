@@ -96,8 +96,8 @@ ros2 run track_robot_bringup semantic_search_ctl run phase4b --no-dino
 当前整机测试使用显式 `static_target_profile`。实测语义输出最大间隔为
 3.51 s，因此 Phase 2、Phase 3、Phase 4A 和 Phase 4B 的目标证据有效期统一为
 4.0 s；该模式仅用于静态目标且有硬上限，不代表支持移动目标。
-目标尚未授权时，仍使用 4.0 s 的新鲜度边界。目标授权并冻结为 5A 静态
-任务后，不再依赖持续的相机目标心跳；odom、RC、E-stop、底盘健康和安全
+目标尚未授权时，仍使用 4.0 s 的新鲜度边界。目标授权并冻结为 Phase 4B
+静态目标任务后，不再依赖持续的相机目标心跳；odom、RC、E-stop、底盘健康和安全
 状态始终使用各自的实时门控，不使用目标宽限。
 
 Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
@@ -113,9 +113,9 @@ Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 - `/safety/filtered_obstacle_points` 同时用于 raytracing clearing 和 marking；
 - 两个 observation source 的 persistence 均为 `0`；
 - 人离开后，来自同一过滤点源的后续射线应清除旧代价，不应永久留下脚印；
-- 当前测试配置的 local/global costmap `inflation_radius=0.0`、
-  `footprint_padding=0.0`；碰撞体仍保留实物矩形 footprint
-  `0.88 x 0.80 m`，并没有把机器人当成一个点。
+- 当前测试配置的 local/global costmap `inflation_radius=0.60 m`、
+  `cost_scaling_factor=12.0`、`footprint_padding=0.0`；碰撞体仍保留
+  `0.88 x 0.80 m` 实物矩形 footprint，并没有把机器人当成一个点。
 
 若痕迹持续不清除，先检查原始点云和 costmap 更新率；这属于
 Phase 4B 动态障碍清除失败，不能靠解锁绕过。

@@ -76,5 +76,6 @@ def test_phase4b_operator_guide_matches_static_mission_and_dino_defaults():
     assert '.worktrees/main-integration/track_robot_ws' in guide
     assert 'run phase4b --no-dino' in guide
     assert '冻结当前 `odom` 中的接近位姿' in guide
-    assert '`inflation_radius=0.0`' in guide
+    assert '`inflation_radius=0.60 m`' in guide
+    assert '`cost_scaling_factor=12.0`' in guide
     assert '`0.88 x 0.80 m`' in guide

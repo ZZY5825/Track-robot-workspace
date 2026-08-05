@@ -1,4 +1,4 @@
-"""Pure Phase 5A execution policy for one locked stationary target."""
+"""Pure Phase 4B static-target mission continuity policy."""
 
 from dataclasses import dataclass
 import math
