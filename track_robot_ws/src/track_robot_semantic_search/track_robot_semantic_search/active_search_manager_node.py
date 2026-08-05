@@ -71,6 +71,20 @@ def _duration_message(seconds):
     )
 
 
+def _feedback_reason(context):
+    if context.terminal_status is not None and context.terminal_reason:
+        return context.terminal_reason
+    return context.state.value
+
+
+def _rotation_transition_in_progress(state):
+    return state in (
+        SearchState.WAITING_FOR_AUTHORIZATION,
+        SearchState.ROTATING,
+        SearchState.SETTLING,
+    )
+
+
 @dataclass
 class _SearchContext:
     goal_handle: object
@@ -466,8 +480,7 @@ class ActiveSearchManager(Node):
             context.policy.cumulative_rotation_deg)
         feedback.candidate_count = len(context.candidate_ids)
         feedback.best_candidate_score = float(context.best_score)
-        feedback.current_reason = (
-            context.terminal_reason or context.state.value)
+        feedback.current_reason = _feedback_reason(context)
         context.goal_handle.publish_feedback(feedback)
 
     def _terminate_locked(self, status, state, reason):
@@ -674,6 +687,9 @@ class ActiveSearchManager(Node):
             context = self._context
             if context is None or not context.task_received:
                 return
+            if _rotation_transition_in_progress(context.state):
+                context.event.set()
+                return
             source_stamp = _stamp_seconds(message.header.stamp)
             if source_stamp and source_stamp < context.query_start_ros_sec:
                 return
@@ -699,6 +715,9 @@ class ActiveSearchManager(Node):
         with self._lock:
             context = self._context
             if context is None or not context.task_received:
+                return
+            if _rotation_transition_in_progress(context.state):
+                context.event.set()
                 return
             selected = [
                 item for item in message.objects
@@ -828,7 +847,6 @@ class ActiveSearchManager(Node):
                 return
             state = values.get('state', '')
             reason = values.get('reason', context.terminal_reason)
-            context.terminal_reason = reason
             if state == 'SPIN_COMPLETED':
                 decision = context.policy.pending_decision
                 if decision is None:
@@ -843,6 +861,8 @@ class ActiveSearchManager(Node):
                 context.state = SearchState.SETTLING
                 context.settling_started_monotonic = time.monotonic()
                 context.latest_angular_speed_rad_s = None
+            elif state in ('AUTHORIZED', 'SPIN_REQUESTED', 'SPINNING'):
+                context.state = SearchState.ROTATING
             elif state in (
                     'SAFETY_REJECTED', 'WATCHDOG_STOP',
                     'NAV2_UNAVAILABLE'):
