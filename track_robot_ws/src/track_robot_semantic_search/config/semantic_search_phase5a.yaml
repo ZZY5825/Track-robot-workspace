@@ -1,7 +1,5 @@
 active_search_manager:
   ros__parameters:
-    search_mode: PASSIVE_ONLY
-    active_search_execution_enabled: false
     query_topic: /semantic_search/query
     perception_diagnostics_topic: /semantic_search/perception_diagnostics
     tasks_topic: /semantic_memory/tasks

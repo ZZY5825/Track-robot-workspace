@@ -1,10 +1,18 @@
 import ast
 from pathlib import Path
 
+import yaml
+
 
 PACKAGE = Path(__file__).resolve().parents[1]
 LAUNCH = PACKAGE / 'launch' / 'semantic_search_phase5a.launch.py'
 RVIZ = PACKAGE / 'rviz' / 'semantic_search_phase5a.rviz'
+SEARCH_CONFIG = (
+    PACKAGE.parents[1]
+    / 'track_robot_semantic_search'
+    / 'config'
+    / 'semantic_search_phase5a.yaml'
+)
 
 
 def _source(path):
@@ -35,6 +43,42 @@ def test_phase5a_composes_existing_pipeline_manager_and_bounded_nav2():
     assert ast.parse(source)
 
 
+def test_phase5a_runtime_mode_gates_have_one_launch_owner_on_foxy():
+    tree = ast.parse(_source(LAUNCH))
+    manager_node = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+                isinstance(target, ast.Name) and target.id == 'manager'
+                for target in node.targets):
+            continue
+        if isinstance(node.value, ast.Call):
+            manager_node = node.value
+            break
+
+    assert manager_node is not None
+    parameters = next(
+        keyword.value for keyword in manager_node.keywords
+        if keyword.arg == 'parameters')
+    assert isinstance(parameters, ast.List)
+    assert len(parameters.elts) == 2
+    runtime_parameters = next(
+        element for element in parameters.elts
+        if isinstance(element, ast.Dict))
+    runtime_keys = {
+        key.value for key in runtime_parameters.keys
+        if isinstance(key, ast.Constant)
+    }
+    assert 'search_mode' in runtime_keys
+    assert 'active_search_execution_enabled' in runtime_keys
+
+    config = yaml.safe_load(_source(SEARCH_CONFIG))[
+        'active_search_manager']['ros__parameters']
+    assert 'search_mode' not in config
+    assert 'active_search_execution_enabled' not in config
+
+
 def test_phase5a_rviz_shows_search_evidence_without_manual_motion_tools():
     source = _source(RVIZ)
 
@@ -48,4 +92,3 @@ def test_phase5a_rviz_shows_search_evidence_without_manual_motion_tools():
     assert 'Fixed Frame: odom' in source
     assert 'nav2_rviz_plugins/GoalTool' not in source
     assert 'nav2_rviz_plugins/Navigation 2' not in source
-

@@ -48,12 +48,15 @@ def test_manager_observes_authoritative_phase2_and_phase3_outputs():
     assert 'ObjectEvidenceKey' in source
 
 
-def test_phase5a_config_is_passive_bounded_and_fail_closed():
+def test_phase5a_config_is_bounded_and_node_defaults_are_fail_closed():
     params = yaml.safe_load(CONFIG.read_text())[
         'active_search_manager']['ros__parameters']
 
-    assert params['search_mode'] == 'PASSIVE_ONLY'
-    assert params['active_search_execution_enabled'] is False
+    assert 'search_mode' not in params
+    assert 'active_search_execution_enabled' not in params
+    source = MANAGER_SOURCE.read_text()
+    assert "'search_mode', SearchMode.PASSIVE_ONLY.value" in source
+    assert "'active_search_execution_enabled', False" in source
     assert params['heading_offsets_deg'] == [45.0, 90.0, 0.0, -45.0, -90.0]
     assert params['maximum_individual_rotation_deg'] == 90.0
     assert params['maximum_cumulative_rotation_deg'] == 270.0

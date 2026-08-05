@@ -106,6 +106,8 @@ def generate_launch_description():
         parameters=[
             search_config,
             {
+                # Keep these gates out of the node-specific YAML.  On Foxy,
+                # exact-name YAML values override launch's /** parameters.
                 'search_mode': LaunchConfiguration('search_mode'),
                 'active_search_execution_enabled':
                     LaunchConfiguration('enable_rotation_execution'),
@@ -190,4 +192,3 @@ def generate_launch_description():
         overlay,
         rviz,
     ])
-
