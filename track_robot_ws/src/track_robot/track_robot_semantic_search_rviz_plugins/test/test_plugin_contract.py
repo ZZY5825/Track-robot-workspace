@@ -94,6 +94,13 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     assert 'authorize_rotation_client_->async_send_request' in authorization_body
     assert 'on_authorization_result(generation, false)' in authorization_body
 
+    cancel_body = source.split(
+        'void SemanticSearchPanel::stop_finding()', 1)[1].split(
+        'void SemanticSearchPanel::authorize_rotation(', 1)[0]
+    assert 'try {\n    cancel_search_client_->async_send_request' in cancel_body
+    assert 'active-search cancellation service send failed' in cancel_body
+    assert 'weak_lifetime, generation, status' in cancel_body
+
     for forbidden in (
             'cmd_vel',
             'SearchMotionIntent',

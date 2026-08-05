@@ -678,11 +678,12 @@ void SemanticSearchPanel::stop_finding()
   if (!cancel_search_client_ || !cancel_search_client_->service_is_ready()) {
     return;
   }
-  cancel_search_client_->async_send_request(
-    std::make_shared<std_srvs::srv::Trigger::Request>(),
-    [this, weak_lifetime, generation](
-      rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future)
-    {
+  try {
+    cancel_search_client_->async_send_request(
+      std::make_shared<std_srvs::srv::Trigger::Request>(),
+      [this, weak_lifetime, generation](
+        rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future)
+      {
       const auto lifetime = weak_lifetime.lock();
       if (!lifetime) {
         return;
@@ -739,7 +740,30 @@ void SemanticSearchPanel::stop_finding()
           },
           Qt::QueuedConnection);
       }
-    });
+      });
+  } catch (const std::exception & error) {
+    const auto status =
+      tr("active-search cancellation service send failed: %1").arg(error.what());
+    QMetaObject::invokeMethod(
+      this,
+      [this, weak_lifetime, generation, status]() {
+        const auto lifetime = weak_lifetime.lock();
+        if (!lifetime) {
+          return;
+        }
+        std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+        if (!lifetime->alive) {
+          return;
+        }
+        std::lock_guard<std::mutex> lock(finding_mutex_);
+        if (finding_session_.generation() == generation &&
+          finding_session_.active())
+        {
+          finding_status_->setText(status);
+        }
+      },
+      Qt::QueuedConnection);
+  }
 }
 
 void SemanticSearchPanel::authorize_rotation(const std::uint64_t generation)
