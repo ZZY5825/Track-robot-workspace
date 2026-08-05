@@ -3,6 +3,29 @@
 namespace track_robot_semantic_search_rviz_plugins
 {
 
+std::string active_search_feedback_status(const std::string & reason)
+{
+  if (reason == "PASSIVE_OBSERVATION") {
+    return "passive observation";
+  }
+  if (reason == "WAITING_FOR_AUTHORIZATION") {
+    return "waiting for rotation authorization";
+  }
+  if (reason.find("ROTATING") == 0U) {
+    return "rotating in place";
+  }
+  if (reason.find("SETTLING") == 0U) {
+    return "settling";
+  }
+  if (reason.find("OBSERVING") == 0U) {
+    return "observing";
+  }
+  if (reason.empty()) {
+    return "searching";
+  }
+  return reason.substr(0U, 128U);
+}
+
 std::optional<std::uint64_t> ActiveSearchSession::begin()
 {
   if (active()) {
@@ -18,12 +41,18 @@ std::optional<std::uint64_t> ActiveSearchSession::begin()
 
 bool ActiveSearchSession::request_stop()
 {
-  if (!active() || state_ == ActiveSearchState::CANCEL_PENDING) {
+  if (!active()) {
     return false;
   }
 
   state_ = ActiveSearchState::CANCEL_PENDING;
   return true;
+}
+
+bool ActiveSearchSession::cancellation_deadline_elapsed(
+  const std::uint64_t generation) const
+{
+  return generation == generation_ && state_ == ActiveSearchState::CANCEL_PENDING;
 }
 
 bool ActiveSearchSession::on_goal_response(const std::uint64_t generation, const bool accepted)
@@ -58,6 +87,9 @@ ActiveSearchFeedbackDecision ActiveSearchSession::on_feedback(
     state_ != ActiveSearchState::AUTHORIZATION_PENDING &&
     state_ != ActiveSearchState::AUTHORIZED))
   {
+    return decision;
+  }
+  if (adopted_query_id_ != 0U && adopted_query_id_ != query_id) {
     return decision;
   }
 
@@ -111,6 +143,11 @@ std::uint64_t ActiveSearchSession::generation() const
 bool ActiveSearchSession::active() const
 {
   return state_ != ActiveSearchState::IDLE;
+}
+
+bool ActiveSearchSession::manual_query_allowed() const
+{
+  return !active();
 }
 
 }  // namespace track_robot_semantic_search_rviz_plugins

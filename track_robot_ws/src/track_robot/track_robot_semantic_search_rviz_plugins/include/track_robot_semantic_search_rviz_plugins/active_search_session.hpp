@@ -26,11 +26,14 @@ struct ActiveSearchFeedbackDecision
   std::uint64_t query_id{0U};
 };
 
+std::string active_search_feedback_status(const std::string & reason);
+
 class ActiveSearchSession
 {
 public:
   std::optional<std::uint64_t> begin();
   bool request_stop();
+  bool cancellation_deadline_elapsed(std::uint64_t generation) const;
   bool on_goal_response(std::uint64_t generation, bool accepted);
   ActiveSearchFeedbackDecision on_feedback(
     std::uint64_t generation,
@@ -41,6 +44,7 @@ public:
   [[nodiscard]] ActiveSearchState state() const;
   [[nodiscard]] std::uint64_t generation() const;
   [[nodiscard]] bool active() const;
+  [[nodiscard]] bool manual_query_allowed() const;
 
 private:
   ActiveSearchState state_{ActiveSearchState::IDLE};

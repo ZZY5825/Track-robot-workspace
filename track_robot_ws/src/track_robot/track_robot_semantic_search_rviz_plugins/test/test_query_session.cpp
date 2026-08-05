@@ -69,6 +69,16 @@ TEST(QuerySession, RejectsEmptyOversizedAndRevisionWithoutCurrentQuery)
     std::invalid_argument);
 }
 
+TEST(QuerySession, SharedNormalizationAccepts512AndRejects513CodePoints)
+{
+  const auto accepted = plugin::QuerySession::normalize_query(
+    QString(512, QChar('x')));
+  EXPECT_EQ(accepted.size(), 512U);
+  EXPECT_THROW(
+    (void)plugin::QuerySession::normalize_query(QString(513, QChar('x'))),
+    std::invalid_argument);
+}
+
 TEST(QuerySession, CorrelatesOnlyMatchingDiagnostics)
 {
   plugin::QuerySession session;

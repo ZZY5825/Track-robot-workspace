@@ -40,7 +40,7 @@ QueryCommand QuerySession::new_query(
     }
     query_id = last_query_id_ + 1U;
   }
-  const auto normalized = normalize(text);
+  const auto normalized = normalize_query(text);
   current_ = QueryCommand{
     query_id,
     1U,
@@ -59,7 +59,7 @@ QueryCommand QuerySession::adopt_query(
     throw std::invalid_argument(
             "external query ID and version must be positive");
   }
-  const auto normalized = normalize(text);
+  const auto normalized = normalize_query(text);
   current_ = QueryCommand{
     query_id,
     query_version,
@@ -79,7 +79,7 @@ QueryCommand QuerySession::revise(const QString & text)
   {
     throw std::overflow_error("query version space is exhausted");
   }
-  const auto normalized = normalize(text);
+  const auto normalized = normalize_query(text);
   const auto version = current_->query_version + 1U;
   current_ = QueryCommand{
     current_->query_id,
@@ -138,7 +138,7 @@ std::optional<DiagnosticMatch> QuerySession::correlate_diagnostic(
   }
 }
 
-std::string QuerySession::normalize(const QString & text)
+std::string QuerySession::normalize_query(const QString & text)
 {
   const auto normalized =
     text.normalized(QString::NormalizationForm_KC).simplified();

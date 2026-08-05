@@ -30,6 +30,8 @@ struct DiagnosticMatch
 class QuerySession
 {
 public:
+  static std::string normalize_query(const QString & text);
+
   QueryCommand new_query(
     const QString & text,
     std::uint64_t timestamp_seed);
@@ -44,7 +46,6 @@ public:
     const std::string & payload) const;
 
 private:
-  static std::string normalize(const QString & text);
   static std::string payload_for(
     const std::string & normalized_text,
     std::uint64_t query_id,
