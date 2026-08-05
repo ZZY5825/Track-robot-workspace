@@ -139,6 +139,7 @@ def test_adapter_source_uses_spin_but_has_no_velocity_or_pose_client():
     assert "'/cmd_vel'" not in source
     assert 'int(message.header.stamp.sec)' not in source
     assert 'self._spin_client.destroy()' in source
+    assert 'except (KeyboardInterrupt, RuntimeError):' in source
     assert 'forward_motion_forbidden' in (
         PACKAGE_ROOT
         / 'track_robot_navigation'

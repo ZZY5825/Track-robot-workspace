@@ -138,7 +138,13 @@ class SearchMotionAdapter(Node):
         self._publish_status(0, 'IDLE', 'waiting_for_search_intent')
 
     def destroy_node(self):
-        self._spin_client.destroy()
+        # Foxy can deliver SIGINT while rclpy is tearing down the action
+        # client's entities.  Treat that shutdown-only race as cleanup already
+        # in progress instead of reporting a false runtime crash.
+        try:
+            self._spin_client.destroy()
+        except (KeyboardInterrupt, RuntimeError):
+            pass
         return super().destroy_node()
 
     def _deadline_monotonic(self, message):
