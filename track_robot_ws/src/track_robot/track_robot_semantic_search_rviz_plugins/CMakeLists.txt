@@ -29,6 +29,14 @@ target_link_libraries(query_session
   nlohmann_json::nlohmann_json
 )
 
+add_library(active_search_session STATIC
+  src/active_search_session.cpp
+)
+target_include_directories(active_search_session PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
 add_library(${PROJECT_NAME} SHARED
   include/${PROJECT_NAME}/semantic_search_panel.hpp
   src/semantic_search_panel.cpp
@@ -69,6 +77,10 @@ if(BUILD_TESTING)
     Qt5::Core
     nlohmann_json::nlohmann_json
   )
+
+  ament_add_gtest(test_active_search_session test/test_active_search_session.cpp)
+  target_include_directories(test_active_search_session PRIVATE include)
+  target_link_libraries(test_active_search_session active_search_session)
 
   set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
   ament_add_pytest_test(
