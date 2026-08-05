@@ -24,7 +24,7 @@
 
 - 默认 `PASSIVE_ONLY`，不启动底盘、Nav2 旋转服务器或速度安全链。
 - `SEARCH_SHADOW` 只发布建议航向，`rotation_permitted=false`。
-- 只有显式 `--rotation-supervised` 才启动底盘和 Nav2 Spin；每个新查询仍必须调用一次授权 service。
+- 只有显式 `--rotation-supervised` 才启动底盘和 Nav2 Spin。RViz 中点击 **Start Finding** 本身就是当前有界旋转任务的操作员授权，不需要第二次授权。
 - 即使已授权，Nav2 输出仍依次经过 `/nav2/cmd_vel_raw` → motion safety supervisor → `/nav2/cmd_vel_safe` → cmd_vel gate → `/cmd_vel`。
 - Phase 5A 的搜索意图始终 `forward_permitted=false`。目标确认后只返回目标引用，不自动开始 Phase 4B 接近。
 - 首次物理旋转必须把机器人可靠架空，遥控器和 E-stop 保持可用。不得从本指南直接跳到地面测试。
@@ -83,14 +83,11 @@ E-stop 始终具有最高权限。结果应显示已确认的全局对象 ID，�
 失败原因；不得自动开始接近。
 
 第二次运行时，在正在旋转期间点击 **Stop Finding**。确认动作和待执行旋转
-意图均收到取消请求。若三秒内未收到 action 终态，面板必须显示
-**Retry Stop** 和
-`cancellation unconfirmed — retry Stop; RC/E-stop remain authoritative`。
-这表示取消尚未确认，不能据此判断机器人已经停止；立即使用 RC 或 E-stop
-保持安全。点击 **Retry Stop** 后，确认 action cancel 和显式 cancel service
-都被再次请求，按钮重新进入三秒等待期，且查询控件仍保持禁用。只有收到
-action 终态后，按钮和查询控件才恢复空闲状态。最后，在没有目标的情况下再
-运行一次：它必须在 60 秒内结束，并且整个过程不得平移。
+意图均收到一次取消请求。取消期间按钮保持禁用；收到 action 终态后恢复为
+**Start Finding**，查询控件恢复可用。面板不得出现 **Retry Stop**，也不需要
+再次点击。若底盘未及时停止，立即使用 RC 或 E-stop；它们始终具有最高权限。
+最后，在没有目标的情况下再运行一次：它必须在 60 秒内结束，并且整个过程
+不得平移。
 
 这些项目须由操作者观察并记录；自动 build/test 只能验证软件契约，不能验证
 底盘的实际运动、停止延迟、RC 接管或 E-stop。
@@ -162,13 +159,9 @@ ros2 action send_goal /semantic_search/search_for_object \
   --feedback
 ```
 
-等 diagnostics 显示 `WAITING_FOR_AUTHORIZATION` 后，在终端 C 授权一次：
-
-```bash
-ros2 service call /semantic_search/active_search/authorize_rotation std_srvs/srv/Trigger '{}'
-```
-
-这次授权只绑定当前 query，但在同一 query 的后续航向间保持有效。新 query 必须重新授权。随时停止：
+使用 RViz 时，输入查询后只点击一次 **Start Finding**；这次点击同时提交任务并
+授权该 query 的有界原地旋转。同一 query 的后续航向不再要求额外授权。使用
+终端 action 测试时，提交上述 action 即代表同等的操作员授权。随时停止：
 
 ```bash
 ros2 service call /semantic_search/active_search/cancel std_srvs/srv/Trigger '{}'
@@ -177,7 +170,7 @@ ros2 service call /safety/disarm std_srvs/srv/Trigger '{}'
 
 支撑架验收：
 
-- 授权前无旋转；授权后只允许原地 Spin。
+- 任务提交前无旋转；点击 **Start Finding** 或发送监督 action 后只允许原地 Spin。
 - 任意 `/nav2/cmd_vel_raw`、`/nav2/cmd_vel_safe`、`/cmd_vel` 的 `|linear.x| <= 0.001 m/s`。
 - `|angular.z| <= 0.30 rad/s`，单次旋转 `<=90°`，累计旋转 `<=270°`。
 - 每次 Spin 完成后，角速度低于 `0.03 rad/s` 并稳定至少 `0.75 s` 才收集新证据。

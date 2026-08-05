@@ -14,13 +14,13 @@ For the Phase 5A **Start Finding** / **Stop Finding** path, the panel uses
 only these ROS clients:
 
 - `SearchForObject` at `/semantic_search/search_for_object`;
-- `Trigger` authorization at
-  `/semantic_search/active_search/authorize_rotation`; and
 - `Trigger` cancellation at `/semantic_search/active_search/cancel`.
 
 It publishes no velocity and does not start Phase 4B approach automatically.
 **Start Finding** / **Stop Finding** controls only a bounded, rotation-only
-search. The existing Phase 4B **Start Approach** and **Cancel & Disarm**
+search. Clicking **Start Finding** is the operator's authorization for that
+bounded rotation task; there is no second rotation-authorization step. The
+existing Phase 4B **Start Approach** and **Cancel & Disarm**
 clients remain separate explicit operator controls.
 
 The Finding path applies the same NFKC normalization and 512-Unicode-codepoint
@@ -30,11 +30,9 @@ disabled: the active-search manager owns the authoritative query ID/version
 until the action reaches a terminal result.
 
 **Stop Finding** sends both action cancellation and the explicit cancellation
-service request. If no terminal action result arrives within three seconds,
-the button becomes **Retry Stop** and the panel reports that cancellation is
-unconfirmed. Retry sends both cancellation requests again and restarts the
-deadline. An accepted cancellation request is not proof that motion has
-stopped; RC override and E-stop remain authoritative throughout.
+service request once. The button remains disabled while cancellation reaches
+the action terminal state, then returns to **Start Finding**. RC override and
+E-stop remain authoritative throughout.
 
 Use the installed bringup entry point instead of loading the plugin manually:
 

@@ -31,9 +31,9 @@
 - Consumes: launch arguments `search_mode`, `enable_rotation_execution`.
 - Produces: live `ROTATION_SUPERVISED` parameters and float32-safe limit checks.
 
-- [ ] Verify the focused tests reproduce and cover the launch precedence and ROS float32 boundary failures.
-- [ ] Run both package suites and expect zero failures.
-- [ ] Commit launch ownership and float32 comparison as separate logical commits.
+- [x] Verify the focused tests reproduce and cover the launch precedence and ROS float32 boundary failures.
+- [x] Run both package suites and expect zero failures.
+- [x] Commit launch ownership and float32 comparison as separate logical commits.
 
 ### Task 2: Make executable search intents one-click authorized
 
@@ -46,11 +46,11 @@
 - Consumes: `SearchMotionIntent.rotation_permitted == true` from a supervised action.
 - Produces: automatic internal safety arm followed by one `/spin` goal; no panel authorization RPC is required.
 
-- [ ] Add a failing policy test proving an executable supervised intent transitions directly to `rotation_authorized` while shadow and forward intents remain non-executable.
-- [ ] Add a failing node contract proving `_on_intent()` invokes the internal arm-and-spin path for an accepted executable intent.
-- [ ] Implement one shared `_arm_and_start_pending_spin()` method used by the automatic path and retained compatibility service.
-- [ ] Verify rejected arm, stale odometry, stale safety, RC override and E-stop still stop or reject motion.
-- [ ] Run `track_robot_navigation` tests and commit.
+- [x] Add a failing policy test proving an executable supervised intent transitions directly to `rotation_authorized` while shadow and forward intents remain non-executable.
+- [x] Add a failing node contract proving `_on_intent()` invokes the internal arm-and-spin path for an accepted executable intent.
+- [x] Implement one shared `_arm_and_start_pending_spin()` method used by the automatic path and retained compatibility service.
+- [x] Verify rejected arm, stale odometry, stale safety, RC override and E-stop still stop or reject motion.
+- [x] Run `track_robot_navigation` tests and commit.
 
 ### Task 3: Simplify the RViz search session and stop behavior
 
@@ -66,11 +66,11 @@
 - Consumes: SearchForObject goal feedback and result.
 - Produces: `Start Finding`/`Stop Finding` only; no authorization-pending or retry-only UI state.
 
-- [ ] Replace tests that expect `AUTHORIZATION_PENDING`, `AUTHORIZED` and `Retry Stop` with tests for a single `SEARCHING` state and immediate operator stop reset.
-- [ ] Remove the panel's rotation-authorization client, callback, service configuration and cancellation retry timer.
-- [ ] Make `Stop Finding` send action/adapter cancellation once, reset the local session and restore `Start Finding` without requiring a second click.
-- [ ] Keep late callbacks generation-guarded so an old action cannot corrupt a new panel session.
-- [ ] Run RViz plugin tests and commit.
+- [x] Replace tests that expect `AUTHORIZATION_PENDING`, `AUTHORIZED` and `Retry Stop` with tests for a single `SEARCHING` state and one-click stop.
+- [x] Remove the panel's rotation-authorization client, callback, service configuration and cancellation retry timer.
+- [x] Make `Stop Finding` send action/adapter cancellation once and restore `Start Finding` on the action terminal result without requiring a second click.
+- [x] Keep late callbacks generation-guarded so an old action cannot corrupt a new panel session.
+- [x] Run RViz plugin tests and commit.
 
 ### Task 4: Close manager state transitions and update operator documentation
 
@@ -83,9 +83,9 @@
 - Consumes: adapter states `AUTHORIZED`, `SPIN_REQUESTED`, `SPINNING`, `SPIN_COMPLETED` and terminal faults.
 - Produces: one rotation decision per heading and deterministic action termination/cancellation.
 
-- [ ] Preserve the unmasked search state and block duplicate rotation decisions while waiting, rotating or settling.
-- [ ] Document one-click start, one-click stop and expected status sequence.
-- [ ] Run semantic-search tests and commit.
+- [x] Preserve the unmasked search state and block duplicate rotation decisions while waiting, rotating or settling.
+- [x] Document one-click start, one-click stop and expected status sequence.
+- [x] Run semantic-search tests and commit.
 
 ### Task 5: Regression and live acceptance
 
