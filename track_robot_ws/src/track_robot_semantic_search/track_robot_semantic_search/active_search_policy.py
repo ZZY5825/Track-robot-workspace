@@ -176,6 +176,10 @@ class BoundedHeadingPolicy:
         return self._cumulative_rotation_deg
 
     @property
+    def pending_decision(self):
+        return self._pending_decision
+
+    @property
     def exhausted(self):
         return self._cursor >= len(self._config.heading_offsets_deg)
 

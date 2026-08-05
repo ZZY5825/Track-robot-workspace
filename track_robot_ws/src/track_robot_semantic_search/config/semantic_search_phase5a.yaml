@@ -10,6 +10,7 @@ active_search_manager:
     selected_target_topic: /semantic_search/phase4a/selected_target
     camera_info_topic: /zed/zed_node/left/camera_info
     localization_topic: /semantic_search/phase4a/localization_state
+    odometry_topic: /odom
     motion_status_topic: /semantic_search/active_search/motion_status
     motion_intent_topic: /semantic_search/search_motion_intent
     diagnostics_topic: /semantic_search/active_search/diagnostics

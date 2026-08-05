@@ -69,7 +69,9 @@ def test_completed_decision_cannot_be_counted_twice():
     policy = BoundedHeadingPolicy(SearchPolicyConfig.defaults())
     decision = policy.next_heading(SearchState.SELECTING_VIEW, 0.0, 0.0)
     assert decision is not None
+    assert policy.pending_decision == decision
     policy.mark_completed(decision)
+    assert policy.pending_decision is None
 
     with pytest.raises(ValueError, match='pending heading'):
         policy.mark_completed(decision)

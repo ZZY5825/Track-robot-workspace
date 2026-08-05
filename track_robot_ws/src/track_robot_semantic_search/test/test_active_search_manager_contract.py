@@ -83,3 +83,13 @@ def test_manager_binds_evidence_even_after_active_object_epoch_arrives():
     source = MANAGER_SOURCE.read_text()
 
     assert 'if not context.evidence.is_bound:' in source
+
+
+def test_manager_closes_the_spin_settle_observe_loop_and_stops_at_terminal():
+    source = MANAGER_SOURCE.read_text()
+
+    assert "state == 'SPIN_COMPLETED'" in source
+    assert 'context.policy.mark_completed(decision)' in source
+    assert 'def on_odom(' in source
+    assert 'settle_angular_speed_rad_s' in source
+    assert "publish_stop_intent('task_terminal')" in source

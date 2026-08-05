@@ -9,6 +9,7 @@ import time
 from builtin_interfaces.msg import Duration as DurationMessage
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import Point
+from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.action import (
     ActionServer,
@@ -96,6 +97,10 @@ class _SearchContext:
     selected_key: object = None
     selected_stamp_sec: float = 0.0
     searched_headings_deg: list = field(default_factory=list)
+    current_relative_heading_deg: float = 0.0
+    settling_started_monotonic: object = None
+    latest_odom_monotonic: object = None
+    latest_angular_speed_rad_s: object = None
     terminal_status: object = None
     terminal_reason: str = ''
     event: threading.Event = field(default_factory=threading.Event)
@@ -187,6 +192,8 @@ class ActiveSearchManager(Node):
         localization_topic = str(self.declare_parameter(
             'localization_topic',
             '/semantic_search/phase4a/localization_state').value)
+        odometry_topic = str(self.declare_parameter(
+            'odometry_topic', '/odom').value)
         motion_status_topic = str(self.declare_parameter(
             'motion_status_topic',
             '/semantic_search/active_search/motion_status').value)
@@ -236,6 +243,9 @@ class ActiveSearchManager(Node):
             SemanticLocalizationState, localization_topic,
             self.on_localization, selected_qos,
             callback_group=self._callback_group)
+        self.create_subscription(
+            Odometry, odometry_topic, self.on_odom,
+            reliable, callback_group=self._callback_group)
         self.create_subscription(
             DiagnosticArray, motion_status_topic, self.on_motion_status,
             reliable, callback_group=self._callback_group)
@@ -364,10 +374,14 @@ class ActiveSearchManager(Node):
                             SearchState.TIMEOUT,
                             'task_timeout')
                     break
+                with self._lock:
+                    self._advance_settling_locked()
                 self._publish_feedback(context)
                 context.event.wait(timeout=0.05)
                 context.event.clear()
 
+            with self._lock:
+                self.publish_stop_intent('task_terminal')
             result = self._result(
                 context.terminal_status,
                 context.request.query_id,
@@ -575,7 +589,9 @@ class ActiveSearchManager(Node):
     def _publish_next_rotation_locked(self):
         context = self._context
         decision = context.policy.next_heading(
-            SearchState.SELECTING_VIEW, 0.0, 0.0)
+            SearchState.SELECTING_VIEW,
+            0.0,
+            math.radians(context.current_relative_heading_deg))
         if decision is None:
             evidence = context.evidence.evaluate(search_exhausted=True)
             if evidence.status is EvidenceStatus.NOT_FOUND:
@@ -715,7 +731,7 @@ class ActiveSearchManager(Node):
                 source_stamp = _stamp_seconds(message.header.stamp)
             evidence = ViewEvidence(
                 key=key,
-                heading_deg=0.0,
+                heading_deg=context.current_relative_heading_deg,
                 horizontal_fov_deg=context.horizontal_fov_deg,
                 source_stamp_sec=source_stamp,
                 task_relevance=float(item.task_relevance),
@@ -762,6 +778,45 @@ class ActiveSearchManager(Node):
             context.localization_epoch_id = epoch
             context.event.set()
 
+    def on_odom(self, message):
+        with self._lock:
+            context = self._context
+            if context is None:
+                return
+            context.latest_odom_monotonic = time.monotonic()
+            context.latest_angular_speed_rad_s = float(
+                message.twist.twist.angular.z)
+            context.event.set()
+
+    def _advance_settling_locked(self):
+        context = self._context
+        if (
+                context is None or
+                context.state is not SearchState.SETTLING or
+                context.settling_started_monotonic is None or
+                context.latest_odom_monotonic is None or
+                context.latest_angular_speed_rad_s is None):
+            return
+        now = time.monotonic()
+        if now - context.latest_odom_monotonic > 0.25:
+            self._terminate_locked(
+                SearchForObject.Result.LOCALIZATION_UNAVAILABLE,
+                SearchState.LOCALIZATION_UNAVAILABLE,
+                'odometry_stale_while_settling')
+            return
+        if now - context.settling_started_monotonic < self._settle_duration_sec:
+            return
+        if abs(context.latest_angular_speed_rad_s) > (
+                self._settle_angular_speed_rad_s):
+            return
+        context.state = SearchState.OBSERVING
+        context.query_start_ros_sec = (
+            self.get_clock().now().nanoseconds * 1e-9)
+        context.ranking_updates = 0
+        context.empty_ranking_updates = 0
+        context.settling_started_monotonic = None
+        context.event.set()
+
     def on_motion_status(self, message):
         with self._lock:
             context = self._context
@@ -771,7 +826,35 @@ class ActiveSearchManager(Node):
             values = {item.key: item.value for item in latest.values}
             if values.get('query_id') != str(context.request.query_id):
                 return
-            context.terminal_reason = values.get('reason', context.terminal_reason)
+            state = values.get('state', '')
+            reason = values.get('reason', context.terminal_reason)
+            context.terminal_reason = reason
+            if state == 'SPIN_COMPLETED':
+                decision = context.policy.pending_decision
+                if decision is None:
+                    self._terminate_locked(
+                        SearchForObject.Result.INTERNAL_FAULT,
+                        SearchState.INTERNAL_FAULT,
+                        'spin_completed_without_pending_heading')
+                    return
+                context.policy.mark_completed(decision)
+                context.current_relative_heading_deg = (
+                    decision.relative_heading_deg)
+                context.state = SearchState.SETTLING
+                context.settling_started_monotonic = time.monotonic()
+                context.latest_angular_speed_rad_s = None
+            elif state in (
+                    'SAFETY_REJECTED', 'WATCHDOG_STOP',
+                    'NAV2_UNAVAILABLE'):
+                self._terminate_locked(
+                    SearchForObject.Result.SAFETY_REJECTED,
+                    SearchState.SAFETY_REJECTED,
+                    reason or state.lower())
+            elif state in ('SPIN_FAILED', 'REJECTED'):
+                self._terminate_locked(
+                    SearchForObject.Result.INTERNAL_FAULT,
+                    SearchState.INTERNAL_FAULT,
+                    reason or state.lower())
             context.event.set()
 
     def _publish_diagnostics(self, context):

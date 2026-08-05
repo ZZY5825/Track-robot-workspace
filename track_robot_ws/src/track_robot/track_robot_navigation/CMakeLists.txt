@@ -7,6 +7,7 @@ find_package(ament_cmake_python REQUIRED)
 ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
+  scripts/search_motion_adapter
   scripts/semantic_navigation_supervisor
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -49,6 +50,11 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_semantic_authorization
     test/test_semantic_authorization.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
+    test_search_motion_adapter
+    test/test_search_motion_adapter.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
   ament_add_pytest_test(
