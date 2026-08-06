@@ -1,6 +1,6 @@
 # Phase 5A 有界主动搜索测试指南
 
-本文用于测试静态目标的“先被动观察，必要时原地转向换视角，再把同一目标引用交回 Phase 4”的最小系统。Phase 5A 不执行平移搜索，不自动开始 Phase 4 接近，也不发布 `Twist`。
+本文用于测试静态目标的“先被动观察，必要时沿同一方向原地转向换视角，再把同一目标引用交回 Phase 4”的最小系统。Phase 5A Finding 不执行平移搜索、不自动开始 Phase 4 接近，也不直接发布 `Twist`。监督模式与 Phase 4B 共用同一套 Nav2 runtime，因此找到目标后无需重启 launch。
 
 ## 当前证据状态
 
@@ -9,7 +9,7 @@
 | 能力 | 当前证据 | 状态 |
 |---|---|---|
 | 被动、shadow、监督旋转三种模式及独立执行门 | 源码、launch/config 契约测试 | 已实现、单元测试通过 |
-| 有界航向序列 `+45°, +90°, 0°, -45°, -90°` | 确定性策略测试 | 已实现、单元测试通过 |
+| 单向有界航向序列 `+45°, +90°, +135°, +180°, +225°, +270°` | 确定性策略测试 | 已实现、单元测试通过 |
 | 单次转角不超过 `90°`、累计不超过 `270°`、角速度不超过 `0.30 rad/s` | 策略、适配器和 Nav2 配置测试 | 已实现、单元测试通过 |
 | 多视角证据绑定完整目标引用键 | 24 场景确定性回放 | 回放测试通过 |
 | Phase 5A 不生成线速度、不直接连接 `/cmd_vel` | 源码契约和回放 | 测试通过 |
@@ -81,6 +81,15 @@ ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervis
 **Start Approach** 后开始；**Start Finding** 可能触发有界原地旋转，RC 接管和
 E-stop 始终具有最高权限。结果应显示已确认的全局对象 ID，或一个有界的终止
 失败原因；不得自动开始接近。
+
+若初始视角没有确认目标，后续搜索必须始终沿一个方向进行，目标绝对航向依次
+为 `+45°、+90°、+135°、+180°、+225°、+270°`；每次 Spin 为 `+45°`，
+不得在相邻观察窗口之间正负反转。Finding 显示 `confirmed; object <ID>` 后，
+确认 **Start Approach** 已启用，且 `/semantic_navigation/authorize_approach`
+存在。点击 **Start Approach** 后应显示 `starting approach`，随后显示
+`approach enabled (supervised)`；目标的 memory epoch、global object ID、
+localization epoch、query ID/version 必须与 Finding 确认结果一致。该按钮仍是
+独立的平移授权，Finding 不得自动调用它。
 
 第二次运行时，在正在旋转期间点击 **Stop Finding**。确认动作和待执行旋转
 意图均收到一次取消请求。取消期间按钮保持禁用；收到 action 终态后恢复为

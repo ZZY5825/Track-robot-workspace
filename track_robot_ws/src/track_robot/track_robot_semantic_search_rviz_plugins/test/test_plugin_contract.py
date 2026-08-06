@@ -96,6 +96,15 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
         'void SemanticSearchPanel::cancel_and_disarm()', 1)[0]
     assert 'selected_reference_.has_value()' in start_body
     assert 'best_reference_->same_identity' not in start_body
+    for field in (
+            'memory_epoch_id', 'global_object_id', 'localization_epoch_id',
+            'query_id', 'query_version', 'snapshot_sequence'):
+        assert 'request->{} = reference->{};'.format(field, field) in start_body
+
+    result_body = source.split('options.result_callback =', 1)[1].split(
+        'try {\n    search_client_->async_send_goal', 1)[0]
+    assert 'finish_finding(' in result_body
+    assert 'start_approach(' not in result_body
 
     finding_start_body = source.split(
         'void SemanticSearchPanel::start_finding()', 1)[1].split(
