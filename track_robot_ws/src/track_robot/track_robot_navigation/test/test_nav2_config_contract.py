@@ -102,13 +102,17 @@ def test_costmaps_use_standard_lidar_layers():
     assert 'static_layer' not in global_map['plugins']
 
 
-def test_recoveries_cannot_move_the_robot():
+def test_recoveries_share_wait_and_bounded_spin_without_translation():
     config = _params()
     recoveries = config['recoveries_server']['ros__parameters']
 
-    assert recoveries['recovery_plugins'] == ['wait']
-    assert set(recoveries) >= {'wait'}
-    assert 'spin' not in recoveries
+    assert recoveries['recovery_plugins'] == ['wait', 'spin']
+    assert set(recoveries) >= {'wait', 'spin'}
+    assert recoveries['spin']['plugin'] == 'nav2_recoveries/Spin'
+    assert recoveries['spin']['max_rotational_vel'] == 0.30
+    assert 0.0 < recoveries['spin']['min_rotational_vel'] <= 0.10
+    assert recoveries['spin']['rotational_acc_lim'] <= 0.50
+    assert recoveries['spin']['simulate_ahead_time'] >= 1.0
     assert 'back_up' not in recoveries
 
 

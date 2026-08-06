@@ -81,9 +81,15 @@ recoveries_server:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
-    recovery_plugins: [wait]
+    recovery_plugins: [wait, spin]
     wait:
       plugin: nav2_recoveries/Wait
+    spin:
+      plugin: nav2_recoveries/Spin
+      simulate_ahead_time: 1.5
+      max_rotational_vel: 0.30
+      min_rotational_vel: 0.08
+      rotational_acc_lim: 0.50
     global_frame: odom
     robot_base_frame: base_link
     transform_timeout: 0.20
