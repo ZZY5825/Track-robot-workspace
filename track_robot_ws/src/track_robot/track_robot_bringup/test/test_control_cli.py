@@ -128,7 +128,7 @@ def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
     assert 'enable_rotation_execution:=false' in shadow_command
     assert 'start_base:=false' in shadow_command
     assert 'search_mode:=ROTATION_SUPERVISED' in active_command
-    assert 'rotation_runtime_mode:=ROTATION_ONLY_ACTIVE' in active_command
+    assert 'rotation_runtime_mode:=SEMANTIC_ACTIVE' in active_command
     assert 'enable_rotation_execution:=true' in active_command
     assert 'start_base:=true' in active_command
 

@@ -1,8 +1,9 @@
 """One-command Phase 0-5A bounded active-search bringup.
 
 PASSIVE_ONLY is the default.  SEARCH_SHADOW records decisions without motion.
-ROTATION_SUPERVISED must be paired with the independent execution gate and is
-limited to Nav2 Spin through the existing safety supervisor and velocity gate.
+ROTATION_SUPERVISED uses the full Phase 4B Nav2 runtime so a confirmed target
+can be handed to supervised approach without restarting navigation. Finding
+remains limited to Nav2 Spin through the existing safety and velocity gate.
 """
 
 from launch import LaunchDescription
@@ -39,9 +40,9 @@ def _validate_mode(context):
         raise ValueError('unsupported Phase 5A search_mode: {}'.format(
             search_mode))
     if search_mode == 'ROTATION_SUPERVISED':
-        if runtime_mode != 'ROTATION_ONLY_ACTIVE' or not execution:
+        if runtime_mode != 'SEMANTIC_ACTIVE' or not execution:
             raise ValueError(
-                'ROTATION_SUPERVISED requires ROTATION_ONLY_ACTIVE and the '
+                'ROTATION_SUPERVISED requires SEMANTIC_ACTIVE and the '
                 'separate enable_rotation_execution gate')
     elif runtime_mode != 'PLANNING_ONLY' or execution:
         raise ValueError(
@@ -87,16 +88,25 @@ def generate_launch_description():
     )
     navigation = _include(
         'track_robot_navigation',
-        'phase5a_rotation.launch.py',
+        'phase4b_navigation.launch.py',
         {
             'runtime_mode': LaunchConfiguration('rotation_runtime_mode'),
-            'enable_rotation_execution':
+            'enable_semantic_execution':
                 LaunchConfiguration('enable_rotation_execution'),
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'autostart': LaunchConfiguration('autostart'),
             # Phase 4A already owns this independent safety map instance.
             'start_obstacle_map': 'false',
         },
+    )
+    search_adapter = Node(
+        package='track_robot_navigation',
+        executable='search_motion_adapter',
+        name='search_motion_adapter',
+        output='screen',
+        parameters=[LaunchConfiguration('search_motion_config')],
+        condition=IfCondition(LaunchConfiguration(
+            'enable_rotation_execution')),
     )
     manager = Node(
         package='track_robot_semantic_search',
@@ -142,6 +152,12 @@ def generate_launch_description():
         DeclareLaunchArgument('start_phase5a_rviz', default_value='true'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),
         DeclareLaunchArgument('autostart', default_value='true'),
+        DeclareLaunchArgument(
+            'search_motion_config',
+            default_value=PathJoinSubstitution([
+                FindPackageShare('track_robot_navigation'),
+                'config', 'active_search_motion.yaml',
+            ])),
         DeclareLaunchArgument('configure_network', default_value='true'),
         DeclareLaunchArgument('network_interface', default_value='eth0'),
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
@@ -188,6 +204,7 @@ def generate_launch_description():
         platform,
         phase4a,
         navigation,
+        search_adapter,
         manager,
         overlay,
         rviz,

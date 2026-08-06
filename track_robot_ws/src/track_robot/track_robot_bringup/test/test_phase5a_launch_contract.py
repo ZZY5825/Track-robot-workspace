@@ -30,12 +30,18 @@ def test_phase5a_defaults_to_passive_and_cannot_rotate():
     assert "'start_imu': 'false'" in source
 
 
-def test_phase5a_composes_existing_pipeline_manager_and_bounded_nav2():
+def test_phase5a_composes_pipeline_manager_and_one_full_handoff_nav2():
     source = _source(LAUNCH)
 
     assert 'semantic_search_phase4a.launch.py' in source
     assert 'semantic_search_platform.launch.py' in source
-    assert 'phase5a_rotation.launch.py' in source
+    assert 'phase4b_navigation.launch.py' in source
+    assert 'phase5a_rotation.launch.py' not in source
+    assert source.count("executable='search_motion_adapter'") == 1
+    assert "name='search_motion_adapter'" in source
+    assert 'active_search_motion.yaml' in source
+    assert "'enable_semantic_execution':" in source
+    assert "LaunchConfiguration('enable_rotation_execution')" in source
     assert "executable='semantic_search_active_manager'" in source
     assert 'semantic_search_phase5a.yaml' in source
     assert "executable='semantic_search_live_overlay'" in source

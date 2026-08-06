@@ -356,7 +356,7 @@ def build_phase5a_launch_argv(args, paths):
 
     search_mode = str(args.phase5a_mode)
     active = search_mode == 'ROTATION_SUPERVISED'
-    runtime_mode = 'ROTATION_ONLY_ACTIVE' if active else 'PLANNING_ONLY'
+    runtime_mode = 'SEMANTIC_ACTIVE' if active else 'PLANNING_ONLY'
     argv = [
         'ros2',
         'launch',

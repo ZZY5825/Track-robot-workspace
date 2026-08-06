@@ -27,7 +27,8 @@ def test_bringup_keeps_rotation_execution_behind_explicit_separate_gate():
     assert "'search_mode': LaunchConfiguration('search_mode')" in source
     assert "'active_search_execution_enabled':" in source
     assert "LaunchConfiguration('enable_rotation_execution')" in source
-    assert "'enable_rotation_execution':" in source
+    assert "'enable_rotation_execution', default_value='false'" in source
     assert "'runtime_mode': LaunchConfiguration('rotation_runtime_mode')" in source
-    assert "'enable_semantic_execution'" not in source
-    assert 'phase4b_navigation.launch.py' not in source
+    assert "'enable_semantic_execution':" in source
+    assert 'phase4b_navigation.launch.py' in source
+    assert "condition=IfCondition(LaunchConfiguration(\n            'enable_rotation_execution'))" in source
