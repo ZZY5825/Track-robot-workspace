@@ -14,8 +14,8 @@ active_search_manager:
     diagnostics_topic: /semantic_search/active_search/diagnostics
     markers_topic: /semantic_search/active_search/markers
     navigation_frame: odom
-    heading_offsets_deg: [45.0, 90.0, 0.0, -45.0, -90.0]
-    evidence_headings_deg: [45.0, 90.0, -45.0, -90.0]
+    heading_offsets_deg: [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
+    evidence_headings_deg: [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
     maximum_individual_rotation_deg: 90.0
     maximum_cumulative_rotation_deg: 270.0
     maximum_angular_speed_rad_s: 0.30

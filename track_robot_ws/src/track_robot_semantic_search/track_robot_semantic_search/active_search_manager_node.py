@@ -158,10 +158,12 @@ class ActiveSearchManager(Node):
             'navigation_frame', 'odom').value)
 
         heading_offsets = tuple(float(value) for value in self.declare_parameter(
-            'heading_offsets_deg', [45.0, 90.0, 0.0, -45.0, -90.0]
+            'heading_offsets_deg',
+            [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
         ).value)
         evidence_headings = tuple(float(value) for value in self.declare_parameter(
-            'evidence_headings_deg', [45.0, 90.0, -45.0, -90.0]
+            'evidence_headings_deg',
+            [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
         ).value)
         self._policy_config = SearchPolicyConfig(
             heading_offsets_deg=heading_offsets,
@@ -313,20 +315,16 @@ class ActiveSearchManager(Node):
             float(goal_handle.request.maximum_rotation_angle))
         if not goal_handle.request.allow_rotation:
             maximum_angle_deg = 90.0
-        policy_config = SearchPolicyConfig.defaults(
-            maximum_rotation_angle_deg=max(1e-6, maximum_angle_deg))
         policy_config = SearchPolicyConfig(
-            heading_offsets_deg=tuple(
-                value for value in self._policy_config.heading_offsets_deg
-                if abs(value) <= maximum_angle_deg
-            ) if goal_handle.request.allow_rotation else tuple(),
-            evidence_headings_deg=tuple(
-                value for value in self._policy_config.evidence_headings_deg
-                if abs(value) <= maximum_angle_deg
-            ) if goal_handle.request.allow_rotation else tuple(),
+            heading_offsets_deg=(
+                self._policy_config.heading_offsets_deg
+                if goal_handle.request.allow_rotation else tuple()),
+            evidence_headings_deg=(
+                self._policy_config.evidence_headings_deg
+                if goal_handle.request.allow_rotation else tuple()),
             maximum_individual_rotation_deg=min(
                 self._policy_config.maximum_individual_rotation_deg,
-                policy_config.maximum_individual_rotation_deg),
+                max(1e-6, maximum_angle_deg)),
             maximum_cumulative_rotation_deg=(
                 self._policy_config.maximum_cumulative_rotation_deg),
             maximum_angular_speed_rad_s=(

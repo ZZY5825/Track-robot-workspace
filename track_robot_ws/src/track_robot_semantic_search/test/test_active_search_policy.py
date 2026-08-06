@@ -16,23 +16,28 @@ def test_default_policy_is_bounded_and_deterministic():
     decisions = policy.complete_sequence(initial_yaw=0.0)
 
     assert [round(item.relative_heading_deg) for item in decisions] == [
-        45, 90, 0, -45, -90,
+        45, 90, 135, 180, 225, 270,
+    ]
+    assert [round(item.rotation_delta_deg) for item in decisions] == [
+        45, 45, 45, 45, 45, 45,
     ]
     assert sum(abs(item.rotation_delta_deg) for item in decisions) == 270.0
     assert all(abs(item.rotation_delta_deg) <= 90.0 for item in decisions)
-    assert sum(item.collect_evidence for item in decisions) == 4
+    assert all(item.rotation_delta_deg > 0.0 for item in decisions)
+    assert sum(item.collect_evidence for item in decisions) == 6
 
 
-def test_policy_refuses_headings_outside_action_envelope():
+def test_action_angle_limits_each_spin_without_truncating_the_sweep():
     config = SearchPolicyConfig.defaults(maximum_rotation_angle_deg=60.0)
     policy = BoundedHeadingPolicy(config)
 
     decisions = policy.complete_sequence(initial_yaw=0.0)
 
     assert [round(item.relative_heading_deg) for item in decisions] == [
-        45, 0, -45,
+        45, 90, 135, 180, 225, 270,
     ]
-    assert all(abs(item.relative_heading_deg) <= 60.0 for item in decisions)
+    assert all(abs(item.rotation_delta_deg) <= 60.0 for item in decisions)
+    assert all(item.rotation_delta_deg > 0.0 for item in decisions)
 
 
 def test_policy_normalizes_targets_and_uses_shortest_signed_delta():

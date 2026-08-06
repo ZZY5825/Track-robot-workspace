@@ -178,8 +178,8 @@ def test_default_heading_sequence_stays_within_bounded_rotation_envelope():
     decisions = BoundedHeadingPolicy(
         SearchPolicyConfig.defaults()).complete_sequence(0.0)
 
-    assert len(decisions) == 5
+    assert len(decisions) == 6
     assert max(abs(item.rotation_delta_deg) for item in decisions) <= 90.0
+    assert all(item.rotation_delta_deg > 0.0 for item in decisions)
     assert decisions[-1].cumulative_rotation_deg <= 270.0
     assert math.isclose(decisions[-1].cumulative_rotation_deg, 270.0)
-

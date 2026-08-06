@@ -131,19 +131,12 @@ class SearchPolicyConfig:
             maximum_rotation_angle_deg, 'maximum_rotation_angle_deg')
         if requested <= 0.0:
             raise ValueError('maximum_rotation_angle_deg must be positive')
-        envelope = min(90.0, requested)
-        evidence = tuple(
-            value for value in (45.0, 90.0, -45.0, -90.0)
-            if abs(value) <= envelope
-        )
-        offsets = tuple(
-            value for value in (45.0, 90.0, 0.0, -45.0, -90.0)
-            if abs(value) <= envelope
-        ) if evidence else tuple()
+        individual_limit = min(90.0, requested)
+        offsets = (45.0, 90.0, 135.0, 180.0, 225.0, 270.0)
         return cls(
             heading_offsets_deg=offsets,
-            evidence_headings_deg=evidence,
-            maximum_individual_rotation_deg=min(90.0, envelope),
+            evidence_headings_deg=offsets,
+            maximum_individual_rotation_deg=individual_limit,
             maximum_cumulative_rotation_deg=270.0,
             maximum_angular_speed_rad_s=0.30,
             duplicate_heading_tolerance_deg=10.0,

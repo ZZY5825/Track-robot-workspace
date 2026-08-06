@@ -57,7 +57,9 @@ def test_phase5a_config_is_bounded_and_node_defaults_are_fail_closed():
     source = MANAGER_SOURCE.read_text()
     assert "'search_mode', SearchMode.PASSIVE_ONLY.value" in source
     assert "'active_search_execution_enabled', False" in source
-    assert params['heading_offsets_deg'] == [45.0, 90.0, 0.0, -45.0, -90.0]
+    assert params['heading_offsets_deg'] == [
+        45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
+    assert params['evidence_headings_deg'] == params['heading_offsets_deg']
     assert params['maximum_individual_rotation_deg'] == 90.0
     assert params['maximum_cumulative_rotation_deg'] == 270.0
     assert params['maximum_angular_speed_rad_s'] == 0.30
