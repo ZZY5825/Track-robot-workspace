@@ -24,6 +24,8 @@ def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
     assert planner['use_astar'] is True
     assert controller['plugin'].endswith('RegulatedPurePursuitController')
     assert controller['desired_linear_vel'] == 0.15
+    assert controller['min_approach_linear_velocity'] == 0.10
+    assert controller['regulated_linear_scaling_min_speed'] == 0.10
     assert (
         controller['max_linear_accel']
         >= controller['desired_linear_vel']
@@ -70,6 +72,7 @@ def test_costmaps_use_standard_lidar_layers():
 
     assert local['voxel_layer']['plugin'] == 'nav2_costmap_2d::VoxelLayer'
     assert local['voxel_layer']['z_voxels'] <= 16
+    assert local['voxel_layer']['mark_threshold'] == 1
     assert local['voxel_layer']['observation_sources'] == (
         'raw_clear filtered_mark')
     assert local['voxel_layer']['raw_clear']['topic'] == '/rslidar_points'

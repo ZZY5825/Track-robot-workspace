@@ -70,6 +70,7 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert 'enable_semantic_execution:=true' in command
     assert 'start_base:=true' in command
     assert 'start_phase4b_rviz:=true' in command
+    assert 'configure_network:=false' in command
     assert 'start_rviz:=true' not in command
     assert 'extrinsic_mode:=prototype' in command
     assert 'dino_enabled:=true' in command
@@ -106,6 +107,7 @@ def test_phase5a_run_is_passive_and_stationary_by_default(tmp_path):
     assert 'enable_rotation_execution:=false' in command
     assert 'start_base:=false' in command
     assert 'start_phase5a_rviz:=true' in command
+    assert 'configure_network:=false' in command
 
 
 def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
@@ -695,7 +697,12 @@ def test_query_execs_existing_portal_with_managed_domain():
     code = control_cli.main(
         ['query', 'blue chair'],
         os_api=OsApi(),
-        environ={'PATH': '/bin', 'ROS_DOMAIN_ID': '99'},
+        environ={
+            'PATH': '/bin',
+            'ROS_DOMAIN_ID': '99',
+            'ROS_LOCALHOST_ONLY': '0',
+            'FASTRTPS_DEFAULT_PROFILES_FILE': '/stale/remote-profile.xml',
+        },
     )
 
     assert code == 17
@@ -708,8 +715,8 @@ def test_query_execs_existing_portal_with_managed_domain():
     )
     assert calls[0][2]['PATH'] == '/bin'
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
-    assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
-        '/config/fastdds_semantic_search.xml')
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
+    assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 
 
 def test_visualize_execs_foreground_launch_with_managed_domain():
@@ -723,7 +730,12 @@ def test_visualize_execs_foreground_launch_with_managed_domain():
     code = control_cli.main(
         ['visualize', 'phase2'],
         os_api=OsApi(),
-        environ={'PATH': '/bin', 'ROS_DOMAIN_ID': '99'},
+        environ={
+            'PATH': '/bin',
+            'ROS_DOMAIN_ID': '99',
+            'ROS_LOCALHOST_ONLY': '0',
+            'FASTRTPS_DEFAULT_PROFILES_FILE': '/stale/remote-profile.xml',
+        },
     )
 
     assert code == 23
@@ -736,9 +748,9 @@ def test_visualize_execs_foreground_launch_with_managed_domain():
         ],
     )
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
     assert calls[0][2]['PATH'] == '/bin'
-    assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
-        '/config/fastdds_semantic_search.xml')
+    assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 
 
 def test_visualize_rejects_unknown_stage():

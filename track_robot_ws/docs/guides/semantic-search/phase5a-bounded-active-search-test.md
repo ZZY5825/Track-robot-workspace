@@ -40,9 +40,20 @@ source /opt/ros/foxy/setup.bash
 source install/setup.bash
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=0
-export FASTRTPS_DEFAULT_PROFILES_FILE=~/track_robot_ws/src/track_robot/track_robot_bringup/config/fastdds_semantic_search.xml
+export ROS_LOCALHOST_ONLY=1
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+sudo -v
+sudo ip addr flush dev eth0
+sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip link set eth0 up
 ```
+
+Phase 4B/5A 的受管启动固定使用 `configure_network:=false` 和
+`ROS_LOCALHOST_ONLY=1`：LiDAR 网卡必须在
+ROS 节点启动前一次配置完成，运行期间不得 flush/reconfigure。当前本机 RViz
+测试不使用旧远程面板 Fast DDS profile；即使操作者 shell 曾设置该变量，控制
+CLI 也会显式移除，避免 Foxy 中出现只发现部分 TF、点云或 odom 端点的 ROS 图。
 
 先做只读检查：
 
@@ -70,7 +81,13 @@ source /opt/ros/foxy/setup.bash
 source install/setup.bash
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=0
+export ROS_LOCALHOST_ONLY=1
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+sudo -v
+sudo ip addr flush dev eth0
+sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip link set eth0 up
 ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervised
 ```
 
@@ -182,7 +199,8 @@ ros2 service call /safety/disarm std_srvs/srv/Trigger '{}'
 - 任务提交前无旋转；点击 **Start Finding** 或发送监督 action 后只允许原地 Spin。
 - 任意 `/nav2/cmd_vel_raw`、`/nav2/cmd_vel_safe`、`/cmd_vel` 的 `|linear.x| <= 0.001 m/s`。
 - `|angular.z| <= 0.30 rad/s`，单次旋转 `<=90°`，累计旋转 `<=270°`。
-- 每次 Spin 完成后，角速度低于 `0.03 rad/s` 并稳定至少 `0.75 s` 才收集新证据。
+- 每次 Spin 完成后固定等待 `2.5 s`，并确认角速度低于 `0.03 rad/s` 后才继续
+  当前视角的证据评估或下一次旋转。
 - 目标确认后返回完整目标引用，但不启动 Phase 4 接近。
 
 ## 测试 4：地面安全与失败场景

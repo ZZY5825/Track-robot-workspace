@@ -63,7 +63,7 @@ def test_phase5a_config_is_bounded_and_node_defaults_are_fail_closed():
     assert params['maximum_individual_rotation_deg'] == 90.0
     assert params['maximum_cumulative_rotation_deg'] == 270.0
     assert params['maximum_angular_speed_rad_s'] == 0.30
-    assert params['settle_duration_sec'] == 0.75
+    assert params['settle_duration_sec'] == 2.5
     assert params['settle_angular_speed_rad_s'] == 0.03
     assert params['observation_timeout_sec'] >= 4.5
     assert params['confirmation_snapshots'] == 3

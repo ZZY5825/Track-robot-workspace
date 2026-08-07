@@ -29,6 +29,7 @@ safety and calibration sections before starting hardware.
 
 ## Development History
 
+- [Open live-development issue log](development/issue-log.md)
 - [Semantic-search implementation plans and checkpoints](development/plans/semantic-search/)
 - [R0A grounding benchmark contracts plan](development/plans/semantic-search/2026-07-25-semantic-search-r0a-grounding-benchmark-contracts.md)
 - [Workspace organization implementation plan](development/plans/workspace/2026-07-23-workspace-organization.md)

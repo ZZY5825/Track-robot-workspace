@@ -336,6 +336,7 @@ def build_phase4b_launch_argv(args, paths):
         'enable_semantic_execution:=true',
         'start_base:=true',
         'start_phase4b_rviz:=true',
+        'configure_network:=false',
         'extrinsic_mode:={}'.format(args.extrinsic_mode),
         'dino_enabled:={}'.format(
             str(bool(args.dino_enabled)).lower()),
@@ -367,6 +368,7 @@ def build_phase5a_launch_argv(args, paths):
         'enable_rotation_execution:={}'.format(str(active).lower()),
         'start_base:={}'.format(str(active).lower()),
         'start_phase5a_rviz:=true',
+        'configure_network:=false',
         'extrinsic_mode:={}'.format(args.extrinsic_mode),
         'dino_enabled:={}'.format(str(bool(args.dino_enabled)).lower()),
         'yolo_runtime_path:={}'.format(paths['yolo_runtime_path']),
@@ -478,7 +480,15 @@ def _paths_for(args):
 
 
 def _environment(base, paths):
-    return managed_environment(base, dds_profile=paths['dds_profile'])
+    environment = managed_environment(base)
+    # Foxy/Fast DDS discovery is unreliable on this Jetson while Ethernet,
+    # Wi-Fi and Tailscale are all active. The managed Phase 1-5 stack is local;
+    # sensor UDP/CAN traffic and browser connections do not require remote DDS.
+    environment['ROS_LOCALHOST_ONLY'] = '1'
+    # The retired remote-panel profile also causes partial graph discovery and
+    # must not leak into the managed local stack from an older shell.
+    environment.pop('FASTRTPS_DEFAULT_PROFILES_FILE', None)
+    return environment
 
 
 def _static_report(stage, paths, environment):

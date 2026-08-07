@@ -19,7 +19,9 @@ active_search_manager:
     maximum_individual_rotation_deg: 90.0
     maximum_cumulative_rotation_deg: 270.0
     maximum_angular_speed_rad_s: 0.30
-    settle_duration_sec: 0.75
+    # Give the approximately 2 Hz visual pipeline several complete inference
+    # opportunities after every spin before another motion may be requested.
+    settle_duration_sec: 2.5
     settle_angular_speed_rad_s: 0.03
     observation_timeout_sec: 4.5
     confirmation_snapshots: 3

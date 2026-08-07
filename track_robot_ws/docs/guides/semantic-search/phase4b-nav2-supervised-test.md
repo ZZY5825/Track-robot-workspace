@@ -37,15 +37,21 @@ source install/setup.bash
 
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=0
-export FASTRTPS_DEFAULT_PROFILES_FILE=~/track_robot_ws/src/track_robot/track_robot_bringup/config/fastdds_semantic_search.xml
+export ROS_LOCALHOST_ONLY=1
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+sudo -v
+sudo ip addr flush dev eth0
+sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip link set eth0 up
 
 ros2 run track_robot_bringup semantic_search_ctl run phase4b
 ```
 
-这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS`、模型文件
-和 Fast DDS 配置继续指向主工作区。不要把 DDS 配置改成 worktree 内的路径；当前
-实机重复测试验证的是上面这组环境。
+这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
+文件继续指向主工作区。LiDAR 网卡必须在 ROS 节点启动前一次配置完成；受管
+launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=1`。本机 RViz 测试不加载旧远程面板
+Fast DDS profile，控制 CLI 也会移除 shell 中遗留的该环境变量。
 
 该命令固定执行以下策略，不再逐个手工启动节点：
 

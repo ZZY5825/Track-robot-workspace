@@ -27,7 +27,9 @@ controller_server:
       rotate_to_heading_angular_vel: 0.30
       transform_tolerance: 0.20
       use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.03
+      # Keep the standalone rotation runtime consistent with the full Phase 4B
+      # controller: Bunker needs 0.10 m/s to overcome static resistance.
+      min_approach_linear_velocity: 0.10
       use_approach_linear_velocity_scaling: true
       max_allowed_time_to_collision: 1.5
       use_regulated_linear_velocity_scaling: true
@@ -36,7 +38,7 @@ controller_server:
       cost_scaling_gain: 1.0
       inflation_cost_scaling_factor: 12.0
       regulated_linear_scaling_min_radius: 0.90
-      regulated_linear_scaling_min_speed: 0.03
+      regulated_linear_scaling_min_speed: 0.10
       use_rotate_to_heading: true
       max_linear_accel: 1.5
       max_linear_decel: 0.25
@@ -84,7 +86,7 @@ local_costmap:
         z_resolution: 0.12
         z_voxels: 16
         max_obstacle_height: 1.80
-        mark_threshold: 0
+        mark_threshold: 1
         observation_sources: raw_clear filtered_mark
         raw_clear:
           topic: /rslidar_points

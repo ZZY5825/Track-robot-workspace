@@ -91,10 +91,13 @@ def test_phase5a_rviz_shows_search_evidence_without_manual_motion_tools():
     for topic in (
             '/semantic_search/active_search/markers',
             '/semantic_search/phase4/markers',
+            '/semantic_search/phase4/planned_path',
+            '/plan',
             '/semantic_search/overlay_image',
             '/local_costmap/costmap',
             '/rslidar_points'):
         assert topic in source
+    assert source.count('Class: rviz_default_plugins/Path') >= 2
     assert 'Fixed Frame: odom' in source
     assert 'nav2_rviz_plugins/GoalTool' not in source
     assert 'nav2_rviz_plugins/Navigation 2' not in source

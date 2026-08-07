@@ -36,6 +36,7 @@ def test_phase5a_local_costmap_keeps_physical_footprint_and_live_clearing():
     assert local['footprint'] == (
         '[[-0.44,-0.40],[-0.44,0.40],[0.44,0.40],[0.44,-0.40]]')
     assert local['footprint_padding'] == 0.0
+    assert local['voxel_layer']['mark_threshold'] == 1
     assert local['voxel_layer']['observation_sources'] == (
         'raw_clear filtered_mark')
     for source_name in ('raw_clear', 'filtered_mark'):
@@ -50,6 +51,8 @@ def test_phase5a_controller_exists_only_as_local_costmap_host():
 
     assert controller['controller_plugins'] == ['FollowPath']
     assert controller['FollowPath']['desired_linear_vel'] == 0.15
+    assert controller['FollowPath']['min_approach_linear_velocity'] == 0.10
+    assert controller['FollowPath']['regulated_linear_scaling_min_speed'] == 0.10
     assert controller['FollowPath']['plugin'].endswith(
         'RegulatedPurePursuitController')
 
