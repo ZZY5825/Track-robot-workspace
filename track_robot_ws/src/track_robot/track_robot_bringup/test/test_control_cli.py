@@ -23,6 +23,9 @@ from track_robot_bringup.readiness import CheckResult, CheckStatus, ReadinessRep
     ['visualize', 'phase2'],
     ['test', 'phase1', 'blue chair'],
     ['run', 'phase4b'],
+    ['run', 'phase5a'],
+    ['run', 'phase5a', '--search-shadow'],
+    ['run', 'phase5a', '--rotation-supervised'],
     ['stop'],
 ])
 def test_parser_supports_every_command_and_fixed_domain(command):
@@ -67,6 +70,7 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert 'enable_semantic_execution:=true' in command
     assert 'start_base:=true' in command
     assert 'start_phase4b_rviz:=true' in command
+    assert 'configure_network:=false' in command
     assert 'start_rviz:=true' not in command
     assert 'extrinsic_mode:=prototype' in command
     assert 'dino_enabled:=true' in command
@@ -84,6 +88,51 @@ def test_phase4b_run_allows_explicit_dino_fallback(tmp_path):
         args, control_cli.default_workspace_paths(tmp_path))
 
     assert 'dino_enabled:=false' in command
+
+
+def test_phase5a_run_is_passive_and_stationary_by_default(tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--workspace-root', str(tmp_path),
+    ])
+
+    command = control_cli.build_phase5a_launch_argv(
+        args, control_cli.default_workspace_paths(tmp_path))
+
+    assert command[:4] == [
+        'ros2', 'launch', 'track_robot_bringup',
+        'semantic_search_phase5a.launch.py',
+    ]
+    assert 'search_mode:=PASSIVE_ONLY' in command
+    assert 'rotation_runtime_mode:=PLANNING_ONLY' in command
+    assert 'enable_rotation_execution:=false' in command
+    assert 'start_base:=false' in command
+    assert 'start_phase5a_rviz:=true' in command
+    assert 'configure_network:=false' in command
+
+
+def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
+        tmp_path):
+    shadow = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--search-shadow',
+        '--workspace-root', str(tmp_path),
+    ])
+    active = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--rotation-supervised',
+        '--workspace-root', str(tmp_path),
+    ])
+
+    shadow_command = control_cli.build_phase5a_launch_argv(
+        shadow, control_cli.default_workspace_paths(tmp_path))
+    active_command = control_cli.build_phase5a_launch_argv(
+        active, control_cli.default_workspace_paths(tmp_path))
+
+    assert 'search_mode:=SEARCH_SHADOW' in shadow_command
+    assert 'enable_rotation_execution:=false' in shadow_command
+    assert 'start_base:=false' in shadow_command
+    assert 'search_mode:=ROTATION_SUPERVISED' in active_command
+    assert 'rotation_runtime_mode:=SEMANTIC_ACTIVE' in active_command
+    assert 'enable_rotation_execution:=true' in active_command
+    assert 'start_base:=true' in active_command
 
 
 def test_phase4b_shutdown_requests_cancel_and_disarm_in_domain20(tmp_path):
@@ -648,7 +697,12 @@ def test_query_execs_existing_portal_with_managed_domain():
     code = control_cli.main(
         ['query', 'blue chair'],
         os_api=OsApi(),
-        environ={'PATH': '/bin', 'ROS_DOMAIN_ID': '99'},
+        environ={
+            'PATH': '/bin',
+            'ROS_DOMAIN_ID': '99',
+            'ROS_LOCALHOST_ONLY': '0',
+            'FASTRTPS_DEFAULT_PROFILES_FILE': '/stale/remote-profile.xml',
+        },
     )
 
     assert code == 17
@@ -661,8 +715,8 @@ def test_query_execs_existing_portal_with_managed_domain():
     )
     assert calls[0][2]['PATH'] == '/bin'
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
-    assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
-        '/config/fastdds_semantic_search.xml')
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
+    assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 
 
 def test_visualize_execs_foreground_launch_with_managed_domain():
@@ -676,7 +730,12 @@ def test_visualize_execs_foreground_launch_with_managed_domain():
     code = control_cli.main(
         ['visualize', 'phase2'],
         os_api=OsApi(),
-        environ={'PATH': '/bin', 'ROS_DOMAIN_ID': '99'},
+        environ={
+            'PATH': '/bin',
+            'ROS_DOMAIN_ID': '99',
+            'ROS_LOCALHOST_ONLY': '0',
+            'FASTRTPS_DEFAULT_PROFILES_FILE': '/stale/remote-profile.xml',
+        },
     )
 
     assert code == 23
@@ -689,9 +748,9 @@ def test_visualize_execs_foreground_launch_with_managed_domain():
         ],
     )
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
     assert calls[0][2]['PATH'] == '/bin'
-    assert calls[0][2]['FASTRTPS_DEFAULT_PROFILES_FILE'].endswith(
-        '/config/fastdds_semantic_search.xml')
+    assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 
 
 def test_visualize_rejects_unknown_stage():
@@ -1354,6 +1413,60 @@ def test_stop_does_not_report_success_when_verified_process_survives():
     assert code == 4
     assert 'Stopped verified managed process group' not in stdout.getvalue()
     assert 'remains alive' in stderr.getvalue()
+
+
+def test_phase5a_passive_stop_does_not_wait_for_absent_motion_services():
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, 'success: true', '')
+
+    class Manager:
+        last_stop_error = None
+
+        def verified_state(self):
+            return SimpleNamespace(
+                stage='phase5a', owned_modules=('camera', 'lidar'))
+
+        def stop_owned(self):
+            return True
+
+    code = control_cli.main(
+        ['stop'], manager=Manager(), runner=runner,
+        environ={'PATH': '/bin'},
+    )
+
+    assert code == 0
+    assert calls == []
+
+
+def test_phase5a_active_stop_cancels_and_disarms_before_process_stop():
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, 'success: true', '')
+
+    class Manager:
+        last_stop_error = None
+
+        def verified_state(self):
+            return SimpleNamespace(
+                stage='phase5a',
+                owned_modules=('camera', 'lidar', 'base'))
+
+        def stop_owned(self):
+            return True
+
+    code = control_cli.main(
+        ['stop'], manager=Manager(), runner=runner,
+        environ={'PATH': '/bin'},
+    )
+
+    assert code == 0
+    assert [call[3] for call in calls] == [
+        '/semantic_search/active_search/cancel', '/safety/disarm']
 
 
 @pytest.mark.parametrize('status, expected', [

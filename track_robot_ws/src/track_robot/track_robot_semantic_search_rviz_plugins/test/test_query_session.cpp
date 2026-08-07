@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <QString>
 
+#include "track_robot_semantic_search_rviz_plugins/active_search_session.hpp"
 #include "track_robot_semantic_search_rviz_plugins/query_session.hpp"
 
 namespace plugin = track_robot_semantic_search_rviz_plugins;
@@ -69,6 +70,39 @@ TEST(QuerySession, RejectsEmptyOversizedAndRevisionWithoutCurrentQuery)
     std::invalid_argument);
 }
 
+TEST(QuerySession, SharedNormalizationAccepts512AndRejects513CodePoints)
+{
+  const auto accepted = plugin::QuerySession::normalize_query(
+    QString(512, QChar('x')));
+  EXPECT_EQ(accepted.size(), 512U);
+  EXPECT_THROW(
+    (void)plugin::QuerySession::normalize_query(QString(513, QChar('x'))),
+    std::invalid_argument);
+}
+
+TEST(QuerySession, ActiveFindingPreservesManagerOwnedIdentity)
+{
+  plugin::QuerySession queries;
+  plugin::ActiveSearchSession finding;
+  const auto generation = *finding.begin();
+  ASSERT_TRUE(finding.on_goal_response(generation, true));
+  const auto feedback = finding.on_feedback(
+    generation, 901U, "PASSIVE_OBSERVATION");
+  ASSERT_TRUE(feedback.adopt_query);
+  const auto manager_query = queries.adopt_query(
+    "green bottle", feedback.query_id, 1U);
+
+  if (finding.manual_query_allowed()) {
+    (void)queries.new_query("operator overwrite", 902U);
+  }
+
+  const auto current = queries.current();
+  ASSERT_TRUE(current.has_value());
+  EXPECT_EQ(current->query_id, manager_query.query_id);
+  EXPECT_EQ(current->query_version, manager_query.query_version);
+  EXPECT_EQ(current->normalized_text, "green bottle");
+}
+
 TEST(QuerySession, CorrelatesOnlyMatchingDiagnostics)
 {
   plugin::QuerySession session;
@@ -88,6 +122,32 @@ TEST(QuerySession, CorrelatesOnlyMatchingDiagnostics)
   EXPECT_EQ(matched->reason, "ready");
   EXPECT_TRUE(matched->model_ready);
   EXPECT_EQ(matched->query_id, command.query_id);
+}
+
+TEST(QuerySession, AdoptsExternallyAllocatedQueryForCorrelation)
+{
+  plugin::QuerySession session;
+
+  const auto adopted = session.adopt_query("  green   bottle  ", 901U, 1U);
+
+  EXPECT_EQ(adopted.normalized_text, "green bottle");
+  EXPECT_EQ(adopted.query_id, 901U);
+  EXPECT_EQ(adopted.query_version, 1U);
+  ASSERT_TRUE(session.correlate_diagnostic(
+    R"({"state":"query_accepted","query_id":901,"query_version":1})")
+    .has_value());
+}
+
+TEST(QuerySession, RejectsInvalidExternalQueryIdentity)
+{
+  plugin::QuerySession session;
+
+  EXPECT_THROW((void)session.adopt_query("bottle", 0U, 1U),
+    std::invalid_argument);
+  EXPECT_THROW((void)session.adopt_query("bottle", 1U, 0U),
+    std::invalid_argument);
+  EXPECT_THROW((void)session.adopt_query("   ", 1U, 1U),
+    std::invalid_argument);
 }
 
 TEST(QuerySession, RejectsIdentifierAndVersionOverflow)

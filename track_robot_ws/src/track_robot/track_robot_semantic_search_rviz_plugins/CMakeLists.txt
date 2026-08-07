@@ -9,6 +9,7 @@ set(CMAKE_AUTOMOC ON)
 find_package(ament_cmake REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(rviz_common REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -29,6 +30,14 @@ target_link_libraries(query_session
   nlohmann_json::nlohmann_json
 )
 
+add_library(active_search_session STATIC
+  src/active_search_session.cpp
+)
+target_include_directories(active_search_session PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
 add_library(${PROJECT_NAME} SHARED
   include/${PROJECT_NAME}/semantic_search_panel.hpp
   src/semantic_search_panel.cpp
@@ -40,6 +49,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 ament_target_dependencies(${PROJECT_NAME}
   pluginlib
   rclcpp
+  rclcpp_action
   rviz_common
   std_msgs
   std_srvs
@@ -47,6 +57,7 @@ ament_target_dependencies(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME}
   query_session
+  active_search_session
   Qt5::Core
   Qt5::Widgets
 )
@@ -66,9 +77,14 @@ if(BUILD_TESTING)
   target_link_libraries(
     test_query_session
     query_session
+    active_search_session
     Qt5::Core
     nlohmann_json::nlohmann_json
   )
+
+  ament_add_gtest(test_active_search_session test/test_active_search_session.cpp)
+  target_include_directories(test_active_search_session PRIVATE include)
+  target_link_libraries(test_active_search_session active_search_session)
 
   set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
   ament_add_pytest_test(
@@ -91,6 +107,7 @@ ament_export_include_directories(include)
 ament_export_dependencies(
   pluginlib
   rclcpp
+  rclcpp_action
   rviz_common
   std_msgs
   std_srvs

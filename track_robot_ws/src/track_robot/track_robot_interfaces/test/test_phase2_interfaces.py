@@ -16,6 +16,7 @@ from track_robot_interfaces.msg import (
     VisualProposal,
     VisualProposalArray,
 )
+from track_robot_interfaces.action import SearchForObject
 from track_robot_interfaces.srv import (
     GetSemanticObject,
     MarkSemanticObjectInspected,
@@ -148,3 +149,15 @@ def test_phase2_task_localization_debug_events_and_services_construct():
         memory_epoch_id=67, global_object_id=71)
     assert ResetSemanticMemory.Request(
         expected_memory_epoch_id=67, require_epoch_match=True)
+
+
+def test_phase5a_action_adds_terminal_constants_without_changing_fields():
+    result = SearchForObject.Result()
+
+    assert SearchForObject.Result.LOCALIZATION_UNAVAILABLE == 8
+    assert SearchForObject.Result.SEARCH_SPACE_EXHAUSTED == 9
+    assert SearchForObject.Result.INTERNAL_FAULT == 10
+    assert hasattr(result, 'status')
+    assert hasattr(result, 'query_id')
+    assert hasattr(result, 'selected_global_object_id')
+    assert hasattr(result, 'evidence_summary')

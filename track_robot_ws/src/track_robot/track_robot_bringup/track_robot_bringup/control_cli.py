@@ -83,8 +83,8 @@ def build_parser():
         prog='semantic_search_ctl',
         description=(
             'Semantic-search bringup and diagnosis on fixed ROS Domain 20. '
-            'Only the explicit run phase4b command starts supervised motion '
-            'servers, and operator authorization is still required in RViz.'),
+            'Supervised motion is available only through explicit Phase 4B '
+            'or Phase 5A execution modes.'),
     )
     parser.add_argument(
         '--domain',
@@ -135,7 +135,7 @@ def build_parser():
 
     run = commands.add_parser(
         'run', help='run an explicitly supervised end-to-end workflow')
-    run.add_argument('stage', choices=('phase4b',))
+    run.add_argument('stage', choices=('phase4b', 'phase5a'))
     run.add_argument(
         '--workspace-root', default=_default_workspace_root())
     run.add_argument(
@@ -150,6 +150,22 @@ def build_parser():
     dino.add_argument(
         '--no-dino', dest='dino_enabled', action='store_false')
     run.set_defaults(dino_enabled=True)
+    phase5a_mode = run.add_mutually_exclusive_group()
+    phase5a_mode.add_argument(
+        '--search-shadow',
+        dest='phase5a_mode',
+        action='store_const',
+        const='SEARCH_SHADOW',
+        help='record bounded search decisions but publish no executable motion',
+    )
+    phase5a_mode.add_argument(
+        '--rotation-supervised',
+        dest='phase5a_mode',
+        action='store_const',
+        const='ROTATION_SUPERVISED',
+        help='enable operator-supervised, rotation-only Nav2 Spin execution',
+    )
+    run.set_defaults(phase5a_mode='PASSIVE_ONLY')
 
     stop = commands.add_parser(
         'stop', help='stop only a verified managed process group')
@@ -320,9 +336,41 @@ def build_phase4b_launch_argv(args, paths):
         'enable_semantic_execution:=true',
         'start_base:=true',
         'start_phase4b_rviz:=true',
+        'configure_network:=false',
         'extrinsic_mode:={}'.format(args.extrinsic_mode),
         'dino_enabled:={}'.format(
             str(bool(args.dino_enabled)).lower()),
+        'yolo_runtime_path:={}'.format(paths['yolo_runtime_path']),
+        'clip_runtime_path:={}'.format(paths['runtime_path']),
+        'yolo_checkpoint:={}'.format(paths['yolo_checkpoint_path']),
+        'clip_checkpoint:={}'.format(paths['checkpoint_path']),
+        'dino_repo_path:={}'.format(paths['dino_repo_path']),
+        'dino_checkpoint:={}'.format(paths['dino_checkpoint_path']),
+    ]
+    if args.extrinsic_file:
+        argv.append('extrinsic_file:={}'.format(args.extrinsic_file))
+    return argv
+
+
+def build_phase5a_launch_argv(args, paths):
+    """Build the Phase 0-5A command with fail-closed mode pairing."""
+
+    search_mode = str(args.phase5a_mode)
+    active = search_mode == 'ROTATION_SUPERVISED'
+    runtime_mode = 'SEMANTIC_ACTIVE' if active else 'PLANNING_ONLY'
+    argv = [
+        'ros2',
+        'launch',
+        'track_robot_bringup',
+        'semantic_search_phase5a.launch.py',
+        'search_mode:={}'.format(search_mode),
+        'rotation_runtime_mode:={}'.format(runtime_mode),
+        'enable_rotation_execution:={}'.format(str(active).lower()),
+        'start_base:={}'.format(str(active).lower()),
+        'start_phase5a_rviz:=true',
+        'configure_network:=false',
+        'extrinsic_mode:={}'.format(args.extrinsic_mode),
+        'dino_enabled:={}'.format(str(bool(args.dino_enabled)).lower()),
         'yolo_runtime_path:={}'.format(paths['yolo_runtime_path']),
         'clip_runtime_path:={}'.format(paths['runtime_path']),
         'yolo_checkpoint:={}'.format(paths['yolo_checkpoint_path']),
@@ -374,6 +422,53 @@ class _Phase4BStopProxy:
         return self._manager.clear_if_owned(state)
 
 
+def request_phase5a_cancel_disarm(runner, environment, timeout=2.0):
+    """Best-effort bounded stop for rotation-only active search."""
+
+    commands = (
+        [
+            'ros2', 'service', 'call',
+            '/semantic_search/active_search/cancel',
+            'std_srvs/srv/Trigger', '{}',
+        ],
+        [
+            'ros2', 'service', 'call',
+            '/safety/disarm',
+            'std_srvs/srv/Trigger', '{}',
+        ],
+    )
+    results = []
+    for command in commands:
+        code, output, _stderr, timed_out = _run(
+            runner, command, environment, timeout)
+        results.append(
+            not timed_out
+            and code == 0
+            and 'success: true' in output.lower())
+    return all(results)
+
+
+class _Phase5AStopProxy:
+    """Cancel rotation and disarm before stopping a verified Phase 5A run."""
+
+    def __init__(self, manager, runner, environment, active):
+        self._manager = manager
+        self._runner = runner
+        self._environment = environment
+        self._active = bool(active)
+        self._requested = False
+
+    def stop_owned(self):
+        if self._active and not self._requested:
+            self._requested = True
+            request_phase5a_cancel_disarm(
+                self._runner, self._environment)
+        return self._manager.stop_owned()
+
+    def clear_if_owned(self, state):
+        return self._manager.clear_if_owned(state)
+
+
 def _paths_for(args):
     paths = default_workspace_paths(args.workspace_root)
     paths.update({
@@ -385,7 +480,15 @@ def _paths_for(args):
 
 
 def _environment(base, paths):
-    return managed_environment(base, dds_profile=paths['dds_profile'])
+    environment = managed_environment(base)
+    # Foxy/Fast DDS discovery is unreliable on this Jetson while Ethernet,
+    # Wi-Fi and Tailscale are all active. The managed Phase 1-5 stack is local;
+    # sensor UDP/CAN traffic and browser connections do not require remote DDS.
+    environment['ROS_LOCALHOST_ONLY'] = '1'
+    # The retired remote-panel profile also causes partial graph discovery and
+    # must not leak into the managed local stack from an older shell.
+    environment.pop('FASTRTPS_DEFAULT_PROFILES_FILE', None)
+    return environment
 
 
 def _static_report(stage, paths, environment):
@@ -760,10 +863,13 @@ def main(
         process_manager = _manager(manager, popen_factory, os_api)
         verified_state = getattr(process_manager, 'verified_state', None)
         state = verified_state() if verified_state is not None else None
-        if state is not None and state.stage == 'phase4b':
+        if state is not None and state.stage in ('phase4b', 'phase5a'):
             paths = default_workspace_paths(args.workspace_root)
             environment = _environment(base_environment, paths)
-            request_phase4b_cancel_disarm(runner, environment)
+            if state.stage == 'phase4b':
+                request_phase4b_cancel_disarm(runner, environment)
+            elif 'base' in getattr(state, 'owned_modules', ()):
+                request_phase5a_cancel_disarm(runner, environment)
         stopped = process_manager.stop_owned()
         if stopped:
             stdout.write('Stopped verified managed process group.\n')
@@ -783,28 +889,44 @@ def main(
         if process_manager.verified_state() is not None:
             stderr.write(
                 'A verified managed process is already running; stop it '
-                'before Phase 4B.\n')
+                'before {}.\n'.format(args.stage.upper()))
             return 4
-        command = build_phase4b_launch_argv(args, paths)
+        if args.stage == 'phase4b':
+            command = build_phase4b_launch_argv(args, paths)
+            active = True
+        else:
+            command = build_phase5a_launch_argv(args, paths)
+            active = args.phase5a_mode == 'ROTATION_SUPERVISED'
         try:
             child, owned_state = process_manager.spawn_verified(
                 command,
-                stage='phase4b',
-                owned_modules=('camera', 'lidar', 'base'),
+                stage=args.stage,
+                owned_modules=(
+                    ('camera', 'lidar', 'base') if active
+                    else ('camera', 'lidar')),
                 environment=environment,
             )
         except (OSError, RuntimeError) as error:
-            stderr.write('Failed to start supervised Phase 4B: {}\n'.format(
-                error))
+            stderr.write('Failed to start {}: {}\n'.format(
+                args.stage.upper(), error))
             return 4
-        stdout.write(
-            'Phase 4B started in ROS Domain 20 (IMU disabled).\n'
-            '1. Enter an English target in RViz.\n'
-            '2. Confirm one stable best candidate and a valid path.\n'
-            '3. Click Start Approach; motion cannot start before this.\n'
-            '4. Use Cancel & Disarm, RC override, or E-stop to stop.\n')
-        proxy = _Phase4BStopProxy(
-            process_manager, runner, environment)
+        if args.stage == 'phase4b':
+            stdout.write(
+                'Phase 4B started in ROS Domain 20 (IMU disabled).\n'
+                '1. Enter an English target in RViz.\n'
+                '2. Confirm one stable best candidate and a valid path.\n'
+                '3. Click Start Approach; motion cannot start before this.\n'
+                '4. Use Cancel & Disarm, RC override, or E-stop to stop.\n')
+            proxy = _Phase4BStopProxy(
+                process_manager, runner, environment)
+        else:
+            stdout.write(
+                'Phase 5A started in {} on ROS Domain 20 (IMU disabled).\n'
+                'Enter an English target in RViz. Passive and shadow modes '
+                'cannot move; supervised mode permits bounded rotation only.\n'
+                .format(args.phase5a_mode))
+            proxy = _Phase5AStopProxy(
+                process_manager, runner, environment, active)
         return _foreground_wait(
             child, proxy, owned_state, CheckStatus.PASS)
 
@@ -1031,10 +1153,12 @@ def main(
 
 __all__ = [
     'build_phase4b_launch_argv',
+    'build_phase5a_launch_argv',
     'build_launch_argv',
     'build_parser',
     'exit_code',
     'main',
     'request_phase4b_cancel_disarm',
+    'request_phase5a_cancel_disarm',
     'select_hardware',
 ]

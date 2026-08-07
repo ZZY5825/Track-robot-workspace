@@ -1,0 +1,31 @@
+active_search_manager:
+  ros__parameters:
+    query_topic: /semantic_search/query
+    perception_diagnostics_topic: /semantic_search/perception_diagnostics
+    tasks_topic: /semantic_memory/tasks
+    active_objects_topic: /semantic_memory/active_objects
+    ranking_topic: /semantic_memory/diagnostic_ranking
+    selected_target_topic: /semantic_search/phase4a/selected_target
+    camera_info_topic: /zed/zed_node/left/camera_info
+    localization_topic: /semantic_search/phase4a/localization_state
+    odometry_topic: /odom
+    motion_status_topic: /semantic_search/active_search/motion_status
+    motion_intent_topic: /semantic_search/search_motion_intent
+    diagnostics_topic: /semantic_search/active_search/diagnostics
+    markers_topic: /semantic_search/active_search/markers
+    navigation_frame: odom
+    heading_offsets_deg: [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
+    evidence_headings_deg: [45.0, 90.0, 135.0, 180.0, 225.0, 270.0]
+    maximum_individual_rotation_deg: 90.0
+    maximum_cumulative_rotation_deg: 270.0
+    maximum_angular_speed_rad_s: 0.30
+    # Give the approximately 2 Hz visual pipeline several complete inference
+    # opportunities after every spin before another motion may be requested.
+    settle_duration_sec: 2.5
+    settle_angular_speed_rad_s: 0.03
+    observation_timeout_sec: 4.5
+    confirmation_snapshots: 3
+    duplicate_heading_tolerance_deg: 10.0
+    evidence_ttl_sec: 12.0
+    maximum_evidence_records: 40
+    default_task_timeout_sec: 60.0

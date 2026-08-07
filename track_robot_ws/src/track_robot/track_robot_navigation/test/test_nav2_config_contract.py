@@ -24,6 +24,8 @@ def test_navfn_astar_and_regulated_pure_pursuit_are_selected():
     assert planner['use_astar'] is True
     assert controller['plugin'].endswith('RegulatedPurePursuitController')
     assert controller['desired_linear_vel'] == 0.15
+    assert controller['min_approach_linear_velocity'] == 0.10
+    assert controller['regulated_linear_scaling_min_speed'] == 0.10
     assert (
         controller['max_linear_accel']
         >= controller['desired_linear_vel']
@@ -70,6 +72,7 @@ def test_costmaps_use_standard_lidar_layers():
 
     assert local['voxel_layer']['plugin'] == 'nav2_costmap_2d::VoxelLayer'
     assert local['voxel_layer']['z_voxels'] <= 16
+    assert local['voxel_layer']['mark_threshold'] == 1
     assert local['voxel_layer']['observation_sources'] == (
         'raw_clear filtered_mark')
     assert local['voxel_layer']['raw_clear']['topic'] == '/rslidar_points'
@@ -102,13 +105,17 @@ def test_costmaps_use_standard_lidar_layers():
     assert 'static_layer' not in global_map['plugins']
 
 
-def test_recoveries_cannot_move_the_robot():
+def test_recoveries_share_wait_and_bounded_spin_without_translation():
     config = _params()
     recoveries = config['recoveries_server']['ros__parameters']
 
-    assert recoveries['recovery_plugins'] == ['wait']
-    assert set(recoveries) >= {'wait'}
-    assert 'spin' not in recoveries
+    assert recoveries['recovery_plugins'] == ['wait', 'spin']
+    assert set(recoveries) >= {'wait', 'spin'}
+    assert recoveries['spin']['plugin'] == 'nav2_recoveries/Spin'
+    assert recoveries['spin']['max_rotational_vel'] == 0.30
+    assert 0.0 < recoveries['spin']['min_rotational_vel'] <= 0.10
+    assert recoveries['spin']['rotational_acc_lim'] <= 0.50
+    assert recoveries['spin']['simulate_ahead_time'] >= 1.0
     assert 'back_up' not in recoveries
 
 
