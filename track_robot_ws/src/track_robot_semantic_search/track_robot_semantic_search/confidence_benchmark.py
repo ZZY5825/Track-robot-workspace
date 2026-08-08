@@ -432,6 +432,13 @@ def _best_yolo_operating_point(frames, groups):
 
 
 def _best_clip_operating_point(frames, groups, baseline):
+    if not any(
+            frame.get('trial_ground_truth_kind') == 'distractor'
+            for frame in frames):
+        return {
+            'available': False,
+            'reason': 'no_hard_negative_frames',
+        }
     margins = [
         float(candidate['clip_margin']) for values in groups.values()
         for candidate in values

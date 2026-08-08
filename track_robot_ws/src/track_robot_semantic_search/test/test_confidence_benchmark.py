@@ -226,6 +226,24 @@ def test_clip_margin_scan_preserves_far_recall_and_rejects_distractors():
         'far_target_recall'] == pytest.approx(1.0)
 
 
+def test_clip_margin_report_requires_hard_negative_frames():
+    frames = [
+        _frame('t4', 'target', 4, True),
+        _frame('t5', 'target', 5, True),
+    ]
+    candidates = [
+        _candidate('t4', 'target', 0.25, 450, 4, 0.18),
+        _candidate('t5', 'target', 0.30, 300, 5, 0.12),
+    ]
+
+    summary = analyze_confidence_records(frames, candidates)
+
+    assert summary['roi_verification'] == {
+        'available': False,
+        'reason': 'no_hard_negative_frames',
+    }
+
+
 class _FakeYolo:
     def predict(self, image, query):
         assert query == 'green bottle'
