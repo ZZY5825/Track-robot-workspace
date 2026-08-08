@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://track-robot.local/schemas/semantic_confidence_run.schema.json",
+  "title": "Controlled YOLO-World Confidence Run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_path", "dataset_sha256", "query_text",
+    "frame_count", "candidate_count", "yolo_latency_p50_ms",
+    "yolo_latency_p95_ms", "incremental_cuda_reserved_mib",
+    "clip_status", "dino_status", "provenance", "environment"
+  ],
+  "properties": {
+    "schema_version": {"const": "semantic_confidence_run/1.0.0"},
+    "dataset_path": {"type": "string", "minLength": 1},
+    "dataset_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "query_text": {"const": "green bottle"},
+    "frame_count": {"type": "integer", "minimum": 0},
+    "candidate_count": {"type": "integer", "minimum": 0},
+    "yolo_latency_p50_ms": {"type": ["number", "null"], "minimum": 0},
+    "yolo_latency_p95_ms": {"type": ["number", "null"], "minimum": 0},
+    "incremental_cuda_reserved_mib": {
+      "type": ["number", "null"], "minimum": 0
+    },
+    "clip_status": {"enum": ["enabled", "disabled"]},
+    "dino_status": {"enum": ["enabled", "disabled"]},
+    "provenance": {"type": "object"},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "numpy", "opencv"],
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "numpy": {"type": "string", "minLength": 1},
+        "opencv": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

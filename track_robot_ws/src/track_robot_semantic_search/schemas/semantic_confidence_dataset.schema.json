@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://track-robot.local/schemas/semantic_confidence_dataset.schema.json",
+  "title": "Controlled YOLO-World Confidence Dataset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "dataset_id", "query_text", "created_at_utc",
+    "provenance", "trials"
+  ],
+  "properties": {
+    "schema_version": {"const": "semantic_confidence_dataset/1.0.0"},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "query_text": {"const": "green bottle"},
+    "created_at_utc": {"type": "string", "minLength": 1},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "git_commit", "ros_domain_id", "image_topic", "depth_topic"
+      ],
+      "properties": {
+        "git_commit": {"type": "string", "minLength": 1},
+        "ros_domain_id": {"type": "integer", "minimum": 0, "maximum": 232},
+        "image_topic": {"type": "string", "pattern": "^/"},
+        "depth_topic": {"type": "string", "pattern": "^/"}
+      }
+    },
+    "trials": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/definitions/trial"}
+    }
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "bbox": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"type": "number"}
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_id", "stamp_ns", "image_relative_path", "image_sha256",
+        "depth_relative_path", "depth_sha256", "image_width",
+        "image_height", "image_frame_id", "depth_frame_id"
+      ],
+      "properties": {
+        "sample_id": {"type": "string", "minLength": 1},
+        "stamp_ns": {"type": "integer", "minimum": 1},
+        "image_relative_path": {"$ref": "#/definitions/relativePath"},
+        "image_sha256": {"$ref": "#/definitions/sha256"},
+        "depth_relative_path": {"$ref": "#/definitions/relativePath"},
+        "depth_sha256": {"$ref": "#/definitions/sha256"},
+        "image_width": {"type": "integer", "minimum": 1},
+        "image_height": {"type": "integer", "minimum": 1},
+        "image_frame_id": {"type": "string", "minLength": 1},
+        "depth_frame_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "trial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trial_id", "ground_truth_kind", "ground_truth_label",
+        "nominal_distance_m", "ground_truth_bbox_xywh",
+        "label_review_status", "notes", "samples"
+      ],
+      "properties": {
+        "trial_id": {"type": "string", "minLength": 1},
+        "ground_truth_kind": {
+          "enum": ["target", "distractor", "background"]
+        },
+        "ground_truth_label": {"type": "string", "minLength": 1},
+        "nominal_distance_m": {
+          "type": "number", "minimum": 0.2, "maximum": 20.0
+        },
+        "ground_truth_bbox_xywh": {"$ref": "#/definitions/bbox"},
+        "label_review_status": {
+          "enum": ["human_authored", "human_verified"]
+        },
+        "notes": {"type": "string"},
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1000,
+          "items": {"$ref": "#/definitions/sample"}
+        }
+      }
+    }
+  }
+}

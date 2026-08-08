@@ -15,6 +15,7 @@ Package-only documentation remains beside its package under `src/`.
 - [Grounding model evaluation and selection](guides/semantic-search/grounding-model-evaluation.md)
 - [Semantic-search Phase 1 and Phase 2 live testing and recording](guides/semantic-search/phase2-recording-and-evaluation.md)
 - [Semantic-search rosbag workflow](guides/semantic-search/rosbag-workflow.md)
+- [YOLO-World 绿色瓶子置信度受控实验](guides/semantic-search/yolo-world-confidence-benchmark.md)
 - [Human-tracking rosbag replay](guides/human-tracking/rosbag-replay.md)
 
 Commands in these guides describe current workspace behaviour. Read their

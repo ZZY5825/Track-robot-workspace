@@ -76,6 +76,10 @@ setup(
             'track_robot_semantic_search.grounding_evaluation_cli:main',
             'semantic_search_grounding_select = '
             'track_robot_semantic_search.grounding_selection_cli:main',
+            'semantic_search_confidence_capture = '
+            'track_robot_semantic_search.confidence_capture:main',
+            'semantic_search_confidence_benchmark = '
+            'track_robot_semantic_search.confidence_benchmark_cli:main',
         ],
     },
 )

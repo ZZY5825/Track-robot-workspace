@@ -35,7 +35,7 @@ query、阈值、Phase 2/3 排名和导航行为均不修改。实验输出不�
 每种物体分别放置在相机光轴距离 1、2、3、4、5 m；每个静态 trial 采集 10 组
 同步 RGB+Depth，共 250 帧。相机姿态、分辨率、曝光策略和场景照明在一个 session
 中保持不变；画面中一次只放一个受测物体。每个 trial 在第一帧人工框选一次真实
-ROI，并将同一归一化 ROI 传播到该 trial 的其余静态帧。物体或相机移动后必须新建
+ROI，并将同一像素 ROI 传播到该 trial 的其余静态帧。物体或相机移动后必须新建
 trial，不能继续沿用 ROI。
 
 最小完整性门槛为：target 的五个距离均有样本，至少三类 hard negative 各自覆盖
@@ -49,7 +49,7 @@ trial，不能继续沿用 ROI。
 
 - dataset/session/trial/sample ID；
 - query `green bottle`；
-- `target`、`hard_negative` 或 `background` ground-truth kind；
+- `target`、`distractor` 或 `background` ground-truth kind；
 - 人工标签、名义距离、人工 ROI；
 - ROS Domain、RGB/Depth topic、source stamp、frame ID；
 - 原始 PNG、float32 depth NPY 的相对路径、尺寸和 SHA-256；
@@ -58,7 +58,7 @@ trial，不能继续沿用 ROI。
 离线推理输出 `candidates.jsonl`，每行对应一个检测候选，记录：
 
 - sample/candidate ID 和与人工 ROI 的 IoU；
-- `target`、`hard_negative` 或 `background` 匹配标签；
+- `target`、`distractor` 或 `background` 匹配标签；
 - YOLO-World confidence、XYWH、宽、高、像素面积和画面面积比例；
 - 名义距离、候选 ROI 中心区域的 ZED 深度中位数及有效深度比例；
 - 原始分辨率候选 crop 的相对路径和 SHA-256；
