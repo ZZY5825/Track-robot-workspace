@@ -1,8 +1,11 @@
 import ast
 from pathlib import Path
 
+import yaml
+
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+CONFIG = PACKAGE_ROOT / 'config' / 'semantic_search_yolo_world.yaml'
 NODE = (
     PACKAGE_ROOT / 'track_robot_semantic_search' /
     'yolo_world_perception_node.py')
@@ -63,3 +66,12 @@ def test_yolo_world_image_subscription_uses_sensor_data_qos():
 
     assert 'from rclpy.qos import qos_profile_sensor_data' in source
     assert 'self._image_callback,\n            qos_profile_sensor_data)' in source
+
+
+def test_yolo_world_production_config_uses_measured_960_input():
+    config = yaml.safe_load(CONFIG.read_text(encoding='utf-8'))
+    parameters = config[
+        'semantic_search_yolo_world_perception']['ros__parameters']
+
+    assert parameters['input_size'] == 960
+    assert parameters['dino_input_size'] == 224

@@ -13,7 +13,7 @@ semantic_search_yolo_world_perception:
     clip_checkpoint: ''
     device: 0
     half: true
-    input_size: 640
+    input_size: 960
     confidence_floor: 0.05
     iou_threshold: 0.70
     max_detections: 64
