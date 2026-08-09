@@ -102,3 +102,5 @@ def test_phase5a_rviz_shows_search_evidence_without_manual_motion_tools():
     assert 'Fixed Frame: odom' in source
     assert 'nav2_rviz_plugins/GoalTool' not in source
     assert 'nav2_rviz_plugins/Navigation 2' not in source
+    assert 'Class: rviz_default_plugins/RobotModel' in source
+    assert 'Value: /robot_description' in source

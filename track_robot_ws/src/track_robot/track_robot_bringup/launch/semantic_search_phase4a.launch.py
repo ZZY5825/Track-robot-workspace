@@ -44,6 +44,11 @@ def _launch_runtime(context):
     ])
     actions = [
         _include(
+            'bunker_pro2',
+            'description.launch.py',
+            {},
+        ),
+        _include(
             'track_robot_bringup',
             'semantic_search_sensors.launch.py',
             {

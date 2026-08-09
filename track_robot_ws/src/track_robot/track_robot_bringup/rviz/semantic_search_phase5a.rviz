@@ -27,6 +27,29 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Value: true
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      Name: Bunker Pro 2
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
     - Alpha: 0.65
       Class: rviz_default_plugins/Map
       Color Scheme: costmap

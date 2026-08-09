@@ -32,6 +32,7 @@
   <exec_depend>track_robot_semantic_memory</exec_depend>
   <exec_depend>track_robot_semantic_search_rviz_plugins</exec_depend>
   <exec_depend>bunker_base</exec_depend>
+  <exec_depend>bunker_pro2</exec_depend>
   <exec_depend>zed_wrapper</exec_depend>
   <exec_depend>track_robot_core</exec_depend>
   <exec_depend>track_robot_control</exec_depend>

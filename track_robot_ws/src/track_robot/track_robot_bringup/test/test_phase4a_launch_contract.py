@@ -12,6 +12,7 @@ MEMORY_CONFIG = (
 SEARCH_CONFIG = (
     PACKAGE.parents[1] / 'track_robot_semantic_search'
     / 'config' / 'semantic_search_phase4a.yaml')
+RVIZ = PACKAGE / 'rviz' / 'semantic_search_phase4.rviz'
 
 
 def _source(path):
@@ -54,12 +55,26 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
             'phase4a_test.yaml',
             'semantic_search_phase4a.yaml'):
         assert expected in source
+    assert "'bunker_pro2'" in source
+    assert "'description.launch.py'" in source
     assert "'start_camera': 'true'" in source
     assert "'start_lidar': 'true'" in source
     assert "'enable_test_camera_attachment': 'true'" in source
     assert "'allow_degraded_calibration': 'true'" in source
     assert "'start_visualizer': 'false'" in source
     assert "'camera_depth_mode': 'PERFORMANCE'" in source
+
+    package_xml = _source(PACKAGE / 'package.xml')
+    assert '<exec_depend>bunker_pro2</exec_depend>' in package_xml
+
+
+def test_phase4a_rviz_displays_robot_description_model():
+    source = _source(RVIZ)
+
+    assert 'Class: rviz_default_plugins/RobotModel' in source
+    assert 'Description Source: Topic' in source
+    assert 'Durability Policy: Transient Local' in source
+    assert 'Value: /robot_description' in source
 
 
 def test_phase4a_exposes_optional_dino_and_keeps_tested_baseline_default():
