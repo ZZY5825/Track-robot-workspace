@@ -13,16 +13,28 @@ source install/setup.bash
 ros2 launch bunker_pro2 display.launch.py
 ```
 
-The launch file starts:
+The display launch starts:
 
-- A static `world -> base_link` transform, required because the upstream model
-  contains one root link and no joints.
+- A static `world -> robot_bottom` transform for the standalone viewer.
 - `robot_state_publisher` with the imported URDF.
 - RViz2 with a transient-local `/robot_description` subscription and `world`
   as its fixed frame.
 
 The robot is a rigid visualization model; Gazebo physics, driving, sensors,
 and track articulation are outside this package.
+
+The semantic-search stack includes `description.launch.py` directly, without
+the standalone `world` transform or a second RViz instance. Its rigid TF chain
+is:
+
+```text
+robot_bottom -> base_link -> sensor_station_link -> camera_link
+                                           `-----> lidar_link
+```
+
+`robot_bottom` has the same x/y axes as `base_link`; `base_link` is exactly
+0.45 m above it. The calibrated sensor-station, camera and LiDAR transforms are
+preserved unchanged.
 
 ## Verified output
 

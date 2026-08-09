@@ -4,6 +4,13 @@
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
   name="bunker_pro2">
+  <!-- Physical ground-plane reference. The imported base_link is 450 mm above it. -->
+  <link name="robot_bottom" />
+  <joint name="robot_bottom_to_base_link" type="fixed">
+    <origin xyz="0 0 0.45" rpy="0 0 0" />
+    <parent link="robot_bottom" />
+    <child link="base_link" />
+  </joint>
   <link
     name="base_link">
     <inertial>

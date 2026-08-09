@@ -18,6 +18,7 @@ def test_upstream_robot_assets_are_complete():
     assert robot.tag == 'robot'
     assert robot.attrib['name'] == 'bunker_pro2'
     assert [link.attrib['name'] for link in robot.findall('link')] == [
+        'robot_bottom',
         'base_link',
         'sensor_station_link',
         'camera_link',
@@ -55,8 +56,8 @@ def test_cmake_disables_incompatible_pytest_plugin_autoload_during_discovery():
     assert 'set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)' in cmake
 
 
-def test_launch_starts_state_publisher_and_rviz():
-    launch_path = PACKAGE_ROOT / 'launch' / 'display.launch.py'
+def test_description_launch_starts_only_state_publisher():
+    launch_path = PACKAGE_ROOT / 'launch' / 'description.launch.py'
     source = launch_path.read_text(encoding='utf-8')
     ast.parse(source)
 
@@ -64,18 +65,31 @@ def test_launch_starts_state_publisher_and_rviz():
     assert "package='robot_state_publisher'" in source
     assert "executable='robot_state_publisher'" in source
     assert "'robot_description': robot_description" in source
+    assert "package='rviz2'" not in source
+    assert "package='tf2_ros'" not in source
+
+
+def test_display_launch_composes_description_and_rviz():
+    launch_path = PACKAGE_ROOT / 'launch' / 'display.launch.py'
+    source = launch_path.read_text(encoding='utf-8')
+    ast.parse(source)
+
+    assert 'IncludeLaunchDescription' in source
+    assert 'FindPackageShare' in source
+    assert "'bunker_pro2'" in source
+    assert "'description.launch.py'" in source
     assert "package='rviz2'" in source
     assert "executable='rviz2'" in source
     assert "'bunker_pro2.rviz'" in source
 
 
-def test_launch_publishes_world_to_base_link_transform():
+def test_launch_publishes_world_to_robot_bottom_transform():
     launch_path = PACKAGE_ROOT / 'launch' / 'display.launch.py'
     source = launch_path.read_text(encoding='utf-8')
 
     assert "package='tf2_ros'" in source
     assert "executable='static_transform_publisher'" in source
-    assert "'world', 'base_link'" in source
+    assert "'world', 'robot_bottom'" in source
 
     package = ET.parse(str(PACKAGE_ROOT / 'package.xml')).getroot()
     assert 'tf2_ros' in {
@@ -115,6 +129,23 @@ def test_sensor_station_visual_is_scaled_and_centered():
         'package://bunker_pro2/meshes/FullCase.STL'
     )
     assert mesh.attrib['scale'] == '0.001 0.001 0.001'
+
+
+def test_robot_bottom_is_empty_and_fixed_below_base_link():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    robot_bottom = robot.find("./link[@name='robot_bottom']")
+    assert robot_bottom is not None
+    assert len(robot_bottom) == 0
+
+    joint = robot.find("./joint[@name='robot_bottom_to_base_link']")
+    assert joint is not None
+    assert joint.attrib['type'] == 'fixed'
+    assert joint.find('parent').attrib['link'] == 'robot_bottom'
+    assert joint.find('child').attrib['link'] == 'base_link'
+    assert joint.find('origin').attrib == {
+        'xyz': '0 0 0.45',
+        'rpy': '0 0 0',
+    }
 
 
 def test_sensor_station_is_fixed_to_top_rail_midpoint():
