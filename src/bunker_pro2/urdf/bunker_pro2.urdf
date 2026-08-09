@@ -78,16 +78,12 @@
     <parent link="sensor_station_link" />
     <child link="camera_mount_link" />
   </joint>
-  <link name="camera_link" />
-  <joint name="camera_mount_to_camera_joint" type="fixed">
-    <origin xyz="-0.185 0 0" rpy="0 0 0" />
-    <parent link="camera_mount_link" />
-    <child link="camera_link" />
-  </joint>
   <link name="zed_camera_link" />
-  <joint name="camera_to_zed_camera_joint" type="fixed">
-    <origin xyz="0.01 0 -0.015" rpy="0 0 0" />
-    <parent link="camera_link" />
+  <joint name="camera_mount_to_zed_camera_joint" type="fixed">
+    <!-- ZED's vendor URDF places zed_camera_center 15 mm above its root.
+         Cancel that offset so camera_mount_link is the stereo-eye midpoint. -->
+    <origin xyz="0 0 -0.015" rpy="0 0 0" />
+    <parent link="camera_mount_link" />
     <child link="zed_camera_link" />
   </joint>
   <link name="lidar_link" />
