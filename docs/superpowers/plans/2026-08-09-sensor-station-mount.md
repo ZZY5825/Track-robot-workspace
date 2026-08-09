@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `FullCase.STL` as an upright sensor-station link rigidly centred on the Bunker Pro 2 top rail, then verify the result in RViz2.
+**Goal:** Add `FullCase.STL` as a sensor-station link rigidly centred on the Bunker Pro 2 top rail with roll +90 degrees and yaw 180 degrees, then verify the result in RViz2.
 
 **Architecture:** Keep the sensor station separate from the upstream `base_link` mesh. A fixed URDF joint places a semantic `sensor_station_link` frame at the rail midpoint, while the link's visual origin removes the STL's x/y corner-origin offset and its mesh scale converts millimetres to metres.
 
@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- The station's 537.5 mm dimension runs along robot x, 447.55 mm runs along robot y, and 467 mm points upward along robot z.
-- The fixed joint origin is exactly `xyz="-0.0075 0 0.016" rpy="0 0 0"`.
-- The visual origin is exactly `xyz="-0.26875 -0.223775 0" rpy="0 0 0"`.
+- After rotation, 537.5 mm runs along robot x, 467 mm runs along robot y, and 447.55 mm points upward along robot z.
+- The fixed joint origin is exactly `xyz="-0.0075 0 0.016" rpy="1.57079632679 0 3.14159265359"`.
+- The visual origin is exactly `xyz="-0.26875 0 -0.2335" rpy="0 0 0"`.
 - The STL scale is exactly `0.001 0.001 0.001`.
 - This version adds visual geometry only; it does not add collision or inertial properties for the sensor station.
 - Generated `build/`, `install/`, and `log/` directories must remain untracked.
@@ -53,7 +53,7 @@ def test_sensor_station_visual_is_scaled_and_centered():
     assert link is not None
     origin = link.find('./visual/origin')
     assert origin.attrib == {
-        'xyz': '-0.26875 -0.223775 0',
+        'xyz': '-0.26875 0 -0.2335',
         'rpy': '0 0 0',
     }
     mesh = link.find('./visual/geometry/mesh')
@@ -84,7 +84,7 @@ Insert before `</robot>`:
 ```xml
   <link name="sensor_station_link">
     <visual>
-      <origin xyz="-0.26875 -0.223775 0" rpy="0 0 0" />
+      <origin xyz="-0.26875 0 -0.2335" rpy="0 0 0" />
       <geometry>
         <mesh filename="package://bunker_pro2/meshes/FullCase.STL"
               scale="0.001 0.001 0.001" />
@@ -114,7 +114,7 @@ def test_sensor_station_is_fixed_to_top_rail_midpoint():
     assert joint.find('child').attrib['link'] == 'sensor_station_link'
     assert joint.find('origin').attrib == {
         'xyz': '-0.0075 0 0.016',
-        'rpy': '0 0 0',
+        'rpy': '1.57079632679 0 3.14159265359',
     }
 ```
 
@@ -132,7 +132,8 @@ Insert after `sensor_station_link`:
 
 ```xml
   <joint name="sensor_station_joint" type="fixed">
-    <origin xyz="-0.0075 0 0.016" rpy="0 0 0" />
+    <origin xyz="-0.0075 0 0.016"
+            rpy="1.57079632679 0 3.14159265359" />
     <parent link="base_link" />
     <child link="sensor_station_link" />
   </joint>
@@ -203,7 +204,7 @@ source install/setup.bash
 timeout 8 ros2 run tf2_ros tf2_echo base_link sensor_station_link
 ```
 
-Expected: translation approximately `[-0.0075, 0.0, 0.016]`, identity rotation.
+Expected: translation approximately `[-0.0075, 0.0, 0.016]`; rotation corresponds to roll +90 degrees and yaw 180 degrees.
 
 ### Task 3: Capture evidence and document the mount
 
@@ -223,7 +224,7 @@ Frame the complete robot, confirm `Global Status: Ok`, and run:
 gnome-screenshot -f artifacts/bunker_pro2/rviz-bunker-pro2-sensor-station.png
 ```
 
-Expected: the station is upright, centred in x/y, resting on the rail, and fully visible.
+Expected: the station has roll +90 degrees and yaw 180 degrees, is centred in x/y, rests on the rail, and is fully visible.
 
 - [ ] **Step 2: Document the mount**
 

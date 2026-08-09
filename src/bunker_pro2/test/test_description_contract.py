@@ -105,7 +105,7 @@ def test_sensor_station_visual_is_scaled_and_centered():
     assert link is not None
     origin = link.find('./visual/origin')
     assert origin.attrib == {
-        'xyz': '-0.26875 -0.223775 0',
+        'xyz': '-0.26875 0 -0.2335',
         'rpy': '0 0 0',
     }
     mesh = link.find('./visual/geometry/mesh')
@@ -124,5 +124,5 @@ def test_sensor_station_is_fixed_to_top_rail_midpoint():
     assert joint.find('child').attrib['link'] == 'sensor_station_link'
     assert joint.find('origin').attrib == {
         'xyz': '-0.0075 0 0.016',
-        'rpy': '0 0 0',
+        'rpy': '1.57079632679 0 3.14159265359',
     }

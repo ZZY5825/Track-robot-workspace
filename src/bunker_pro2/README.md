@@ -30,4 +30,13 @@ The checked RViz2 screenshot is stored at
 [`artifacts/bunker_pro2/rviz-bunker-pro2.png`](../../artifacts/bunker_pro2/rviz-bunker-pro2.png).
 It shows the Bunker Pro 2 mesh with RViz reporting `Global Status: Ok`.
 
+## Sensor station mount
+
+`FullCase.STL` is mounted as `sensor_station_link` with a fixed joint at the
+centre of the built-in top rail. The mesh is converted from millimetres to
+metres in URDF and centred without modifying the supplied STL asset.
+
+The sensor-station result is shown in
+[`artifacts/bunker_pro2/rviz-bunker-pro2-sensor-station.png`](../../artifacts/bunker_pro2/rviz-bunker-pro2-sensor-station.png).
+
 See [UPSTREAM.md](UPSTREAM.md) for the pinned source revision and license.
