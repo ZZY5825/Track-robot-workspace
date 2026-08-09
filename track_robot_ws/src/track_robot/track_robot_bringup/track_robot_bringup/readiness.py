@@ -484,7 +484,7 @@ def check_stage(stage, selection, paths, probe):
         checks.append(probe.topic('memory', _TOPICS['memory']))
         checks.append(probe.transform(
             'tf_camera_optical', 'base_link', 'zed_left_camera_optical_frame'))
-        checks.append(probe.transform('tf_lidar', 'base_link', 'rslidar'))
+        checks.append(probe.transform('tf_lidar', 'base_link', 'lidar_link'))
     if spec.diagnostic_ranking:
         checks.append(probe.publisher(
             'diagnostic_ranking', _TOPICS['diagnostic_ranking']))

@@ -40,6 +40,7 @@ def _sensor_arguments(stage):
         'publish_base_lidar_tf':
             LaunchConfiguration('publish_base_lidar_tf'),
         'extrinsic_mode': 'robot_description',
+        'base_frame': 'robot_bottom',
         'extrinsic_file': LaunchConfiguration('extrinsic_file'),
         'allow_degraded': LaunchConfiguration('allow_degraded'),
     })

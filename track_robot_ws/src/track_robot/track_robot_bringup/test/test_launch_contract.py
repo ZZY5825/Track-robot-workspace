@@ -524,6 +524,7 @@ def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
         'start_lidar',
         'start_base',
         'start_imu',
+        'base_frame',
         'configure_network',
         'network_interface',
         'host_ip',
@@ -537,6 +538,15 @@ def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
     assert 'rslidar_with_tf.launch.py' in source
     for argument in ('start_camera', 'start_lidar', 'start_base', 'start_imu'):
         assert argument in source
+
+
+def test_integrated_live_roots_bunker_odometry_at_robot_bottom():
+    sensors = _source(SENSORS_LAUNCH)
+    live = _source(LIVE_LAUNCH)
+
+    assert _argument_defaults(SENSORS_LAUNCH)['base_frame'] == 'base_link'
+    assert _forwards_launch_configuration(SENSORS_LAUNCH, 'base_frame')
+    assert "'base_frame': 'robot_bottom'" in live
 
 
 def test_lidar_tf_ownership_is_forwarded_and_defaults_to_local_publish():
