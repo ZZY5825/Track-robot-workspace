@@ -162,6 +162,25 @@ def _forwards_resolved_launch_configuration(path, key_name, argument_name):
     return False
 
 
+def _function_dict_value(path, function_name, key_name):
+    function = next(
+        node for node in ast.walk(_tree(path))
+        if isinstance(node, ast.FunctionDef) and node.name == function_name)
+    for call in ast.walk(function):
+        if (
+                not isinstance(call, ast.Call)
+                or not isinstance(call.func, ast.Attribute)
+                or call.func.attr != 'update'
+                or not call.args
+                or not isinstance(call.args[0], ast.Dict)):
+            continue
+        for key, value in zip(call.args[0].keys, call.args[0].values):
+            if isinstance(key, ast.Constant) and key.value == key_name:
+                return value
+    raise AssertionError(
+        '{} does not set {} in {}'.format(path, key_name, function_name))
+
+
 def _assert_if_condition(call, launch_argument):
     condition = _keyword(call, 'condition')
     assert isinstance(condition, ast.Call)
@@ -235,6 +254,14 @@ def test_live_launch_non_phase0_uses_description_as_sensor_tf_owner():
     defaults = _argument_defaults(LIVE_LAUNCH)
     assert defaults['extrinsic_mode'] == 'robot_description'
     assert defaults['publish_base_lidar_tf'] == 'false'
+
+
+def test_live_launch_hard_pins_camera_tf_mode_for_sensor_child():
+    extrinsic_mode = _function_dict_value(
+        LIVE_LAUNCH, '_sensor_arguments', 'extrinsic_mode')
+
+    assert isinstance(extrinsic_mode, ast.Constant)
+    assert extrinsic_mode.value == 'robot_description'
 
 
 def test_live_launch_pins_each_sibling_config_against_foxy_argument_leakage():
@@ -346,6 +373,8 @@ def test_integrated_phases_use_robot_description_as_only_sensor_tf_owner():
     assert 'robot_description' in phase4b
     assert 'robot_description' in phase5a
     assert _argument_defaults(SENSORS_LAUNCH)['extrinsic_mode'] == 'none'
+    assert _argument_defaults(PHASE4A_LAUNCH)[
+        'extrinsic_mode'] == 'robot_description'
 
 
 def test_camera_robot_description_mode_emits_no_legacy_static_transform():

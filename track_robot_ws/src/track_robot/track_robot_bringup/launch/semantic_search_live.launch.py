@@ -39,7 +39,7 @@ def _sensor_arguments(stage):
         'lidar_config_path': LaunchConfiguration('lidar_config_path'),
         'publish_base_lidar_tf':
             LaunchConfiguration('publish_base_lidar_tf'),
-        'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+        'extrinsic_mode': 'robot_description',
         'extrinsic_file': LaunchConfiguration('extrinsic_file'),
         'allow_degraded': LaunchConfiguration('allow_degraded'),
     })

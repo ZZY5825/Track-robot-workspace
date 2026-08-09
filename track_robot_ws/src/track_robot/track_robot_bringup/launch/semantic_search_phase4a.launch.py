@@ -190,7 +190,8 @@ def generate_launch_description():
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
         DeclareLaunchArgument('host_cidr', default_value='24'),
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
-        DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
+        DeclareLaunchArgument(
+            'extrinsic_mode', default_value='robot_description'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('dino_enabled', default_value='false'),
         DeclareLaunchArgument(
