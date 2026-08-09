@@ -73,6 +73,19 @@ colcon build --symlink-install --packages-select track_robot_perception
 colcon build --symlink-install --packages-select lidar_mos_filter
 ```
 
+### Bunker Pro 2 RViz2 model
+
+The persistent AgileX Bunker Pro 2 description and viewer live in
+[`src/bunker_pro2`](src/bunker_pro2). Build and open the verified static model
+with:
+
+```bash
+source /opt/ros/foxy/setup.bash
+colcon build --symlink-install --packages-select bunker_pro2
+source install/setup.bash
+ros2 launch bunker_pro2 display.launch.py
+```
+
 ## Common Launch Commands
 
 ```bash

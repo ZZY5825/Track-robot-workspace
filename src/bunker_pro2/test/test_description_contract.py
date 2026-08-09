@@ -1,0 +1,94 @@
+import ast
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_upstream_robot_assets_are_complete():
+    urdf_path = PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf'
+    mesh_path = PACKAGE_ROOT / 'meshes' / 'base_link.STL'
+
+    assert urdf_path.is_file()
+    assert mesh_path.is_file()
+    assert mesh_path.stat().st_size > 1024
+
+    robot = ET.parse(str(urdf_path)).getroot()
+    assert robot.tag == 'robot'
+    assert robot.attrib['name'] == 'bunker_pro2'
+    assert [link.attrib['name'] for link in robot.findall('link')] == [
+        'base_link'
+    ]
+    mesh = robot.find('./link/visual/geometry/mesh')
+    assert mesh is not None
+    assert mesh.attrib['filename'] == (
+        'package://bunker_pro2/meshes/base_link.STL'
+    )
+
+
+def test_ros2_package_metadata_and_install_contract():
+    package = ET.parse(str(PACKAGE_ROOT / 'package.xml')).getroot()
+    assert package.findtext('name') == 'bunker_pro2'
+    assert package.findtext('./export/build_type') == 'ament_cmake'
+
+    cmake = (PACKAGE_ROOT / 'CMakeLists.txt').read_text(encoding='utf-8')
+    for directory in ('launch', 'meshes', 'rviz', 'urdf'):
+        assert directory in cmake
+    assert 'ament_package()' in cmake
+
+
+def test_package_uses_workspace_maintainer_identity():
+    package = ET.parse(str(PACKAGE_ROOT / 'package.xml')).getroot()
+    maintainer = package.find('maintainer')
+
+    assert maintainer is not None
+    assert maintainer.attrib['email'] == 'track-robot@example.com'
+
+
+def test_cmake_disables_incompatible_pytest_plugin_autoload_during_discovery():
+    cmake = (PACKAGE_ROOT / 'CMakeLists.txt').read_text(encoding='utf-8')
+
+    assert 'set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)' in cmake
+
+
+def test_launch_starts_state_publisher_and_rviz():
+    launch_path = PACKAGE_ROOT / 'launch' / 'display.launch.py'
+    source = launch_path.read_text(encoding='utf-8')
+    ast.parse(source)
+
+    assert "get_package_share_directory('bunker_pro2')" in source
+    assert "package='robot_state_publisher'" in source
+    assert "executable='robot_state_publisher'" in source
+    assert "'robot_description': robot_description" in source
+    assert "package='rviz2'" in source
+    assert "executable='rviz2'" in source
+    assert "'bunker_pro2.rviz'" in source
+
+
+def test_launch_publishes_world_to_base_link_transform():
+    launch_path = PACKAGE_ROOT / 'launch' / 'display.launch.py'
+    source = launch_path.read_text(encoding='utf-8')
+
+    assert "package='tf2_ros'" in source
+    assert "executable='static_transform_publisher'" in source
+    assert "'world', 'base_link'" in source
+
+    package = ET.parse(str(PACKAGE_ROOT / 'package.xml')).getroot()
+    assert 'tf2_ros' in {
+        dependency.text for dependency in package.findall('exec_depend')
+    }
+
+
+def test_rviz_uses_published_world_frame_and_robot_description():
+    config = (
+        PACKAGE_ROOT / 'rviz' / 'bunker_pro2.rviz'
+    ).read_text(encoding='utf-8')
+    assert 'Fixed Frame: world' in config
+    assert 'Target Frame: world' in config
+    assert 'Class: rviz_default_plugins/RobotModel' in config
+    assert 'Description Source: Topic' in config
+    assert 'Description File: ""' in config
+    assert 'Durability Policy: Transient Local' in config
+    assert 'Value: /robot_description' in config
+    assert 'Robot Description:' not in config
