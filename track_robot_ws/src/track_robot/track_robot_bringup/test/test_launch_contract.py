@@ -436,6 +436,13 @@ def test_platform_directly_and_independently_gates_base_and_imu():
         PACKAGE_ROOT / 'package.xml')
 
 
+def test_platform_forwards_configurable_base_frame_to_bunker_driver():
+    defaults = _argument_defaults(PLATFORM_LAUNCH)
+
+    assert defaults['base_frame'] == 'base_link'
+    assert _forwards_launch_configuration(PLATFORM_LAUNCH, 'base_frame')
+
+
 def test_platform_pins_phidget_config_against_lidar_argument_leakage():
     source = _source(PLATFORM_LAUNCH)
 

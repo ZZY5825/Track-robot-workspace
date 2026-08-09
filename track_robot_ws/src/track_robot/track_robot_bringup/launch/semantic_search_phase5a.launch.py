@@ -62,6 +62,7 @@ def generate_launch_description():
         {
             'start_base': LaunchConfiguration('start_base'),
             'start_imu': 'false',
+            'base_frame': 'robot_bottom',
         },
     )
     phase4a = _include(

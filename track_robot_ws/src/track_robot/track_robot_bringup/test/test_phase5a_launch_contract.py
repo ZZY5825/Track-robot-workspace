@@ -46,6 +46,7 @@ def test_phase5a_composes_pipeline_manager_and_one_full_handoff_nav2():
     assert 'semantic_search_phase5a.yaml' in source
     assert "executable='semantic_search_live_overlay'" in source
     assert 'semantic_search_phase5a.rviz' in source
+    assert "'base_frame': 'robot_bottom'" in source
     assert ast.parse(source)
 
 

@@ -52,6 +52,7 @@ def test_phase4b_enables_dino_identity_evidence_and_starts_platform_first():
     assert "'dino_enabled': LaunchConfiguration('dino_enabled')" in source
     assert "'dino_enabled', default_value='true'" in source
     assert 'platform,\n        phase4a,' in source
+    assert "'base_frame': 'robot_bottom'" in source
 
 
 def test_phase4b_rviz_exposes_semantic_and_nav2_evidence():
