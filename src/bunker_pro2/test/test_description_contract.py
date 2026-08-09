@@ -20,6 +20,7 @@ def test_upstream_robot_assets_are_complete():
     assert [link.attrib['name'] for link in robot.findall('link')] == [
         'base_link',
         'sensor_station_link',
+        'camera_link',
     ]
     mesh = robot.find('./link/visual/geometry/mesh')
     assert mesh is not None
@@ -125,4 +126,21 @@ def test_sensor_station_is_fixed_to_top_rail_midpoint():
     assert joint.find('origin').attrib == {
         'xyz': '-0.0075 0 0.016',
         'rpy': '1.57079632679 0 3.14159265359',
+    }
+
+
+def test_camera_link_is_fixed_to_sensor_station():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    camera_link = robot.find("./link[@name='camera_link']")
+    assert camera_link is not None
+    assert len(camera_link) == 0
+
+    joint = robot.find("./joint[@name='sensor_station_camera_joint']")
+    assert joint is not None
+    assert joint.attrib['type'] == 'fixed'
+    assert joint.find('parent').attrib['link'] == 'sensor_station_link'
+    assert joint.find('child').attrib['link'] == 'camera_link'
+    assert joint.find('origin').attrib == {
+        'xyz': '0.2212 0 0.318',
+        'rpy': '0 0 0',
     }
