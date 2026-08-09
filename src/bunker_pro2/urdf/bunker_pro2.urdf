@@ -72,4 +72,12 @@
     <parent link="sensor_station_link" />
     <child link="camera_link" />
   </joint>
+  <link name="lidar_link" />
+  <joint name="sensor_station_lidar_joint" type="fixed">
+    <origin
+      xyz="0 0.4 0"
+      rpy="1.57079632679 0 3.14159265359" />
+    <parent link="sensor_station_link" />
+    <child link="lidar_link" />
+  </joint>
 </robot>
