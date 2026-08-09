@@ -64,10 +64,10 @@ def _launch_runtime(context):
                 'host_cidr': LaunchConfiguration('host_cidr'),
                 'driver_start_delay':
                     LaunchConfiguration('driver_start_delay'),
-                'publish_base_lidar_tf': 'true',
+                'publish_base_lidar_tf': 'false',
                 'lidar_config_path':
                     LaunchConfiguration('lidar_config_path'),
-                'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+                'extrinsic_mode': 'robot_description',
                 'extrinsic_file': LaunchConfiguration('extrinsic_file'),
                 'allow_degraded': 'true',
                 'camera_depth_mode': 'PERFORMANCE',

@@ -28,6 +28,7 @@ def test_phase5a_defaults_to_passive_and_cannot_rotate():
     assert "'enable_rotation_execution', default_value='false'" in source
     assert "'start_base', default_value='false'" in source
     assert "'start_imu': 'false'" in source
+    assert "'extrinsic_mode', default_value='robot_description'" in source
 
 
 def test_phase5a_composes_pipeline_manager_and_one_full_handoff_nav2():

@@ -63,6 +63,8 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
     assert "'allow_degraded_calibration': 'true'" in source
     assert "'start_visualizer': 'false'" in source
     assert "'camera_depth_mode': 'PERFORMANCE'" in source
+    assert source.count("'bunker_pro2'") == 1
+    assert source.count("'description.launch.py'") == 1
 
     package_xml = _source(PACKAGE / 'package.xml')
     assert '<exec_depend>bunker_pro2</exec_depend>' in package_xml
