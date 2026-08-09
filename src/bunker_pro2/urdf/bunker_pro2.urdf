@@ -59,14 +59,16 @@
   </link>
   <joint name="sensor_station_joint" type="fixed">
     <origin
-      xyz="-0.0075 0 0.016"
+      xyz="-0.2125 0 0.016"
       rpy="1.57079632679 0 3.14159265359" />
     <parent link="base_link" />
     <child link="sensor_station_link" />
   </joint>
   <link name="camera_link" />
   <joint name="sensor_station_camera_joint" type="fixed">
-    <origin xyz="0.2212 0 0.318" rpy="0 0 0" />
+    <origin
+      xyz="-0.2212 0.318 0"
+      rpy="1.57079632679 0 3.14159265359" />
     <parent link="sensor_station_link" />
     <child link="camera_link" />
   </joint>

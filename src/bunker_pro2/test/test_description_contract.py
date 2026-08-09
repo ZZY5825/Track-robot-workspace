@@ -124,7 +124,7 @@ def test_sensor_station_is_fixed_to_top_rail_midpoint():
     assert joint.find('parent').attrib['link'] == 'base_link'
     assert joint.find('child').attrib['link'] == 'sensor_station_link'
     assert joint.find('origin').attrib == {
-        'xyz': '-0.0075 0 0.016',
+        'xyz': '-0.2125 0 0.016',
         'rpy': '1.57079632679 0 3.14159265359',
     }
 
@@ -141,6 +141,6 @@ def test_camera_link_is_fixed_to_sensor_station():
     assert joint.find('parent').attrib['link'] == 'sensor_station_link'
     assert joint.find('child').attrib['link'] == 'camera_link'
     assert joint.find('origin').attrib == {
-        'xyz': '0.2212 0 0.318',
-        'rpy': '0 0 0',
+        'xyz': '-0.2212 0.318 0',
+        'rpy': '1.57079632679 0 3.14159265359',
     }
