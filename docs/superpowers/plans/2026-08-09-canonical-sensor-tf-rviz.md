@@ -169,7 +169,7 @@ git commit -m "fix(tf): define canonical camera reference chain"
 - Modify: `track_robot_ws/src/track_robot/track_robot_bringup/launch/rslidar_with_tf.launch.py`
 
 **Interfaces:**
-- Consumes: launch arguments `configure_network`, `network_interface`, `host_ip`, `host_cidr`, `driver_start_delay`, `config_path`; legacy `publish_base_lidar_tf` remains accepted by wrappers but integrated launchers pass `false`.
+- Consumes: launch arguments `configure_network`, `network_interface`, `host_ip`, `host_cidr`, `driver_start_delay`, `config_path`; legacy `publish_base_lidar_tf` remains accepted as a deprecated no-op so existing command lines still parse, while integrated launchers pass `false`.
 - Produces: `/rslidar_points` with `header.frame_id=lidar_link`; `_verify_network(interface: str, expected_cidr: str, runner=subprocess.run) -> None`.
 
 - [ ] **Step 1: Write failing driver and preflight contract tests**
@@ -236,7 +236,7 @@ def _verify_network(interface, expected_cidr, runner=subprocess.run):
             expected_cidr, interface, interface))
 ```
 
-Call `_verify_network()` from `_launch_setup` only when `configure_network` evaluates true. Keep a delayed `rslidar_sdk_node`, but do not create any process that mutates network state and do not create a static TF node. Change YAML to:
+Call `_verify_network()` from `_launch_setup` only when `configure_network` evaluates true. Keep a delayed `rslidar_sdk_node`, but do not create any process that mutates network state and do not create a static TF node. When the retained `publish_base_lidar_tf` value is true, emit one `LogInfo` deprecation message explaining that `bunker_pro2/robot_description` owns the transform; never silently create a second edge. Change YAML to:
 
 ```yaml
 ros:
@@ -417,7 +417,7 @@ git commit -m "fix(bringup): make robot description own sensor TF"
 
 **Interfaces:**
 - Consumes: `resolve_stage('phase4b'|'phase5a')`, canonical TFs and sensor topics.
-- Produces: `run phase4b/phase5a --readiness-timeout 30 --probe-timeout 3`; motion-capable launch remains stopped/not presented as ready if LiDAR, odometry, semantic output, or canonical TF is absent. Internal readiness policies are named `phase4b`, `phase5a_active`, and `phase5a_passive`.
+- Produces: `run phase4b/phase5a --readiness-timeout 30 --probe-timeout 3`; motion-capable launch remains stopped/not presented as ready if LiDAR, odometry, semantic output, canonical TF, or the enforced velocity chain is absent. Internal readiness policies are named `phase4b`, `phase5a_active`, and `phase5a_passive`.
 
 - [ ] **Step 1: Add failing no-IMU stage and canonical readiness tests**
 
@@ -442,7 +442,7 @@ def test_phase4b_checks_canonical_sensor_frames(paths, fake_probe):
     assert ('tf_lidar', 'base_link', 'lidar_link') in fake_probe.tf_calls
 ```
 
-Add a control test whose fake child remains alive but readiness returns `NOT READY(lidar)`; assert `stop_owned()` is called, exit code is 2, and the “started” operator instructions are not printed.
+Extend `FakeProbe` with publisher recording and add assertions that `phase4b` and `phase5a_active` require exactly one publisher on `/nav2/cmd_vel_raw`, `/nav2/cmd_vel_safe`, and `/cmd_vel`, while `phase5a_passive` retains the zero-`/cmd_vel` check. Add a control test whose fake child remains alive but readiness returns `NOT READY(lidar)`; assert `stop_owned()` is called, exit code is 2, and the “started” operator instructions are not printed.
 
 - [ ] **Step 2: Run config/readiness/control tests and verify RED**
 
@@ -459,7 +459,7 @@ Expected: FAIL because Phase 4B/5A are not readiness stages, TF still checks `rs
 
 - [ ] **Step 3: Define the runtime stage policies and URDF calibration result**
 
-Add `phase4b` and `phase5a_active` `StageSpec` entries with camera/lidar/base true, IMU false, and Phase 1/localization/tracklets/memory/ranking true. Add `phase5a_passive` with the same semantic requirements but base and IMU false. In `StaticProbe._calibration()`:
+Add a `motion_active: bool = False` field to `StageSpec`. Define `phase4b` and `phase5a_active` with camera/lidar/base true, IMU false, Phase 1/localization/tracklets/memory/ranking true, and `motion_active=true`. Define `phase5a_passive` with the same semantic requirements but base, IMU, and `motion_active` false. In `StaticProbe._calibration()`:
 
 ```python
 if mode == 'robot_description':
@@ -473,6 +473,21 @@ Change the canonical TF readiness check to:
 checks.append(probe.transform('tf_lidar', 'base_link', 'lidar_link'))
 ```
 
+At the end of `check_stage`, replace the unconditional zero-publisher check with:
+
+```python
+if spec.motion_active:
+    checks.extend((
+        probe.publisher('nav2_cmd_raw', '/nav2/cmd_vel_raw'),
+        probe.publisher('nav2_cmd_safe', '/nav2/cmd_vel_safe'),
+        probe.publisher('cmd_vel_gate', '/cmd_vel'),
+    ))
+else:
+    checks.append(probe.cmd_vel())
+```
+
+Static navigation contract tests remain responsible for proving that controller output is remapped to raw, the supervisor owns safe output, and the gate is the only final publisher. Runtime readiness proves those three links are actually present.
+
 - [ ] **Step 4: Make managed Phase 4B/5A wait for readiness**
 
 Add `--readiness-timeout` and `--probe-timeout` to the `run` parser. Build both commands with:
@@ -482,7 +497,7 @@ Add `--readiness-timeout` and `--probe-timeout` to the `run` parser. Build both 
 'extrinsic_mode:=robot_description',
 ```
 
-Extend `_wait_for_readiness()` with an optional `readiness_stage` argument that defaults to `args.stage`. After `spawn_verified`, call it with `phase4b`, `phase5a_active` for `ROTATION_SUPERVISED`, or `phase5a_passive` for passive/shadow mode, plus `HardwareSelection(camera=True, lidar=True, base=active, imu=False)`. Only print the operator workflow and enter `_foreground_wait` when status is PASS or explicitly permitted DEGRADED. For NOT READY or FAIL, call the existing stop proxy/manager, render the report, and return `exit_code(report.overall)`. The public command remains `run phase5a`.
+Extend `_wait_for_readiness()` with an optional `readiness_stage` argument that defaults to `args.stage`. After `spawn_verified`, call it with `phase4b`, `phase5a_active` for `ROTATION_SUPERVISED`, or `phase5a_passive` for passive/shadow mode, plus `HardwareSelection(camera=True, lidar=True, base=active, imu=False)`. Only print the operator workflow and enter `_foreground_wait` when status is PASS. For DEGRADED, NOT READY, or FAIL, call the existing stop proxy/manager, render the report, and return `exit_code(report.overall)`. The public command remains `run phase5a`.
 
 - [ ] **Step 5: Run focused tests and verify all readiness gates**
 
