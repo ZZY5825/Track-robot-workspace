@@ -21,7 +21,9 @@ def test_upstream_robot_assets_are_complete():
         'robot_bottom',
         'base_link',
         'sensor_station_link',
+        'camera_mount_link',
         'camera_link',
+        'zed_camera_link',
         'lidar_link',
     ]
     mesh = robot.find('./link/visual/geometry/mesh')
@@ -161,21 +163,38 @@ def test_sensor_station_is_fixed_to_top_rail_midpoint():
     }
 
 
-def test_camera_link_is_fixed_to_sensor_station():
-    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
-    camera_link = robot.find("./link[@name='camera_link']")
-    assert camera_link is not None
-    assert len(camera_link) == 0
-
-    joint = robot.find("./joint[@name='sensor_station_camera_joint']")
+def _joint(robot, name, parent, child, xyz, rpy):
+    joint = robot.find("./joint[@name='{}']".format(name))
     assert joint is not None
     assert joint.attrib['type'] == 'fixed'
-    assert joint.find('parent').attrib['link'] == 'sensor_station_link'
-    assert joint.find('child').attrib['link'] == 'camera_link'
-    assert joint.find('origin').attrib == {
-        'xyz': '-0.2212 0.318 0',
-        'rpy': '1.57079632679 0 3.14159265359',
-    }
+    assert joint.find('parent').attrib['link'] == parent
+    assert joint.find('child').attrib['link'] == child
+    assert joint.find('origin').attrib == {'xyz': xyz, 'rpy': rpy}
+
+
+def test_camera_reference_uses_local_x_offset_and_vendor_root_connector():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    links = {link.attrib['name'] for link in robot.findall('link')}
+    assert {'camera_mount_link', 'camera_link', 'zed_camera_link'} <= links
+
+    _joint(
+        robot, 'sensor_station_camera_mount_joint',
+        'sensor_station_link', 'camera_mount_link',
+        '-0.2212 0.318 0', '1.57079632679 0 3.14159265359')
+    _joint(
+        robot, 'camera_mount_to_camera_joint',
+        'camera_mount_link', 'camera_link', '-0.185 0 0', '0 0 0')
+    _joint(
+        robot, 'camera_to_zed_camera_joint',
+        'camera_link', 'zed_camera_link', '0.01 0 -0.015', '0 0 0')
+
+
+def test_camera_reference_links_are_empty():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    for name in ('camera_mount_link', 'camera_link', 'zed_camera_link'):
+        link = robot.find("./link[@name='{}']".format(name))
+        assert link is not None
+        assert len(link) == 0
 
 
 def test_lidar_link_is_fixed_above_sensor_station():

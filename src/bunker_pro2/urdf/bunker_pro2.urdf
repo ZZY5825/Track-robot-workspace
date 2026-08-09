@@ -71,13 +71,24 @@
     <parent link="base_link" />
     <child link="sensor_station_link" />
   </joint>
-  <link name="camera_link" />
-  <joint name="sensor_station_camera_joint" type="fixed">
-    <origin
-      xyz="-0.2212 0.318 0"
-      rpy="1.57079632679 0 3.14159265359" />
+  <link name="camera_mount_link" />
+  <joint name="sensor_station_camera_mount_joint" type="fixed">
+    <origin xyz="-0.2212 0.318 0"
+            rpy="1.57079632679 0 3.14159265359" />
     <parent link="sensor_station_link" />
+    <child link="camera_mount_link" />
+  </joint>
+  <link name="camera_link" />
+  <joint name="camera_mount_to_camera_joint" type="fixed">
+    <origin xyz="-0.185 0 0" rpy="0 0 0" />
+    <parent link="camera_mount_link" />
     <child link="camera_link" />
+  </joint>
+  <link name="zed_camera_link" />
+  <joint name="camera_to_zed_camera_joint" type="fixed">
+    <origin xyz="0.01 0 -0.015" rpy="0 0 0" />
+    <parent link="camera_link" />
+    <child link="zed_camera_link" />
   </joint>
   <link name="lidar_link" />
   <joint name="sensor_station_lidar_joint" type="fixed">
