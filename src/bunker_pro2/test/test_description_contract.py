@@ -18,7 +18,8 @@ def test_upstream_robot_assets_are_complete():
     assert robot.tag == 'robot'
     assert robot.attrib['name'] == 'bunker_pro2'
     assert [link.attrib['name'] for link in robot.findall('link')] == [
-        'base_link'
+        'base_link',
+        'sensor_station_link',
     ]
     mesh = robot.find('./link/visual/geometry/mesh')
     assert mesh is not None
@@ -92,3 +93,36 @@ def test_rviz_uses_published_world_frame_and_robot_description():
     assert 'Durability Policy: Transient Local' in config
     assert 'Value: /robot_description' in config
     assert 'Robot Description:' not in config
+
+
+def test_sensor_station_visual_is_scaled_and_centered():
+    mesh_path = PACKAGE_ROOT / 'meshes' / 'FullCase.STL'
+    assert mesh_path.is_file()
+    assert mesh_path.stat().st_size > 1024
+
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    link = robot.find("./link[@name='sensor_station_link']")
+    assert link is not None
+    origin = link.find('./visual/origin')
+    assert origin.attrib == {
+        'xyz': '-0.26875 -0.223775 0',
+        'rpy': '0 0 0',
+    }
+    mesh = link.find('./visual/geometry/mesh')
+    assert mesh.attrib['filename'] == (
+        'package://bunker_pro2/meshes/FullCase.STL'
+    )
+    assert mesh.attrib['scale'] == '0.001 0.001 0.001'
+
+
+def test_sensor_station_is_fixed_to_top_rail_midpoint():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    joint = robot.find("./joint[@name='sensor_station_joint']")
+    assert joint is not None
+    assert joint.attrib['type'] == 'fixed'
+    assert joint.find('parent').attrib['link'] == 'base_link'
+    assert joint.find('child').attrib['link'] == 'sensor_station_link'
+    assert joint.find('origin').attrib == {
+        'xyz': '-0.0075 0 0.016',
+        'rpy': '0 0 0',
+    }

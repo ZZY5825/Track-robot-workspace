@@ -44,4 +44,22 @@
       </geometry>
     </collision>
   </link>
+  <link name="sensor_station_link">
+    <visual>
+      <origin xyz="-0.26875 -0.223775 0" rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://bunker_pro2/meshes/FullCase.STL"
+          scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="sensor_station_gray">
+        <color rgba="0.35 0.35 0.35 1" />
+      </material>
+    </visual>
+  </link>
+  <joint name="sensor_station_joint" type="fixed">
+    <origin xyz="-0.0075 0 0.016" rpy="0 0 0" />
+    <parent link="base_link" />
+    <child link="sensor_station_link" />
+  </joint>
 </robot>
