@@ -72,6 +72,11 @@ if(BUILD_TESTING)
     test/test_static_target_mission.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_physical_recovery
+    test/test_physical_recovery.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()
