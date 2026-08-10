@@ -492,10 +492,12 @@ def _paths_for(args):
 
 def _environment(base, paths):
     environment = managed_environment(base)
-    # Foxy/Fast DDS discovery is unreliable on this Jetson while Ethernet,
-    # Wi-Fi and Tailscale are all active. The managed Phase 1-5 stack is local;
-    # sensor UDP/CAN traffic and browser connections do not require remote DDS.
-    environment['ROS_LOCALHOST_ONLY'] = '1'
+    # Foxy/Fast DDS on this Jetson fails to deliver transient-local /tf_static
+    # reliably across the managed multi-process stack with localhost-only
+    # discovery. Keep Domain 20 isolated by convention, but allow normal local
+    # interface discovery so RViz and robot_state_publisher share the same
+    # complete TF graph.
+    environment['ROS_LOCALHOST_ONLY'] = '0'
     # The retired remote-panel profile also causes partial graph discovery and
     # must not leak into the managed local stack from an older shell.
     environment.pop('FASTRTPS_DEFAULT_PROFILES_FILE', None)

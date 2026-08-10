@@ -24,12 +24,12 @@ Visualization Manager:
       Plane: XY
       Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Name: TF
-      Show Axes: true
-      Show Names: true
-      Value: true
+      Show Axes: false
+      Show Names: false
+      Value: false
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
@@ -135,7 +135,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 32; 34; 38
-    Fixed Frame: odom
+    Fixed Frame: robot_bottom
     Frame Rate: 30
   Name: root
   Tools:

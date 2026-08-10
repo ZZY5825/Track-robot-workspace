@@ -71,7 +71,8 @@ def test_phase4b_rviz_exposes_semantic_and_nav2_evidence():
             '/plan',
             '/rslidar_points'):
         assert topic in source
-    assert 'Fixed Frame: odom' in source
+    assert 'Fixed Frame: robot_bottom' in source
+    assert 'Class: rviz_default_plugins/TF\n      Enabled: false' in source
     assert 'nav2_rviz_plugins/GoalTool' in source
     assert 'Class: rviz_default_plugins/RobotModel' in source
     assert 'Value: /robot_description' in source

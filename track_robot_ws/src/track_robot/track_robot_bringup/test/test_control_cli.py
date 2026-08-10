@@ -752,7 +752,7 @@ def test_query_execs_existing_portal_with_managed_domain():
     )
     assert calls[0][2]['PATH'] == '/bin'
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
-    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '0'
     assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 
 
@@ -785,7 +785,7 @@ def test_visualize_execs_foreground_launch_with_managed_domain():
         ],
     )
     assert calls[0][2]['ROS_DOMAIN_ID'] == '20'
-    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '1'
+    assert calls[0][2]['ROS_LOCALHOST_ONLY'] == '0'
     assert calls[0][2]['PATH'] == '/bin'
     assert 'FASTRTPS_DEFAULT_PROFILES_FILE' not in calls[0][2]
 

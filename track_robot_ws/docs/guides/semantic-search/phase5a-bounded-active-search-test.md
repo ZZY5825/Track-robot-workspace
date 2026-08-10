@@ -40,17 +40,20 @@ source /opt/ros/foxy/setup.bash
 source install/setup.bash
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=1
+export ROS_LOCALHOST_ONLY=0
 unset FASTRTPS_DEFAULT_PROFILES_FILE
 
 sudo -v
-sudo ip addr flush dev eth0
-sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip addr replace 192.168.1.102/24 dev eth0
 sudo ip link set eth0 up
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set can0 up
 ```
 
 Phase 4B/5A 的受管启动固定使用 `configure_network:=false` 和
-`ROS_LOCALHOST_ONLY=1`：LiDAR 网卡必须在
+`ROS_LOCALHOST_ONLY=0`：Foxy 的 localhost-only 模式会令多进程 `/tf_static`
+发现不完整。LiDAR 网卡和 Bunker CAN 必须在
 ROS 节点启动前一次配置完成，运行期间不得 flush/reconfigure。当前本机 RViz
 测试不使用旧远程面板 Fast DDS profile；即使操作者 shell 曾设置该变量，控制
 CLI 也会显式移除，避免 Foxy 中出现只发现部分 TF、点云或 odom 端点的 ROS 图。
@@ -81,13 +84,15 @@ source /opt/ros/foxy/setup.bash
 source install/setup.bash
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=1
+export ROS_LOCALHOST_ONLY=0
 unset FASTRTPS_DEFAULT_PROFILES_FILE
 
 sudo -v
-sudo ip addr flush dev eth0
-sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip addr replace 192.168.1.102/24 dev eth0
 sudo ip link set eth0 up
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set can0 up
 ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervised
 ```
 

@@ -37,13 +37,15 @@ source install/setup.bash
 
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
-export ROS_LOCALHOST_ONLY=1
+export ROS_LOCALHOST_ONLY=0
 unset FASTRTPS_DEFAULT_PROFILES_FILE
 
 sudo -v
-sudo ip addr flush dev eth0
-sudo ip addr add 192.168.1.102/24 dev eth0
+sudo ip addr replace 192.168.1.102/24 dev eth0
 sudo ip link set eth0 up
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set can0 up
 
 ros2 run track_robot_bringup semantic_search_ctl run phase4b
 ```
@@ -62,7 +64,9 @@ Nav2 footprint 碰撞预测、motion safety supervisor 或 cmd_vel gate。
 
 这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
 文件继续指向主工作区。LiDAR 网卡必须在 ROS 节点启动前一次配置完成；受管
-launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=1`。本机 RViz 测试不加载旧远程面板
+launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=0`。Foxy 在
+`ROS_LOCALHOST_ONLY=1` 下会使多进程 `/tf_static` 发现不完整，导致 RViz 无法取得
+完整机器人 TF。本机 RViz 测试不加载旧远程面板
 Fast DDS profile，控制 CLI 也会移除 shell 中遗留的该环境变量。
 
 该命令固定执行以下策略，不再逐个手工启动节点：
