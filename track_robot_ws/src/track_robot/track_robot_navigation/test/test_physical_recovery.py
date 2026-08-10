@@ -78,6 +78,23 @@ def test_failed_backup_enters_cooldown_hold():
     assert hold.stage is RecoveryStage.HOLD
     assert hold.cycle == 1
     assert hold.not_before_s == pytest.approx(5.0)
+    assert value.attempt == 2
+    assert value.last_failure == 'back_up_failed'
+
+
+def test_attempt_and_failure_evidence_reset_only_with_the_mission():
+    value = policy()
+
+    value.navigation_aborted(1.0)
+    assert value.attempt == 1
+    assert value.last_failure == 'navigation_failed'
+    value.recovery_finished(RecoveryCommand.SPIN, False, 2.0)
+    assert value.attempt == 2
+    assert value.last_failure == 'spin_failed'
+
+    value.reset()
+    assert value.attempt == 0
+    assert value.last_failure == ''
 
 
 def test_maximum_cycles_falls_back_to_replan_only_without_more_motion():

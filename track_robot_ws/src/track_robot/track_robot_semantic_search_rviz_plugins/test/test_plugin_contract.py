@@ -37,7 +37,8 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
             '/semantic_memory/diagnostic_ranking',
             '/semantic_search/phase4a/selected_target',
             '/semantic_navigation/authorize_approach',
-            '/semantic_navigation/cancel_and_disarm'):
+            '/semantic_navigation/cancel_and_disarm',
+            '/semantic_navigation/diagnostics'):
         assert topic in source
 
     for interface in (
@@ -68,6 +69,10 @@ def test_panel_uses_reference_bound_supervised_and_active_search_apis():
     assert 'support=' in source
     assert 'query=' in source
     assert 'relevance=' in source
+    assert 'Navigation recovery' in source
+    assert 'semantic_navigation/supervisor' in source
+    assert 'recovery_status_' in header
+    assert 'diagnostic_msgs::msg::DiagnosticArray' in header
     assert '~SemanticSearchPanel() override;' in header
     assert 'CallbackLifetime' in header
     assert 'callback_lifetime_' in header
@@ -156,7 +161,9 @@ def test_package_exports_pluginlib_metadata_and_installs_headers():
     assert 'CMAKE_AUTOMOC ON' in cmake
     assert 'DESTINATION include' in cmake
     assert 'rclcpp_action' in cmake
+    assert 'diagnostic_msgs' in cmake
     assert package.find("depend[.='rclcpp_action']") is not None
+    assert package.find("depend[.='diagnostic_msgs']") is not None
     export = package.find('export')
     assert export is not None
     assert export.find('build_type').text == 'ament_cmake'

@@ -341,3 +341,39 @@ def test_hard_safety_callback_cancels_every_motion_action_immediately():
     assert harness.cleared == ['safety_hard_stop']
     assert harness.cancelled == ['safety_hard_stop']
     assert harness.disarmed == 1
+
+
+def test_recovery_diagnostics_use_only_policy_and_frozen_mission_fields():
+    recovery = PhysicalRecoveryPolicy(
+        enabled=True,
+        cooldown_sec=2.0,
+        maximum_cycles=2,
+    )
+    recovery.navigation_aborted(1.0)
+
+    values = supervisor._recovery_diagnostic_values(
+        recovery,
+        REFERENCE,
+        ANCHOR,
+        backup_permitted=True,
+    )
+
+    assert values == {
+        'recovery_stage': 'spin',
+        'recovery_cycle': '0',
+        'recovery_attempt': '1',
+        'recovery_last_failure': 'navigation_failed',
+        'mission_target_global_id': '22',
+        'mission_target_anchor_x': '2.300',
+        'mission_target_anchor_y': '0.000',
+        'mission_authorization_preserved': 'true',
+        'backup_permitted': 'true',
+    }
+
+    empty = supervisor._recovery_diagnostic_values(
+        recovery, None, None, backup_permitted=False)
+    assert empty['mission_target_global_id'] == '0'
+    assert empty['mission_target_anchor_x'] == ''
+    assert empty['mission_target_anchor_y'] == ''
+    assert empty['mission_authorization_preserved'] == 'false'
+    assert empty['backup_permitted'] == 'false'

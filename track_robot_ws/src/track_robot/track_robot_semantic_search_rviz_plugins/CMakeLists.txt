@@ -7,6 +7,7 @@ endif()
 set(CMAKE_AUTOMOC ON)
 
 find_package(ament_cmake REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
@@ -47,6 +48,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 ament_target_dependencies(${PROJECT_NAME}
+  diagnostic_msgs
   pluginlib
   rclcpp
   rclcpp_action
@@ -105,6 +107,7 @@ install(FILES README.md DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)
 ament_export_dependencies(
+  diagnostic_msgs
   pluginlib
   rclcpp
   rclcpp_action

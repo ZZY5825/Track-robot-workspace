@@ -56,6 +56,8 @@ class PhysicalRecoveryPolicy:
         self._spin_sign = spin_sign
         self._stage = RecoveryStage.IDLE
         self._cycle = 0
+        self._attempt = 0
+        self._last_failure = ''
         self._not_before_s = 0.0
 
     @property
@@ -73,6 +75,14 @@ class PhysicalRecoveryPolicy:
     @property
     def spin_sign(self):
         return self._spin_sign
+
+    @property
+    def attempt(self):
+        return self._attempt
+
+    @property
+    def last_failure(self):
+        return self._last_failure
 
     @property
     def maximum_cycles(self):
@@ -99,6 +109,8 @@ class PhysicalRecoveryPolicy:
     def reset(self):
         self._stage = RecoveryStage.IDLE
         self._cycle = 0
+        self._attempt = 0
+        self._last_failure = ''
         self._not_before_s = 0.0
         if not self._enabled:
             return self._legacy_decision()
@@ -139,16 +151,22 @@ class PhysicalRecoveryPolicy:
 
         now_s = float(now_s)
         if self._stage is RecoveryStage.IDLE:
+            self._attempt += 1
+            self._last_failure = 'navigation_failed'
             self._stage = RecoveryStage.SPIN
             return self._decision(
                 RecoveryCommand.SPIN, 'navigation_failed_try_spin')
         if self._stage is RecoveryStage.NAVIGATE_AFTER_SPIN:
+            self._attempt += 1
+            self._last_failure = 'navigation_failed_after_spin'
             self._stage = RecoveryStage.BACK_UP
             return self._decision(
                 RecoveryCommand.BACK_UP, 'navigation_failed_try_back_up')
         if self._stage is RecoveryStage.NAVIGATE_AFTER_BACK_UP:
+            self._last_failure = 'navigation_failed_after_back_up'
             return self._enter_hold(now_s, 'navigation_failed_after_back_up')
         if self._stage is RecoveryStage.REPLAN_ONLY:
+            self._last_failure = 'replan_only_navigation_failed'
             self._not_before_s = now_s + self._cooldown_sec
             return self._decision(
                 RecoveryCommand.HOLD, 'replan_only_navigation_failed')
@@ -167,6 +185,8 @@ class PhysicalRecoveryPolicy:
                 self._stage = RecoveryStage.NAVIGATE_AFTER_SPIN
                 return self._decision(
                     RecoveryCommand.NAVIGATE, 'spin_succeeded')
+            self._last_failure = 'spin_failed'
+            self._attempt += 1
             self._stage = RecoveryStage.BACK_UP
             return self._decision(RecoveryCommand.BACK_UP, 'spin_failed')
 
@@ -178,6 +198,7 @@ class PhysicalRecoveryPolicy:
                 self._stage = RecoveryStage.NAVIGATE_AFTER_BACK_UP
                 return self._decision(
                     RecoveryCommand.NAVIGATE, 'back_up_succeeded')
+            self._last_failure = 'back_up_failed'
             return self._enter_hold(float(now_s), 'back_up_failed')
 
         raise ValueError('recovery result command must be SPIN or BACK_UP')

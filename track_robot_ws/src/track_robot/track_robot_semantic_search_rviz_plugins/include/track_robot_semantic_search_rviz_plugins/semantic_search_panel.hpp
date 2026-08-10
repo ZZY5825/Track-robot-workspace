@@ -10,6 +10,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 
+#include "diagnostic_msgs/msg/diagnostic_array.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "rviz_common/panel.hpp"
@@ -81,6 +82,8 @@ private:
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
   void on_diagnostic_ranking(
     const track_robot_interfaces::msg::SemanticObjectArray::SharedPtr message);
+  void on_navigation_diagnostics(
+    const diagnostic_msgs::msg::DiagnosticArray::SharedPtr message);
   void start_finding();
   void stop_finding();
   void send_action_cancel(
@@ -117,6 +120,8 @@ private:
   rclcpp::Subscription<
     track_robot_interfaces::msg::SemanticObjectArray>::SharedPtr
     diagnostic_ranking_subscription_;
+  rclcpp::Subscription<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr
+    navigation_diagnostics_subscription_;
   rclcpp::Client<
     track_robot_interfaces::srv::AuthorizeSemanticApproach>::SharedPtr
     authorize_client_;
@@ -142,6 +147,7 @@ private:
   QLabel * diagnostic_ranking_status_{nullptr};
   QLabel * finding_status_{nullptr};
   QLabel * motion_status_{nullptr};
+  QLabel * recovery_status_{nullptr};
 
   std::mutex reference_mutex_;
   std::optional<TargetReference> best_reference_;
@@ -155,6 +161,7 @@ private:
   std::string best_candidate_topic_;
   std::string selected_target_topic_;
   std::string diagnostic_ranking_topic_;
+  std::string navigation_diagnostics_topic_;
   std::string authorize_service_;
   std::string cancel_disarm_service_;
   std::string search_action_;

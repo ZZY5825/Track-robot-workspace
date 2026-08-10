@@ -8,6 +8,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <map>
 #include <string>
 
 #include <QFormLayout>
@@ -37,6 +38,8 @@ constexpr const char * kSelectedTargetTopic =
   "/semantic_search/phase4a/selected_target";
 constexpr const char * kDiagnosticRankingTopic =
   "/semantic_memory/diagnostic_ranking";
+constexpr const char * kNavigationDiagnosticsTopic =
+  "/semantic_navigation/diagnostics";
 constexpr const char * kAuthorizeService =
   "/semantic_navigation/authorize_approach";
 constexpr const char * kCancelDisarmService =
@@ -136,6 +139,7 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   best_candidate_topic_(kBestCandidateTopic),
   selected_target_topic_(kSelectedTargetTopic),
   diagnostic_ranking_topic_(kDiagnosticRankingTopic),
+  navigation_diagnostics_topic_(kNavigationDiagnosticsTopic),
   authorize_service_(kAuthorizeService),
   cancel_disarm_service_(kCancelDisarmService),
   search_action_(kSearchAction),
@@ -183,12 +187,13 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   finding_status_ = new QLabel(tr("idle"), this);
   motion_status_ = new QLabel(
     tr("selected target is not ready"), this);
+  recovery_status_ = new QLabel(tr("waiting for navigation diagnostics"), this);
   diagnostic_ranking_status_->setStyleSheet(
     "QLabel { color: #d8b4fe; font-weight: bold; }");
   for (auto * label : {
       query_status_, model_status_, acknowledgement_status_,
       region_status_, object_status_, diagnostic_ranking_status_,
-      best_status_, finding_status_, motion_status_})
+      best_status_, finding_status_, motion_status_, recovery_status_})
   {
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -204,6 +209,7 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   form->addRow(tr("Best candidate"), best_status_);
   form->addRow(tr("Active search"), finding_status_);
   form->addRow(tr("Motion authorization"), motion_status_);
+  form->addRow(tr("Navigation recovery"), recovery_status_);
 
   auto * layout = new QVBoxLayout();
   layout->addWidget(safety);
@@ -344,6 +350,13 @@ void SemanticSearchPanel::onInitialize()
     snapshot_qos,
     std::bind(
       &SemanticSearchPanel::on_diagnostic_ranking, this,
+      std::placeholders::_1));
+  navigation_diagnostics_subscription_ = node_->create_subscription<
+    diagnostic_msgs::msg::DiagnosticArray>(
+    navigation_diagnostics_topic_,
+    reliable,
+    std::bind(
+      &SemanticSearchPanel::on_navigation_diagnostics, this,
       std::placeholders::_1));
   authorize_client_ = node_->create_client<
     track_robot_interfaces::srv::AuthorizeSemanticApproach>(
@@ -1133,6 +1146,43 @@ void SemanticSearchPanel::on_diagnostic_ranking(
     .arg(message->objects.size()));
 }
 
+void SemanticSearchPanel::on_navigation_diagnostics(
+  const diagnostic_msgs::msg::DiagnosticArray::SharedPtr message)
+{
+  for (const auto & status : message->status) {
+    if (status.name != "semantic_navigation/supervisor") {
+      continue;
+    }
+    std::map<std::string, std::string> values;
+    for (const auto & item : status.values) {
+      values[item.key] = item.value;
+    }
+    const auto read = [&values](
+      const std::string & key, const std::string & fallback)
+      {
+        const auto found = values.find(key);
+        return found == values.end() || found->second.empty() ?
+               fallback : found->second;
+      };
+    const auto stage = read("recovery_stage", "unknown");
+    const auto cycle = read("recovery_cycle", "0");
+    const auto attempt = read("recovery_attempt", "0");
+    const auto failure = read("recovery_last_failure", "no failure");
+    const auto target = read("mission_target_global_id", "0");
+    const auto backup = read("backup_permitted", "false");
+    queue_label(
+      recovery_status_,
+      tr("%1; cycle %2; attempt %3; %4; target %5; backup %6")
+      .arg(QString::fromStdString(stage))
+      .arg(QString::fromStdString(cycle))
+      .arg(QString::fromStdString(attempt))
+      .arg(QString::fromStdString(failure))
+      .arg(QString::fromStdString(target))
+      .arg(QString::fromStdString(backup)));
+    return;
+  }
+}
+
 void SemanticSearchPanel::queue_label(
   QLabel * label,
   const QString & value)
@@ -1170,6 +1220,9 @@ void SemanticSearchPanel::load(const rviz_common::Config & config)
   if (config.mapGetString("diagnostic_ranking_topic", &value)) {
     diagnostic_ranking_topic_ = value.toStdString();
   }
+  if (config.mapGetString("navigation_diagnostics_topic", &value)) {
+    navigation_diagnostics_topic_ = value.toStdString();
+  }
   if (config.mapGetString("authorize_service", &value)) {
     authorize_service_ = value.toStdString();
   }
@@ -1200,6 +1253,9 @@ void SemanticSearchPanel::save(rviz_common::Config config) const
   config.mapSetValue(
     "diagnostic_ranking_topic",
     QString::fromStdString(diagnostic_ranking_topic_));
+  config.mapSetValue(
+    "navigation_diagnostics_topic",
+    QString::fromStdString(navigation_diagnostics_topic_));
   config.mapSetValue(
     "authorize_service", QString::fromStdString(authorize_service_));
   config.mapSetValue(

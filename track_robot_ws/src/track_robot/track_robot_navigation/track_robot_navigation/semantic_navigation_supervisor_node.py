@@ -156,6 +156,34 @@ def _physical_recovery_preflight_failure(
     return None
 
 
+def _recovery_diagnostic_values(
+        recovery, mission_reference, mission_anchor_xy, backup_permitted):
+    """Format recovery evidence without consulting a live target candidate."""
+
+    has_mission = mission_reference is not None
+    object_id = int(mission_reference[1]) if has_mission else 0
+    anchor_valid = bool(
+        has_mission
+        and mission_anchor_xy is not None
+        and len(mission_anchor_xy) == 2
+        and all(math.isfinite(float(value)) for value in mission_anchor_xy))
+    return {
+        'recovery_stage': recovery.stage.value,
+        'recovery_cycle': str(recovery.cycle),
+        'recovery_attempt': str(recovery.attempt),
+        'recovery_last_failure': recovery.last_failure,
+        'mission_target_global_id': str(object_id),
+        'mission_target_anchor_x': (
+            '{:.3f}'.format(float(mission_anchor_xy[0]))
+            if anchor_valid else ''),
+        'mission_target_anchor_y': (
+            '{:.3f}'.format(float(mission_anchor_xy[1]))
+            if anchor_valid else ''),
+        'mission_authorization_preserved': str(has_mission).lower(),
+        'backup_permitted': str(bool(backup_permitted)).lower(),
+    }
+
+
 def _classify_nav2_result(status, retry_count, maximum_retries):
     """Classify a terminal Nav2 result without conflating abort and success."""
 
@@ -1305,6 +1333,25 @@ class SemanticNavigationSupervisorNode(Node):
             self._cancel_when_accepted = True
 
     def _publish_diagnostics(self, action, reason, key):
+        backup_permitted = False
+        if (
+                self._physical_recovery_enabled
+                and self._authorized_reference is not None
+                and self._mission_goal is not None):
+            mission_snapshot = self._static_mission_snapshot()
+            backup_permitted = bool(
+                mission_snapshot is not None
+                and _physical_recovery_preflight_failure(
+                    self._safety,
+                    mission_snapshot.odom_age_sec,
+                    self._maximum_odom_age_sec,
+                ) is None)
+        recovery_values = _recovery_diagnostic_values(
+            self._physical_recovery,
+            self._authorized_reference,
+            self._authorized_target_anchor_xy,
+            backup_permitted,
+        )
         output = DiagnosticArray()
         output.header.stamp = self.get_clock().now().to_msg()
         status = DiagnosticStatus()
@@ -1336,6 +1383,9 @@ class SemanticNavigationSupervisorNode(Node):
                     self._mode is RuntimeMode.SEMANTIC_ACTIVE
                     and self._semantic_execution_enabled).lower()),
         ]
+        status.values.extend(
+            KeyValue(key=name, value=value)
+            for name, value in recovery_values.items())
         output.status.append(status)
         self._diagnostic_publisher.publish(output)
         if reason != self._last_reason:
