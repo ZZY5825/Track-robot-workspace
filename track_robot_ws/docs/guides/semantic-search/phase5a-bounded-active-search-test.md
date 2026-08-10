@@ -91,6 +91,19 @@ sudo ip link set eth0 up
 ros2 run track_robot_bringup semantic_search_ctl run phase5a --rotation-supervised
 ```
 
+该标准命令保持原有行为，Phase 4B 的物理恢复默认关闭。完成默认回归后，如需测试
+“Finding 确认目标 → Start Approach → 保留目标的 Nav2 Spin/BackUp 恢复”，使用：
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl run phase5a \
+  --rotation-supervised --physical-recovery
+```
+
+`--physical-recovery` 不改变 Start Finding 的搜索策略，也不会自动点击 Start
+Approach。它只在目标已经确认、操作者独立点击 Start Approach、冻结静态目标
+`odom` goal 后，允许 Phase 4B 在 Nav2 abort 时执行有界恢复。PASSIVE_ONLY 和
+SEARCH_SHADOW 即使误传该标志，仍保持 `PLANNING_ONLY`、不启动底盘运动。
+
 在 RViz 面板中输入 `green bottle`。先把瓶子放在初始相机视野外、但位于
 有界原地旋转可见的范围内；点击 **Start Finding**。确认按钮变为
 **Stop Finding**，查询输入框、**New Query** 和 **Revise Query** 均禁用，并确认
@@ -107,6 +120,11 @@ E-stop 始终具有最高权限。结果应显示已确认的全局对象 ID，�
 `approach enabled (supervised)`；目标的 memory epoch、global object ID、
 localization epoch、query ID/version 必须与 Finding 确认结果一致。该按钮仍是
 独立的平移授权，Finding 不得自动调用它。
+
+启用物理恢复时，RViz 的 **Navigation recovery** 行应显示 recovery stage、
+cycle、attempt、最近失败和被冻结的 target ID。恢复中的 Spin 是 Phase 4B
+路径失败恢复，不是 Phase 5A 的新视角搜索；两者均由 Nav2 执行并走相同安全链，
+但状态机和触发条件不同。
 
 第二次运行时，在正在旋转期间点击 **Stop Finding**。确认动作和待执行旋转
 意图均收到一次取消请求。取消期间按钮保持禁用；收到 action 终态后恢复为
@@ -239,3 +257,5 @@ ros2 node list
 - `4.5 s` 单视角观察窗口是否覆盖 Jetson 上最慢的 Phase 1 推理间隔，需通过 shadow 实测决定。
 - prototype Camera–LiDAR 外参只能用于功能验证，不能支持正式绝对定位精度结论。
 - Phase 5A 不含平移搜索、全局探索、移动目标追踪或自动 Phase 4 接近授权。
+- Phase 4B 目标保持 Spin/BackUp 恢复的软件回归已完成，但尚未完成 Bunker
+  实机后退走廊、RC/E-stop 中断和重复循环验收。

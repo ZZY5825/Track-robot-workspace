@@ -48,6 +48,18 @@ sudo ip link set eth0 up
 ros2 run track_robot_bringup semantic_search_ctl run phase4b
 ```
 
+上面的标准命令保持已测试基线：`physical_recovery_enabled=false`。它不会在
+Nav2 失败后自动执行 Spin 或 BackUp。只有完成默认回归、机器人后方和旋转范围
+均已清空且操作员持续在场时，才使用显式 opt-in：
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl run phase4b \
+  --physical-recovery
+```
+
+该标志不会跳过 Start Approach、RC、E-stop、base health、odom/cloud freshness、
+Nav2 footprint 碰撞预测、motion safety supervisor 或 cmd_vel gate。
+
 这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
 文件继续指向主工作区。LiDAR 网卡必须在 ROS 节点启动前一次配置完成；受管
 launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=1`。本机 RViz 测试不加载旧远程面板
@@ -243,10 +255,27 @@ ros2 launch track_robot_bringup semantic_search_phase4b.launch.py \
 
 授权前的目标输入短暂中断仍受新鲜度门控。授权后使用冻结的 `odom` 接近
 位姿，不因暂时看不见目标而取消。odom 陈旧和普通安全暂停会取消当前 Nav2
-action，但保留任务并在状态恢复后重新派发。Nav2 `ABORTED` 最多自动重试
-2 次；每次使用有界的 local/global costmap clear、等待 1 秒和重新规划，
-不执行自动旋转或倒车。重试耗尽后才终止任务并解除武装。该恢复逻辑已通过
-离线状态机与 launch 合同测试，仍需实机确认真实障碍清除和底盘连续运动。
+action，但保留任务并在状态恢复后重新派发。默认命令继续使用原有有界 Nav2
+重试，不执行自动旋转或倒车。
+
+显式添加 `--physical-recovery` 后，`NavigateToPose` abort 才进入有界恢复序列：
+
+```text
+Spin 30 deg -> 对同一冻结 odom goal 重新规划
+-> BackUp 0.25 m @ 0.10 m/s -> 再次对同一 goal 重新规划
+-> 2.0 s Hold -> 下一有限循环
+```
+
+最多执行 2 个物理恢复循环；之后仅做 cooldown/replan，不再继续 Spin/BackUp。
+整个过程中不重新选择 live candidate，也不清除已冻结的 target global ID、odom
+锚点、goal 或 operator authorization。任务成功、人工 Cancel & Disarm、RC、
+E-stop、base fault 或 localization/query 域改变才终止相应任务。RViz 面板的
+`Navigation recovery` 行和 `/semantic_navigation/diagnostics` 会显示 stage、cycle、
+attempt、最近失败和冻结目标 ID。`backup_permitted=true` 仅表示前置 freshness/
+health 门通过，真实后退走廊仍由 Nav2 footprint 与下游安全链判断。
+
+该恢复逻辑已通过离线状态机、配置和 launch 合同测试，仍需按下方分级流程完成
+实机 Spin/BackUp、后方障碍、RC 和 E-stop 验收。
 SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav2。
 
 ## 8. 失败测试
@@ -263,6 +292,15 @@ SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav
 6. 调用 E-stop：立即锁存零速度并取消；
 7. 改变 localization epoch 或 TF：旧目标引用不得继续执行。
 
+物理恢复 opt-in 另按以下顺序测试，并在第一项异常运动时立即停止：
+
+1. 空旷区域触发一次 abort，确认只执行同一方向 `30 deg` Spin；
+2. 后方至少有 `1.0 m` 已观测净空，确认最多后退 `0.25 m`；
+3. 后方放置可见障碍，确认 BackUp 被 Nav2/安全链拒绝且 `/cmd_vel` 为零；
+4. Spin 和 BackUp 中分别触发 RC override 与 E-stop，确认立即取消；
+5. 同一静态目标连续触发恢复，确认无需再次点击 Start Approach，且诊断中的
+   global ID 与 anchor 不变。
+
 每次测试结束按 `Ctrl-C`，再确认：
 
 ```bash
@@ -277,6 +315,9 @@ ps -eo pid,ppid,stat,cmd | grep -E \
 - `PLANNING_ONLY` 运行时启动：PASS；
 - `MANUAL_NAV2_ACTIVE` ROS 图安全链：PASS；
 - `SEMANTIC_SHADOW` 运行时零运动图验证：PASS；
+- 目标保持物理恢复的软件状态机、Nav2 配置、CLI 和 RViz 诊断：PASS；
+- `physical_recovery_enabled` 默认关闭及 no-motion 模式合同：PASS；
+- 实机 Spin/BackUp、后方障碍、RC/E-stop 恢复验收：NOT EVALUATED；
 - 本次 Camera+Stereo Phase 2、costmap 清除和 RViz 授权改动：离线回归通过后仍需按本页流程做一次实机验收，不能仅凭代码宣称实机通过。
 
 当前 footprint `0.88 x 0.80 m` 来自本轮明确的测试假设，不替代实物复测。
