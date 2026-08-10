@@ -76,6 +76,17 @@ def test_semantic_execution_remains_disabled_by_default():
     assert "default_value='false'" in source
 
 
+def test_physical_recovery_is_explicitly_disabled_and_rewritten_by_default():
+    source = (
+        PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
+    ).read_text()
+
+    assert "'physical_recovery_enabled'" in source
+    assert "LaunchConfiguration('physical_recovery_enabled')" in source
+    assert "'physical_recovery_enabled':" in source
+    assert source.count("default_value='false'") >= 2
+
+
 def test_operator_authorization_is_reference_bound_and_uses_safety_services():
     source = (
         PACKAGE_ROOT

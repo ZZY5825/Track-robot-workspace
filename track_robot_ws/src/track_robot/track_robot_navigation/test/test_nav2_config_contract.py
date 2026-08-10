@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -105,18 +106,21 @@ def test_costmaps_use_standard_lidar_layers():
     assert 'static_layer' not in global_map['plugins']
 
 
-def test_recoveries_share_wait_and_bounded_spin_without_translation():
+def test_recoveries_include_bounded_spin_and_collision_checked_backup():
     config = _params()
     recoveries = config['recoveries_server']['ros__parameters']
 
-    assert recoveries['recovery_plugins'] == ['wait', 'spin']
-    assert set(recoveries) >= {'wait', 'spin'}
+    assert recoveries['recovery_plugins'] == ['wait', 'spin', 'back_up']
+    assert set(recoveries) >= {'wait', 'spin', 'back_up'}
     assert recoveries['spin']['plugin'] == 'nav2_recoveries/Spin'
     assert recoveries['spin']['max_rotational_vel'] == 0.30
     assert 0.0 < recoveries['spin']['min_rotational_vel'] <= 0.10
     assert recoveries['spin']['rotational_acc_lim'] <= 0.50
     assert recoveries['spin']['simulate_ahead_time'] >= 1.0
-    assert 'back_up' not in recoveries
+    assert recoveries['back_up']['plugin'] == 'nav2_recoveries/BackUp'
+    assert recoveries['costmap_topic'] == 'local_costmap/costmap_raw'
+    assert recoveries['footprint_topic'] == (
+        'local_costmap/published_footprint')
 
 
 def test_gate_is_the_only_final_cmd_vel_publisher():
@@ -152,3 +156,10 @@ def test_semantic_supervisor_defaults_to_shadow_and_fresh_inputs():
     assert params['maximum_nav2_retries'] == 2
     assert params['nav2_retry_cooldown_sec'] >= 2.0
     assert params['preserve_authorization_after_retry_exhaustion'] is True
+    assert params['physical_recovery_enabled'] is False
+    assert params['recovery_spin_angle_rad'] == pytest.approx(0.523599)
+    assert params['recovery_spin_clockwise'] is False
+    assert params['recovery_backup_distance_m'] == pytest.approx(0.25)
+    assert params['recovery_backup_speed_mps'] == pytest.approx(0.10)
+    assert params['recovery_cooldown_sec'] == pytest.approx(2.0)
+    assert params['maximum_physical_recovery_cycles'] == 2

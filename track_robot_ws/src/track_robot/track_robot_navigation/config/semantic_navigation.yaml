@@ -40,5 +40,15 @@ semantic_navigation_supervisor:
     maximum_nav2_retries: 2
     nav2_retry_cooldown_sec: 2.0
     preserve_authorization_after_retry_exhaustion: true
+    # Disabled by default. When explicitly enabled in SEMANTIC_ACTIVE, the
+    # supervisor may request bounded Nav2 Spin/BackUp actions while retaining
+    # the frozen semantic mission and its odom goal.
+    physical_recovery_enabled: false
+    recovery_spin_angle_rad: 0.523599
+    recovery_spin_clockwise: false
+    recovery_backup_distance_m: 0.25
+    recovery_backup_speed_mps: 0.10
+    recovery_cooldown_sec: 2.0
+    maximum_physical_recovery_cycles: 2
     transform_timeout_sec: 0.10
     supervision_rate_hz: 10.0

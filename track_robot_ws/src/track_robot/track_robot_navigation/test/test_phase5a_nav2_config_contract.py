@@ -57,11 +57,11 @@ def test_phase5a_controller_exists_only_as_local_costmap_host():
         'RegulatedPurePursuitController')
 
 
-def test_phase4b_shared_runtime_supports_wait_and_bounded_spin():
+def test_phase4b_shared_runtime_supports_bounded_physical_recoveries():
     recoveries = _load(PHASE4_CONFIG)[
         'recoveries_server']['ros__parameters']
 
-    assert recoveries['recovery_plugins'] == ['wait', 'spin']
+    assert recoveries['recovery_plugins'] == ['wait', 'spin', 'back_up']
     assert recoveries['spin']['plugin'] == 'nav2_recoveries/Spin'
     assert recoveries['spin']['max_rotational_vel'] == 0.30
-    assert 'back_up' not in recoveries
+    assert recoveries['back_up']['plugin'] == 'nav2_recoveries/BackUp'
