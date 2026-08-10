@@ -400,7 +400,14 @@ self._physical_recovery.recovery_finished(
 )
 ```
 
-The supervision timer dispatches `next_command()` after mission preflight. When the feature is false, preserve the current `_classify_nav2_result` retry behavior exactly.
+The supervision timer evaluates hard preflight first: authorization, RC,
+E-stop, base health, cloud freshness and odometry freshness.  When a recovery
+command is already pending, dispatch it before the ordinary
+`StaticTargetMissionPolicy` obstacle-Hold branch; otherwise a robot currently
+inside `STATE_BLOCKED` could never submit a reverse/rotation command for the
+downstream safety supervisor to evaluate.  This ordering does not override a
+downstream collision block.  When the feature is false, preserve the current
+`_classify_nav2_result` retry behavior exactly.
 
 Call `reset()` only when locking a new mission, completing it, or explicitly clearing it. Never reset on Nav2 abort, costmap clear, Spin, BackUp, transient target loss or cooldown.
 
