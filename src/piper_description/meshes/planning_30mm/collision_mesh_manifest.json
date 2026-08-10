@@ -1,0 +1,131 @@
+{
+  "generator": "longitudinal_triangle_slab_v1",
+  "links": [
+    {
+      "axis": "y",
+      "link": "link1",
+      "pieces": [
+        {
+          "filename": "link1_slab_000.stl",
+          "sha256": "d539175619e79b111119e4a952d5c9218373ea42df32984dfbb59488d07f9760",
+          "triangle_count": 3512
+        },
+        {
+          "filename": "link1_slab_001.stl",
+          "sha256": "5834ea7e44f09f6ba3b5ff13156e6e05d538999ed1f703598cfd52da436d5aff",
+          "triangle_count": 3215
+        },
+        {
+          "filename": "link1_slab_002.stl",
+          "sha256": "52d106163599ffebeb2a88e55b14fec3091c0a9f46f55961322dcce908bdc591",
+          "triangle_count": 2883
+        }
+      ],
+      "slab_thickness_m": 0.03,
+      "source_sha256": "9ee6e1d67c0241f42a0dbaf5c676d19230375ed078ee1943bb8c4c37ab303d14",
+      "source_triangle_count": 8954,
+      "triangle_assignments": 9610
+    },
+    {
+      "axis": "x",
+      "link": "link2",
+      "pieces": [
+        {
+          "filename": "link2_slab_000.stl",
+          "sha256": "fafd87153e229656149f5d34efcbf49c3a903bd3106ce1a1894bae383a6e54ba",
+          "triangle_count": 5658
+        },
+        {
+          "filename": "link2_slab_001.stl",
+          "sha256": "ca33c9ba2ae6410a403798afc94198cde579d00c3ebe623283007c2c455a924d",
+          "triangle_count": 7775
+        },
+        {
+          "filename": "link2_slab_002.stl",
+          "sha256": "d355bce7ff05ea66ec885d91e2048fecdc0217dc82f5e893076d35b702bd8868",
+          "triangle_count": 10012
+        },
+        {
+          "filename": "link2_slab_003.stl",
+          "sha256": "6255cf1795e849f30605ca3edcd3f2da273cce352a8255eb6339d0e39cf64379",
+          "triangle_count": 5155
+        },
+        {
+          "filename": "link2_slab_004.stl",
+          "sha256": "a23ea7d9306f8dec9c447b90065f657ca3dafac6acdded63d6346b8e8282275a",
+          "triangle_count": 3887
+        },
+        {
+          "filename": "link2_slab_005.stl",
+          "sha256": "c50435ec94d20e5041f584743bcb4db4bb10a8e04ad2100c7729914313853dd8",
+          "triangle_count": 5346
+        },
+        {
+          "filename": "link2_slab_006.stl",
+          "sha256": "6f856daa6b411cece7408093e7e57a23e1fbb4f8f919e4b06a83d3cf3564c7bf",
+          "triangle_count": 4786
+        },
+        {
+          "filename": "link2_slab_007.stl",
+          "sha256": "f19382e89d21355d3421e4807256a7b0b50282418e7fafc825a334a7ec68a761",
+          "triangle_count": 5291
+        },
+        {
+          "filename": "link2_slab_008.stl",
+          "sha256": "f7fd57fb8c13f0850d00a24beb36b7562dbac52f385303b4baf01d642e4951e7",
+          "triangle_count": 4446
+        },
+        {
+          "filename": "link2_slab_009.stl",
+          "sha256": "bca65eb2145953258e0dd7bcd1676ad7edbf705cf9b72dec2f9d5b731adae3fc",
+          "triangle_count": 7831
+        },
+        {
+          "filename": "link2_slab_010.stl",
+          "sha256": "374bec73ecd50eeeb00516ee6746ba946cbc7fa9572df4fc32f6dcd38e5dd944",
+          "triangle_count": 16165
+        },
+        {
+          "filename": "link2_slab_011.stl",
+          "sha256": "c2e62d9a9adc2ed0111e2a3d5c0cf16a30142dc4a0828f0b5b0fede24c9339c1",
+          "triangle_count": 4049
+        }
+      ],
+      "slab_thickness_m": 0.03,
+      "source_sha256": "0d37675b699b643f2e15348de99aed535fac10dc5f09a79b8e4b0acfaf4e0378",
+      "source_triangle_count": 73166,
+      "triangle_assignments": 80401
+    },
+    {
+      "axis": "y",
+      "link": "link5",
+      "pieces": [
+        {
+          "filename": "link5_slab_000.stl",
+          "sha256": "22e990fc619975724e102d49ee01d8063187a5f81312730698d14115c398a204",
+          "triangle_count": 1579
+        },
+        {
+          "filename": "link5_slab_001.stl",
+          "sha256": "88d5f91da070269a55204b095749d1163f71ff51249580113f2b4dbeb966f80d",
+          "triangle_count": 8578
+        },
+        {
+          "filename": "link5_slab_002.stl",
+          "sha256": "701be057cf8a8a2113e40503a5fb1083660452af08027ae88c815d27f437cabc",
+          "triangle_count": 5030
+        },
+        {
+          "filename": "link5_slab_003.stl",
+          "sha256": "499190ad092a7171c087774ed1278e47bddd1d8b5f7e81f39a9d40482f166d41",
+          "triangle_count": 2685
+        }
+      ],
+      "slab_thickness_m": 0.03,
+      "source_sha256": "a1c69d1c7f6f8c60e2c82331c0f444725200ed4053d3e5ec23aa82cb5db5b29f",
+      "source_triangle_count": 16672,
+      "triangle_assignments": 17872
+    }
+  ],
+  "schema_version": 1
+}
