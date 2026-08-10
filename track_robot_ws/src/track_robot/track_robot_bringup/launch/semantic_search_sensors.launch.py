@@ -48,6 +48,7 @@ def generate_launch_description():
         launch_arguments={
             'start_base': LaunchConfiguration('start_base'),
             'start_imu': LaunchConfiguration('start_imu'),
+            'base_frame': LaunchConfiguration('base_frame'),
         }.items(),
     )
 
@@ -56,6 +57,7 @@ def generate_launch_description():
         DeclareLaunchArgument('start_lidar', default_value='true'),
         DeclareLaunchArgument('start_base', default_value='true'),
         DeclareLaunchArgument('start_imu', default_value='true'),
+        DeclareLaunchArgument('base_frame', default_value='base_link'),
         DeclareLaunchArgument('configure_network', default_value='true'),
         DeclareLaunchArgument('network_interface', default_value='eth0'),
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),

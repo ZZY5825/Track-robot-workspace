@@ -39,7 +39,8 @@ def _sensor_arguments(stage):
         'lidar_config_path': LaunchConfiguration('lidar_config_path'),
         'publish_base_lidar_tf':
             LaunchConfiguration('publish_base_lidar_tf'),
-        'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+        'extrinsic_mode': 'robot_description',
+        'base_frame': 'robot_bottom',
         'extrinsic_file': LaunchConfiguration('extrinsic_file'),
         'allow_degraded': LaunchConfiguration('allow_degraded'),
     })
@@ -55,6 +56,11 @@ def _launch_stage(context):
 
     actions = []
     if stage != 'phase0':
+        actions.append(_include(
+            'bunker_pro2',
+            'description.launch.py',
+            {},
+        ))
         actions.append(_include(
             'track_robot_bringup',
             'semantic_search_sensors.launch.py',
@@ -176,7 +182,8 @@ def generate_launch_description():
             default_value=(
                 '/home/track-robot/track_robot_ws/'
                 'models/dinov3_vits16plus_pretrain_lvd1689m.pth')),
-        DeclareLaunchArgument('extrinsic_mode', default_value='none'),
+        DeclareLaunchArgument(
+            'extrinsic_mode', default_value='robot_description'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),
         DeclareLaunchArgument('configure_network', default_value='true'),
@@ -186,7 +193,7 @@ def generate_launch_description():
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
         DeclareLaunchArgument(
             'publish_base_lidar_tf',
-            default_value='true',
+            default_value='false',
         ),
         DeclareLaunchArgument(
             'lidar_config_path',

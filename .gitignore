@@ -1,6 +1,9 @@
 track_robot_ws/build/
 track_robot_ws/install/
 track_robot_ws/log/
+/build/
+/install/
+/log/
 track_robot_ws/.agents/
 track_robot_ws/.codex/
 track_robot_ws/dataset/

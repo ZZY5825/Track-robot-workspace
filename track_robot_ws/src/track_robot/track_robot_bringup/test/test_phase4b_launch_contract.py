@@ -24,6 +24,7 @@ def test_phase4b_entrypoint_is_shadow_and_stationary_by_default():
     assert "'start_base', default_value='false'" in source
     assert "'start_imu': 'false'" in source
     assert "'start_obstacle_map': 'false'" in source
+    assert "'extrinsic_mode', default_value='robot_description'" in source
 
 
 def test_phase4b_composes_phase4a_nav2_platform_and_rviz():

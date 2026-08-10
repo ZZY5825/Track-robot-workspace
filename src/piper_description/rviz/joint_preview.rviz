@@ -1,0 +1,80 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 0.1
+      Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Plane: XY
+      Plane Cell Count: 16
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Alpha: 0.82
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /piper_gui_preview/robot_description
+      Enabled: true
+      Name: Draggable PiPER Preview
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz_default_plugins/InteractiveMarkers
+      Enable Transparency: true
+      Enabled: true
+      Interactive Markers Namespace: /piper_gui_joint_editor
+      Name: Joint Rotation Handles
+      Show Axes: false
+      Show Descriptions: true
+      Show Visual Aids: true
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /piper_gui_joint_editor/update
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 38; 42; 46
+    Fixed Frame: preview_world
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: false
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1.15
+      Focal Point:
+        X: 0.12
+        Y: 0.0
+        Z: 0.20
+      Pitch: 0.48
+      Target Frame: preview_base_link
+      Value: Orbit (rviz)
+      Yaw: 0.75
+    Saved: ~
+Window Geometry:
+  Height: 780
+  Width: 1100

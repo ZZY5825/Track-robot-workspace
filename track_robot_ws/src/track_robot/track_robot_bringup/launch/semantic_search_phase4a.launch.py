@@ -64,10 +64,10 @@ def _launch_runtime(context):
                 'host_cidr': LaunchConfiguration('host_cidr'),
                 'driver_start_delay':
                     LaunchConfiguration('driver_start_delay'),
-                'publish_base_lidar_tf': 'true',
+                'publish_base_lidar_tf': 'false',
                 'lidar_config_path':
                     LaunchConfiguration('lidar_config_path'),
-                'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+                'extrinsic_mode': 'robot_description',
                 'extrinsic_file': LaunchConfiguration('extrinsic_file'),
                 'allow_degraded': 'true',
                 'camera_depth_mode': 'PERFORMANCE',
@@ -190,7 +190,8 @@ def generate_launch_description():
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
         DeclareLaunchArgument('host_cidr', default_value='24'),
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
-        DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
+        DeclareLaunchArgument(
+            'extrinsic_mode', default_value='robot_description'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('dino_enabled', default_value='false'),
         DeclareLaunchArgument(

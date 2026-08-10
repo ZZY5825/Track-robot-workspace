@@ -13,6 +13,9 @@ CAMERA_LAUNCH = LAUNCH_ROOT / 'semantic_search_camera.launch.py'
 PLATFORM_LAUNCH = LAUNCH_ROOT / 'semantic_search_platform.launch.py'
 SENSORS_LAUNCH = LAUNCH_ROOT / 'semantic_search_sensors.launch.py'
 LIVE_LAUNCH = LAUNCH_ROOT / 'semantic_search_live.launch.py'
+PHASE4A_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase4a.launch.py'
+PHASE4B_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase4b.launch.py'
+PHASE5A_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase5a.launch.py'
 VISUALIZATION_LAUNCH = (
     LAUNCH_ROOT / 'semantic_search_visualization.launch.py')
 RVIZ_ROOT = PACKAGE_ROOT / 'rviz'
@@ -159,6 +162,25 @@ def _forwards_resolved_launch_configuration(path, key_name, argument_name):
     return False
 
 
+def _function_dict_value(path, function_name, key_name):
+    function = next(
+        node for node in ast.walk(_tree(path))
+        if isinstance(node, ast.FunctionDef) and node.name == function_name)
+    for call in ast.walk(function):
+        if (
+                not isinstance(call, ast.Call)
+                or not isinstance(call.func, ast.Attribute)
+                or call.func.attr != 'update'
+                or not call.args
+                or not isinstance(call.args[0], ast.Dict)):
+            continue
+        for key, value in zip(call.args[0].keys, call.args[0].values):
+            if isinstance(key, ast.Constant) and key.value == key_name:
+                return value
+    raise AssertionError(
+        '{} does not set {} in {}'.format(path, key_name, function_name))
+
+
 def _assert_if_condition(call, launch_argument):
     condition = _keyword(call, 'condition')
     assert isinstance(condition, ast.Call)
@@ -207,6 +229,7 @@ def test_live_launch_exposes_public_contract_and_composes_all_phases():
     for stage in ('sensors', 'phase0', 'phase1', 'phase2', 'phase3'):
         assert stage in source
     assert _included_launch_files_in_source_order(LIVE_LAUNCH) == [
+        'description.launch.py',
         'semantic_search_sensors.launch.py',
         'semantic_search_phase0.launch.py',
         'semantic_search_yolo_world.launch.py',
@@ -219,6 +242,26 @@ def test_live_launch_exposes_public_contract_and_composes_all_phases():
     assert "'true' if stage == 'phase3' else 'false'" in source
     assert "'start_perception': 'true'" in source
     assert "'dino_enabled': 'true'" in source
+
+
+def test_live_launch_non_phase0_uses_description_as_sensor_tf_owner():
+    source = _source(LIVE_LAUNCH)
+
+    assert source.count("'bunker_pro2'") == 1
+    assert source.count("'description.launch.py'") == 1
+    assert source.index("if stage != 'phase0':") < source.index(
+        "'bunker_pro2'")
+    defaults = _argument_defaults(LIVE_LAUNCH)
+    assert defaults['extrinsic_mode'] == 'robot_description'
+    assert defaults['publish_base_lidar_tf'] == 'false'
+
+
+def test_live_launch_hard_pins_camera_tf_mode_for_sensor_child():
+    extrinsic_mode = _function_dict_value(
+        LIVE_LAUNCH, '_sensor_arguments', 'extrinsic_mode')
+
+    assert isinstance(extrinsic_mode, ast.Constant)
+    assert extrinsic_mode.value == 'robot_description'
 
 
 def test_live_launch_pins_each_sibling_config_against_foxy_argument_leakage():
@@ -318,6 +361,27 @@ def test_camera_launch_defaults_to_no_depth_and_disables_positional_tracking():
     assert isinstance(depth_mode.func, ast.Name)
     assert depth_mode.func.id == 'LaunchConfiguration'
     assert depth_mode.args[0].value == 'depth_mode'
+
+
+def test_integrated_phases_use_robot_description_as_only_sensor_tf_owner():
+    phase4a = _source(PHASE4A_LAUNCH)
+    phase4b = _source(PHASE4B_LAUNCH)
+    phase5a = _source(PHASE5A_LAUNCH)
+
+    assert "'extrinsic_mode': 'robot_description'" in phase4a
+    assert "'publish_base_lidar_tf': 'false'" in phase4a
+    assert 'robot_description' in phase4b
+    assert 'robot_description' in phase5a
+    assert _argument_defaults(SENSORS_LAUNCH)['extrinsic_mode'] == 'none'
+    assert _argument_defaults(PHASE4A_LAUNCH)[
+        'extrinsic_mode'] == 'robot_description'
+
+
+def test_camera_robot_description_mode_emits_no_legacy_static_transform():
+    source = _source(CAMERA_LAUNCH)
+
+    assert "('none', 'prototype', 'measured', 'robot_description')" in source
+    assert "if mode in ('none', 'robot_description'):" in source
     assert _argument_defaults(CAMERA_LAUNCH)['depth_mode'] == 'NONE'
     assert _calls(CAMERA_LAUNCH, 'GroupAction')
 
@@ -460,6 +524,7 @@ def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
         'start_lidar',
         'start_base',
         'start_imu',
+        'base_frame',
         'configure_network',
         'network_interface',
         'host_ip',
@@ -475,11 +540,20 @@ def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
         assert argument in source
 
 
+def test_integrated_live_roots_bunker_odometry_at_robot_bottom():
+    sensors = _source(SENSORS_LAUNCH)
+    live = _source(LIVE_LAUNCH)
+
+    assert _argument_defaults(SENSORS_LAUNCH)['base_frame'] == 'base_link'
+    assert _forwards_launch_configuration(SENSORS_LAUNCH, 'base_frame')
+    assert "'base_frame': 'robot_bottom'" in live
+
+
 def test_lidar_tf_ownership_is_forwarded_and_defaults_to_local_publish():
     assert _argument_defaults(SENSORS_LAUNCH)[
         'publish_base_lidar_tf'] == 'true'
     assert _argument_defaults(LIVE_LAUNCH)[
-        'publish_base_lidar_tf'] == 'true'
+        'publish_base_lidar_tf'] == 'false'
     assert _forwards_launch_configuration(
         SENSORS_LAUNCH, 'publish_base_lidar_tf')
     assert _forwards_launch_configuration(
