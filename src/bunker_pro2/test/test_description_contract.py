@@ -76,17 +76,27 @@ def test_cmake_disables_incompatible_pytest_plugin_autoload_during_discovery():
     assert 'set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)' in cmake
 
 
-def test_description_launch_starts_only_state_publisher():
+def test_description_launch_starts_joint_aggregator_and_one_state_publisher():
     launch_path = PACKAGE_ROOT / 'launch' / 'description.launch.py'
     source = launch_path.read_text(encoding='utf-8')
     ast.parse(source)
 
     assert "get_package_share_directory('bunker_pro2')" in source
-    assert "package='robot_state_publisher'" in source
+    assert source.count("package='robot_state_publisher'") == 1
     assert "executable='robot_state_publisher'" in source
     assert "'robot_description': robot_description" in source
+    assert "package='joint_state_publisher'" in source
+    assert "executable='joint_state_publisher'" in source
+    assert "'source_list': ['/joint_states_single']" in source
+    assert "'publish_default_positions': True" in source
     assert "package='rviz2'" not in source
     assert "package='tf2_ros'" not in source
+
+
+def test_combined_description_declares_arm_model_runtime_dependencies():
+    package_xml = (PACKAGE_ROOT / 'package.xml').read_text(encoding='utf-8')
+    assert '<exec_depend>joint_state_publisher</exec_depend>' in package_xml
+    assert '<exec_depend>piper_description</exec_depend>' in package_xml
 
 
 def test_display_launch_composes_description_and_rviz():
