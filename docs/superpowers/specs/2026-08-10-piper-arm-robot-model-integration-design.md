@@ -32,7 +32,7 @@ RViz 必须能够显示底盘、传感器站、PiPER 本体、夹爪、相机支
 
 `/home/track-robot/Downloads/Piper_Jetson_Model_Handoff_2026-08-09/piper_description/urdf/piper_description.xacro`
 
-交付包中的整个 `piper_description` package 必须原样进入工作区，保留 `package://piper_description/meshes/...` 路径。以下内容不允许为适配底盘而修改：
+交付包中的整个 `piper_description` package 必须进入工作区，保留 `package://piper_description/meshes/...` 路径。模型、mesh 和运行文件保持原样；若交付测试与哈希锁定的权威 Xacro 矛盾，只允许修正测试期望并记录差异。以下内容不允许为适配底盘而修改：
 
 - `joint1` 至 `joint8` 的名称、轴、限制和内部变换；
 - `joint6_to_gripper_base` 的固定旋转；
@@ -45,6 +45,8 @@ RViz 必须能够显示底盘、传感器站、PiPER 本体、夹爪、相机支
 - `piper_description.xacro`: `e32d340b72389d237fb367ad700af9de34970fe987aa7eb8bb795c6b2e2f35e1`
 - `camera_holder.STL`: `a68851c67c3c631b3176d1038478a37acd5b2ebc6aa6189793df4b6ee68478b2`
 - `Intel_RealSense_L515_CAD_external.STL`: `8da72869225af4826ed8b059361109b9e18df5295624d629109e32a906f02d6f`
+
+实施时确认 ZIP 内测试早于最终 Xacro，仍检查旧版 L515 visual 位姿；最终 Xacro、ZIP 内 Xacro 和上述哈希彼此一致。因此本集成以 Xacro 为准，仅同步导入副本中的过期测试期望，不改变任何模型或 mesh。
 
 机械臂交付包中的 operational `camera_link`、手眼标定发布器和 L515 驱动 TF 不属于本次范围。`l515_visual` 只用于显示，不替代现有 ZED 相机 TF，也不创建新的运行相机 TF。
 

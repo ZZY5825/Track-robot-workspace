@@ -15,7 +15,12 @@ install(PROGRAMS scripts/piper_joint_preview_node.py
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
-  ament_add_pytest_test(test_robot_description test/test_robot_description.py)
+  set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
+  ament_add_pytest_test(
+    test_robot_description
+    test/test_robot_description.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 # 包的描述

@@ -12,7 +12,7 @@
 
 - 工作分支固定为 `feature/phase1-5-urdf-tf-integration`，不得覆盖无关 `log/`。
 - 权威机械臂源固定为 `/home/track-robot/Downloads/Piper_Jetson_Model_Handoff_2026-08-09/piper_description/urdf/piper_description.xacro`。
-- 保持机械臂 `joint1...joint8`、内部 TF、关节限制、夹爪、camera holder 和 L515 visual 定义不变。
+- 保持机械臂 `joint1...joint8`、内部 TF、关节限制、夹爪、camera holder 和 L515 visual 定义不变；交付测试若与哈希锁定 Xacro 矛盾，仅同步测试期望并记录差异。
 - 仅将 PiPER 根 `base_link` 改为 `arm_base_link`；不得创建第二个机器人 `base_link`。
 - 安装关节固定为 `base_link -> arm_base_link`，`xyz="0.39 0 0.016"`，`rpy="0 0 0"`。
 - 现有 ZED、LiDAR、sensor station TF 必须逐字保持；不得修改 Nav2、Point-LIO、感知、规划或控制逻辑。
