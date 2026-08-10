@@ -1,9 +1,28 @@
 import ast
+import copy
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+PIPER_DESCRIPTION_ROOT = PACKAGE_ROOT.parent / 'piper_description'
+
+BUNKER_LINK_NAMES = {
+    'robot_bottom',
+    'base_link',
+    'sensor_station_link',
+    'camera_mount_link',
+    'zed_camera_link',
+    'lidar_link',
+}
+BUNKER_JOINT_NAMES = {
+    'robot_bottom_to_base_link',
+    'sensor_station_joint',
+    'sensor_station_camera_mount_joint',
+    'camera_mount_to_zed_camera_joint',
+    'sensor_station_lidar_joint',
+    'base_to_arm_base_joint',
+}
 
 
 def test_upstream_robot_assets_are_complete():
@@ -17,7 +36,7 @@ def test_upstream_robot_assets_are_complete():
     robot = ET.parse(str(urdf_path)).getroot()
     assert robot.tag == 'robot'
     assert robot.attrib['name'] == 'bunker_pro2'
-    assert [link.attrib['name'] for link in robot.findall('link')] == [
+    assert [link.attrib['name'] for link in robot.findall('link')][:6] == [
         'robot_bottom',
         'base_link',
         'sensor_station_link',
@@ -169,6 +188,77 @@ def _joint(robot, name, parent, child, xyz, rpy):
     assert joint.find('parent').attrib['link'] == parent
     assert joint.find('child').attrib['link'] == child
     assert joint.find('origin').attrib == {'xyz': xyz, 'rpy': rpy}
+
+
+def _xml_signature(element):
+    return (
+        element.tag,
+        tuple(sorted(element.attrib.items())),
+        (element.text or '').strip(),
+        tuple(_xml_signature(child) for child in element),
+    )
+
+
+def _expected_integrated_piper_elements(tag):
+    source = ET.parse(str(
+        PIPER_DESCRIPTION_ROOT / 'urdf' / 'piper_description.xacro'
+    )).getroot()
+    expected = {}
+    for source_element in source.findall(tag):
+        name = source_element.attrib['name']
+        if (tag == 'link' and name == 'world') or (
+                tag == 'joint' and name == 'fixed_base_joint'):
+            continue
+        element = copy.deepcopy(source_element)
+        if tag == 'link' and name == 'base_link':
+            element.attrib['name'] = 'arm_base_link'
+        for reference in element.findall('parent') + element.findall('child'):
+            if reference.attrib['link'] == 'base_link':
+                reference.attrib['link'] = 'arm_base_link'
+        expected[element.attrib['name']] = element
+    return expected
+
+
+def test_piper_arm_is_a_front_rail_sibling_of_sensor_station():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    links = [link.attrib['name'] for link in robot.findall('link')]
+    assert links.count('base_link') == 1
+    assert 'arm_base_link' in links
+    _joint(
+        robot, 'base_to_arm_base_joint', 'base_link', 'arm_base_link',
+        '0.39 0 0.016', '0 0 0')
+
+
+def test_combined_description_has_one_root():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    children = {
+        joint.find('child').attrib['link'] for joint in robot.findall('joint')
+    }
+    roots = {
+        link.attrib['name'] for link in robot.findall('link')
+    } - children
+    assert roots == {'robot_bottom'}
+
+
+def test_integrated_piper_subtree_matches_hash_locked_source():
+    robot = ET.parse(str(PACKAGE_ROOT / 'urdf' / 'bunker_pro2.urdf')).getroot()
+    integrated_links = {
+        link.attrib['name']: link for link in robot.findall('link')
+        if link.attrib['name'] not in BUNKER_LINK_NAMES
+    }
+    integrated_joints = {
+        joint.attrib['name']: joint for joint in robot.findall('joint')
+        if joint.attrib['name'] not in BUNKER_JOINT_NAMES
+    }
+    expected_links = _expected_integrated_piper_elements('link')
+    expected_joints = _expected_integrated_piper_elements('joint')
+
+    assert set(integrated_links) == set(expected_links)
+    assert set(integrated_joints) == set(expected_joints)
+    for name, expected in expected_links.items():
+        assert _xml_signature(integrated_links[name]) == _xml_signature(expected)
+    for name, expected in expected_joints.items():
+        assert _xml_signature(integrated_joints[name]) == _xml_signature(expected)
 
 
 def test_camera_mount_is_the_stereo_center_and_connects_vendor_root_directly():
