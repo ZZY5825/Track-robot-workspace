@@ -150,6 +150,13 @@ def build_parser():
     dino.add_argument(
         '--no-dino', dest='dino_enabled', action='store_false')
     run.set_defaults(dino_enabled=True)
+    run.add_argument(
+        '--physical-recovery',
+        action='store_true',
+        help=(
+            'enable bounded Nav2 Spin/BackUp recovery for an authorized '
+            'SEMANTIC_ACTIVE mission'),
+    )
     phase5a_mode = run.add_mutually_exclusive_group()
     phase5a_mode.add_argument(
         '--search-shadow',
@@ -334,6 +341,8 @@ def build_phase4b_launch_argv(args, paths):
         'semantic_search_phase4b.launch.py',
         'runtime_mode:=SEMANTIC_ACTIVE',
         'enable_semantic_execution:=true',
+        'physical_recovery_enabled:={}'.format(
+            str(bool(args.physical_recovery)).lower()),
         'start_base:=true',
         'start_phase4b_rviz:=true',
         'configure_network:=false',
@@ -366,6 +375,8 @@ def build_phase5a_launch_argv(args, paths):
         'search_mode:={}'.format(search_mode),
         'rotation_runtime_mode:={}'.format(runtime_mode),
         'enable_rotation_execution:={}'.format(str(active).lower()),
+        'physical_recovery_enabled:={}'.format(
+            str(bool(args.physical_recovery)).lower()),
         'start_base:={}'.format(str(active).lower()),
         'start_phase5a_rviz:=true',
         'configure_network:=false',

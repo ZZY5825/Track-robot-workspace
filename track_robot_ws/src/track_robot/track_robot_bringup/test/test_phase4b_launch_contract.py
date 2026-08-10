@@ -21,6 +21,7 @@ def test_phase4b_entrypoint_is_shadow_and_stationary_by_default():
 
     assert "default_value='SEMANTIC_SHADOW'" in source
     assert "'enable_semantic_execution', default_value='false'" in source
+    assert "'physical_recovery_enabled', default_value='false'" in source
     assert "'start_base', default_value='false'" in source
     assert "'start_imu': 'false'" in source
     assert "'start_obstacle_map': 'false'" in source
@@ -38,6 +39,8 @@ def test_phase4b_composes_phase4a_nav2_platform_and_rviz():
     assert "'runtime_mode': LaunchConfiguration('runtime_mode')" in source
     assert "'enable_semantic_execution':" in source
     assert "LaunchConfiguration('enable_semantic_execution')" in source
+    assert "'physical_recovery_enabled':" in source
+    assert "LaunchConfiguration('physical_recovery_enabled')" in source
     assert "'start_rviz': 'false'" in source
     assert "'start_phase4b_rviz', default_value='true'" in source
     assert (

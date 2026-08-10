@@ -94,6 +94,8 @@ def generate_launch_description():
             'runtime_mode': LaunchConfiguration('rotation_runtime_mode'),
             'enable_semantic_execution':
                 LaunchConfiguration('enable_rotation_execution'),
+            'physical_recovery_enabled':
+                LaunchConfiguration('physical_recovery_enabled'),
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'autostart': LaunchConfiguration('autostart'),
             # Phase 4A already owns this independent safety map instance.
@@ -149,6 +151,8 @@ def generate_launch_description():
             'rotation_runtime_mode', default_value='PLANNING_ONLY'),
         DeclareLaunchArgument(
             'enable_rotation_execution', default_value='false'),
+        DeclareLaunchArgument(
+            'physical_recovery_enabled', default_value='false'),
         DeclareLaunchArgument('start_base', default_value='false'),
         DeclareLaunchArgument('start_phase5a_rviz', default_value='true'),
         DeclareLaunchArgument('use_sim_time', default_value='false'),

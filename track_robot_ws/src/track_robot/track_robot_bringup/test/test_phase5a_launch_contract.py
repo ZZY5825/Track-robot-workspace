@@ -26,6 +26,7 @@ def test_phase5a_defaults_to_passive_and_cannot_rotate():
     assert "'search_mode', default_value='PASSIVE_ONLY'" in source
     assert "'rotation_runtime_mode', default_value='PLANNING_ONLY'" in source
     assert "'enable_rotation_execution', default_value='false'" in source
+    assert "'physical_recovery_enabled', default_value='false'" in source
     assert "'start_base', default_value='false'" in source
     assert "'start_imu': 'false'" in source
     assert "'extrinsic_mode', default_value='robot_description'" in source
@@ -43,6 +44,8 @@ def test_phase5a_composes_pipeline_manager_and_one_full_handoff_nav2():
     assert 'active_search_motion.yaml' in source
     assert "'enable_semantic_execution':" in source
     assert "LaunchConfiguration('enable_rotation_execution')" in source
+    assert "'physical_recovery_enabled':" in source
+    assert "LaunchConfiguration('physical_recovery_enabled')" in source
     assert "executable='semantic_search_active_manager'" in source
     assert 'semantic_search_phase5a.yaml' in source
     assert "executable='semantic_search_live_overlay'" in source

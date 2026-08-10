@@ -74,7 +74,20 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert 'start_rviz:=true' not in command
     assert 'extrinsic_mode:=prototype' in command
     assert 'dino_enabled:=true' in command
+    assert 'physical_recovery_enabled:=false' in command
     assert not any('imu' in value.lower() for value in command)
+
+
+def test_phase4b_physical_recovery_requires_an_explicit_cli_flag(tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', 'phase4b', '--physical-recovery',
+        '--workspace-root', str(tmp_path),
+    ])
+
+    command = control_cli.build_phase4b_launch_argv(
+        args, control_cli.default_workspace_paths(tmp_path))
+
+    assert 'physical_recovery_enabled:=true' in command
 
 
 def test_phase4b_run_allows_explicit_dino_fallback(tmp_path):
@@ -108,6 +121,7 @@ def test_phase5a_run_is_passive_and_stationary_by_default(tmp_path):
     assert 'start_base:=false' in command
     assert 'start_phase5a_rviz:=true' in command
     assert 'configure_network:=false' in command
+    assert 'physical_recovery_enabled:=false' in command
 
 
 def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
@@ -133,6 +147,29 @@ def test_phase5a_shadow_is_stationary_and_supervised_rotation_is_explicit(
     assert 'rotation_runtime_mode:=SEMANTIC_ACTIVE' in active_command
     assert 'enable_rotation_execution:=true' in active_command
     assert 'start_base:=true' in active_command
+
+
+def test_phase5a_physical_recovery_is_opt_in_and_does_not_enable_rotation(
+        tmp_path):
+    passive = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--physical-recovery',
+        '--workspace-root', str(tmp_path),
+    ])
+    active = control_cli.build_parser().parse_args([
+        'run', 'phase5a', '--rotation-supervised', '--physical-recovery',
+        '--workspace-root', str(tmp_path),
+    ])
+
+    passive_command = control_cli.build_phase5a_launch_argv(
+        passive, control_cli.default_workspace_paths(tmp_path))
+    active_command = control_cli.build_phase5a_launch_argv(
+        active, control_cli.default_workspace_paths(tmp_path))
+
+    assert 'physical_recovery_enabled:=true' in passive_command
+    assert 'rotation_runtime_mode:=PLANNING_ONLY' in passive_command
+    assert 'enable_rotation_execution:=false' in passive_command
+    assert 'start_base:=false' in passive_command
+    assert 'physical_recovery_enabled:=true' in active_command
 
 
 def test_phase4b_shutdown_requests_cancel_and_disarm_in_domain20(tmp_path):
