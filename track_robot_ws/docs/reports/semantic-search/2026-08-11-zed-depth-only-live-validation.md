@@ -216,6 +216,7 @@ published to `/cmd_vel` or any Nav2 velocity topic.
 | ZED depth samples corresponding to position changes | NOT MEASURED |
 | Dropouts | NOT MEASURED |
 | `/rslidar_points` rate | NOT MEASURED |
+| `/safety/local_obstacle_grid` rate | NOT MEASURED |
 | Obstacle-map liveness | NOT MEASURED |
 | `/semantic_memory/diagnostic_ranking` | NOT MEASURED |
 | `/semantic_search/phase4a/selected_target` | NOT MEASURED |
@@ -245,7 +246,8 @@ Diagnostic counters on
 | No unexplained multi-metre one-frame jump | NOT EVALUATED | No paired position/depth samples. |
 | Every 3D rejection has a diagnostic reason | NOT EVALUATED | No live diagnostics. |
 | One camera track keeps one semantic global ID through short depth-only dropouts | NOT EVALUATED | No live track/dropout interval. |
-| LiDAR points and obstacle map remain live without semantic LiDAR tracklets | NOT EVALUATED | `eth0` was down; no LiDAR stream. |
+| `/rslidar_points` remains live without semantic LiDAR tracklets | NOT EVALUATED | `eth0` was down; LiDAR rate NOT MEASURED. |
+| `/safety/local_obstacle_grid` remains live at a measured rate | NOT EVALUATED | `eth0` was down; obstacle-grid rate NOT MEASURED. |
 | No executable motion is published during live validation | NOT EVALUATED | Live validation did not start; preflight itself started no motion process. |
 
 Overall stationary live gate: **NOT EVALUATED**. Nav2 planner tuning remains

@@ -184,6 +184,12 @@ ros2 run track_robot_semantic_search semantic_search_query \
 在独立终端采集 30–60 秒原始证据：
 
 ```bash
+source /opt/ros/foxy/setup.bash
+source /home/track-robot/track_robot_ws/.worktrees/main-integration/track_robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
 ros2 topic hz /zed/zed_node/depth/depth_registered
 ros2 topic hz /semantic_memory/spatial_observations
 ros2 topic echo /semantic_search/spatial_observation_diagnostics
@@ -191,6 +197,7 @@ ros2 topic echo /semantic_memory/spatial_observations
 ros2 topic echo /semantic_memory/diagnostic_ranking
 ros2 topic echo /semantic_search/phase4a/selected_target
 ros2 topic hz /rslidar_points
+ros2 topic hz /safety/local_obstacle_grid
 ```
 
 深度诊断必须显示有限的 `depth_delta_ms`、`valid_depth_samples`、
@@ -202,6 +209,12 @@ ros2 topic hz /rslidar_points
 同时确认无任何可执行运动发布者：
 
 ```bash
+source /opt/ros/foxy/setup.bash
+source /home/track-robot/track_robot_ws/.worktrees/main-integration/track_robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
 ros2 topic info /cmd_vel --verbose
 ros2 topic info /nav2/cmd_vel_raw --verbose
 ros2 topic info /nav2/cmd_vel_safe --verbose
