@@ -126,6 +126,94 @@ Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 `/semantic_memory/markers`。Phase 2 的对象记忆仍用于目标评分和 ID 管理，
 但不会再把 LiDAR-only 或其他未选对象画成“语义盒”。
 
+### 3.1 Phase 4B 前置 Gate：ZED-only 语义三维定位（固定底盘）
+
+这个 gate 必须先使用 Phase 4A 固定底盘 launch 通过，才允许继续调查 Nav2。
+它只做 observation 和 planning，launch 合同固定 `start_base=false`；不要调用
+`start_approach`、`start_finding`，也不要向任何速度 topic 发布消息。
+
+本 profile 的数据所有权是单一且不可混用的：
+
+- Semantic 3D owner: ZED `depth_registered` ->
+  `semantic_depth_enricher` -> `semantic_memory`；
+- LiDAR role: obstacle grid, Nav2 costmaps, and motion safety only；
+- Semantic LiDAR tracklets/attachment: disabled in this profile；
+- Depth diagnostic: `/semantic_search/spatial_observation_diagnostics`。
+
+换言之，`/semantic_memory/spatial_observations` 的三维位置只能来自 ZED 注册
+深度。`/rslidar_points` 仍必须存活并更新障碍图，但不得通过 LiDAR tracklet 或
+attachment 改写语义对象的位置或身份。Nav2 planner 参数调优推迟到本 gate
+通过之后；不得用修改 planner/costmap 参数来掩盖深度、ID 或诊断失败。
+
+在 LiDAR 网口已经由操作员预先配置好的前提下，使用以下准确命令。这里显式
+关闭 launch 内网络配置，避免测试期间提权或更改接口：
+
+```bash
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+
+export TRACK_ROBOT_WS=~/track_robot_ws
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+ros2 launch track_robot_bringup semantic_search_phase4a.launch.py \
+  configure_network:=false \
+  start_rviz:=true
+```
+
+另开终端提交一次固定查询；整个采集窗口保持瓶子和机器人静止：
+
+```bash
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+ros2 run track_robot_semantic_search semantic_search_query \
+  "green bottle" \
+  --query-id 2026081101 \
+  --query-version 1 \
+  --timeout 20 \
+  --subscriber-timeout 10
+```
+
+在独立终端采集 30–60 秒原始证据：
+
+```bash
+ros2 topic hz /zed/zed_node/depth/depth_registered
+ros2 topic hz /semantic_memory/spatial_observations
+ros2 topic echo /semantic_search/spatial_observation_diagnostics
+ros2 topic echo /semantic_memory/spatial_observations
+ros2 topic echo /semantic_memory/diagnostic_ranking
+ros2 topic echo /semantic_search/phase4a/selected_target
+ros2 topic hz /rslidar_points
+```
+
+深度诊断必须显示有限的 `depth_delta_ms`、`valid_depth_samples`、
+`depth_quality`，并为下列固定 counters 给出原始整数值：`matched_depth`、
+`no_matching_depth`、`depth_delta_exceeded`、`insufficient_depth_samples`、
+`depth_out_of_range`、`tf_unavailable`、`invalid_transformed_position`。每个拒绝
+必须落入一个明确原因，不能只记为无输出。
+
+同时确认无任何可执行运动发布者：
+
+```bash
+ros2 topic info /cmd_vel --verbose
+ros2 topic info /nav2/cmd_vel_raw --verbose
+ros2 topic info /nav2/cmd_vel_safe --verbose
+```
+
+任一 topic 出现运动 publisher、任一 `position_valid=true` 样本含非有限坐标或
+`0 m` 距离、单帧无解释的数米跳变、短暂 depth-only dropout 后 global ID
+变化、诊断理由缺失、或 LiDAR/障碍图不再存活，都判为 FAIL。硬件、网络、模型
+或 ROS graph 无法提供证据时写 `NOT MEASURED` / `NOT EVALUATED`，不得估算或
+用启动底盘补齐。结束时只停止本次 launch 启动的进程，再核对 ZED、LiDAR、
+RViz 和 semantic 节点均已退出。
+
 ## 4. RViz 蓝色/粉色区域是什么
 
 蓝色和粉色区域是 Nav2 global/local costmap 中的障碍代价，
