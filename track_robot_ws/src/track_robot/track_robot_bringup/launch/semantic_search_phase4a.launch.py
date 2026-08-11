@@ -113,23 +113,12 @@ def _launch_runtime(context):
             parameters=[search_config],
         ),
         _include(
-            'track_robot_lidar_tracking',
-            'semantic_memory_lidar_tracklets.launch.py',
-            {
-                'config_file': PathJoinSubstitution([
-                    FindPackageShare('track_robot_lidar_tracking'),
-                    'config',
-                    'semantic_memory_lidar_tracklets.yaml',
-                ]),
-            },
-        ),
-        _include(
             'track_robot_semantic_memory',
             'semantic_memory_phase2.launch.py',
             {
                 'config_file': memory_config,
-                'enable_test_camera_attachment': 'true',
-                'allow_degraded_calibration': 'true',
+                'enable_test_camera_attachment': 'false',
+                'allow_degraded_calibration': 'false',
                 # Phase 4B only visualizes the selected target and approach;
                 # drawing every memory object creates irrelevant box clutter.
                 'start_visualizer': 'false',

@@ -15,9 +15,9 @@ semantic_memory:
     camera_calibration_id: zed_left_rectified_v1
     camera_only_memory_enabled: true
     association_shadow_mode: false
-    camera_attachment_enabled: true
-    enable_test_camera_attachment: true
-    allow_degraded_calibration: true
+    camera_attachment_enabled: false
+    enable_test_camera_attachment: false
+    allow_degraded_calibration: false
     association_calibration_status: test_only_uncalibrated
     association_calibration_report: ""
     maximum_lidar_candidates_per_visual: 8

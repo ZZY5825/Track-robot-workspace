@@ -149,6 +149,15 @@ def test_stage2d_node_has_runtime_attachment_and_source_time_tf_lookup():
     assert 'last_lidar_source_epoch_id_)' in source
 
 
+def test_static_profile_requires_camera_only_memory_and_scopes_degraded_flags():
+    source = (
+        PACKAGE_ROOT / 'src' / 'semantic_memory_node.cpp'
+    ).read_text()
+
+    assert 'static_target_profile requires camera_only_memory_enabled' in source
+    assert 'camera_attachment_enabled_ &&' in source
+
+
 def test_stage2e_runtime_fixture_covers_bounded_leave_and_reentry_cleanup():
     runtime = (PACKAGE_ROOT / 'test' / 'test_ros_runtime.py').read_text()
 

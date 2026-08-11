@@ -49,18 +49,18 @@ def test_phase4a_launch_composes_real_phase1_phase2_and_rviz():
             'semantic_search_sensors.launch.py',
             'semantic_search_yolo_world.launch.py',
             'semantic_search_spatial_observation',
-            'semantic_memory_lidar_tracklets.launch.py',
             'semantic_memory_phase2.launch.py',
             'semantic_search_phase4.rviz',
             'phase4a_test.yaml',
             'semantic_search_phase4a.yaml'):
         assert expected in source
+    assert 'semantic_memory_lidar_tracklets.launch.py' not in source
     assert "'bunker_pro2'" in source
     assert "'description.launch.py'" in source
     assert "'start_camera': 'true'" in source
     assert "'start_lidar': 'true'" in source
-    assert "'enable_test_camera_attachment': 'true'" in source
-    assert "'allow_degraded_calibration': 'true'" in source
+    assert "'enable_test_camera_attachment': 'false'" in source
+    assert "'allow_degraded_calibration': 'false'" in source
     assert "'start_visualizer': 'false'" in source
     assert "'camera_depth_mode': 'PERFORMANCE'" in source
     assert source.count("'bunker_pro2'") == 1
@@ -103,18 +103,32 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert fixed['frame_id'] == 'base_link'
     assert planner['selected_target_topic'] == target_topic
     assert selector['selected_target_topic'] == target_topic
-    assert selector['depth_topic'] == (
-        '/zed/zed_node/depth/depth_registered')
+    for removed_depth_parameter in (
+            'observations_topic',
+            'depth_topic',
+            'camera_info_topic',
+            'maximum_depth_age_sec',
+            'minimum_depth_samples',
+            'minimum_depth_m',
+            'maximum_depth_m',
+            'depth_inner_fraction'):
+        assert removed_depth_parameter not in selector
     enricher = search['semantic_depth_enricher']['ros__parameters']
     assert enricher['input_observations_topic'] == (
         '/semantic_memory/observations')
     assert enricher['output_observations_topic'] == (
         '/semantic_memory/spatial_observations')
+    assert enricher['depth_topic'] == (
+        '/zed/zed_node/depth/depth_registered')
+    assert enricher['maximum_depth_delta_sec'] == 0.20
     assert memory['observations_topic'] == (
         '/semantic_memory/spatial_observations')
+    assert memory['camera_only_memory_enabled'] is True
+    assert memory['camera_attachment_enabled'] is False
+    assert memory['enable_test_camera_attachment'] is False
+    assert memory['allow_degraded_calibration'] is False
     assert selector['spatial_objects_topic'] == (
         '/semantic_search/phase4a/spatial_objects')
-    assert selector['maximum_depth_age_sec'] <= 0.5
     assert memory['best_candidate_threshold_calibrated'] is True
     assert memory['best_candidate_minimum_relevance'] == 0.26
     assert memory['publish_diagnostic_ranking'] is True

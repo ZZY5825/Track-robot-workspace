@@ -313,9 +313,15 @@ public:
     core_config_ = read_core_config();
     if (static_target_profile_) {
       constexpr std::int64_t maximum_static_budget_ns = 4'000'000'000LL;
-      if (!enable_test_camera_attachment_ || !allow_degraded_calibration_) {
+      if (!camera_only_memory_enabled_) {
         throw std::invalid_argument(
-                "static_target_profile is restricted to the explicit degraded test profile");
+                "static_target_profile requires camera_only_memory_enabled");
+      }
+      if (camera_attachment_enabled_ &&
+        (!enable_test_camera_attachment_ || !allow_degraded_calibration_))
+      {
+        throw std::invalid_argument(
+                "static target LiDAR attachment requires the explicit degraded test profile");
       }
       if (task_relevance_config_.maximum_grounding_age_ns >
         maximum_static_budget_ns ||
