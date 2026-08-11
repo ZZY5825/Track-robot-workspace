@@ -123,6 +123,7 @@ def test_phase4a_configs_share_the_fixed_base_contract_and_fail_closed():
     assert enricher['maximum_depth_delta_sec'] == 0.20
     assert memory['observations_topic'] == (
         '/semantic_memory/spatial_observations')
+    assert memory['lidar_memory_updates_enabled'] is False
     assert memory['camera_only_memory_enabled'] is True
     assert memory['camera_attachment_enabled'] is False
     assert memory['enable_test_camera_attachment'] is False

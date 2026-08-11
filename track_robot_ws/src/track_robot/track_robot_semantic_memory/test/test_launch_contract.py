@@ -26,6 +26,7 @@ def test_stage2d_keeps_bounded_safe_off_default_configuration():
     assert parameters['publish_events'] is True
     assert parameters['publish_association_debug'] is True
     assert parameters['association_shadow_mode'] is True
+    assert parameters['lidar_memory_updates_enabled'] is True
     assert parameters['camera_attachment_enabled'] is False
     assert parameters['camera_only_memory_enabled'] is False
     assert parameters['appearance_memory_enabled'] is True
@@ -149,13 +150,53 @@ def test_stage2d_node_has_runtime_attachment_and_source_time_tf_lookup():
     assert 'last_lidar_source_epoch_id_)' in source
 
 
-def test_static_profile_requires_camera_only_memory_and_scopes_degraded_flags():
+def test_phase4a_disables_direct_lidar_memory_updates():
+    profile = yaml.safe_load(
+        (PACKAGE_ROOT / 'config' / 'phase4a_test.yaml').read_text())
+    parameters = profile['semantic_memory']['ros__parameters']
+
+    assert parameters['lidar_memory_updates_enabled'] is False
+
+
+def test_node_applies_input_policy_at_subscription_and_direct_update_boundaries():
     source = (
         PACKAGE_ROOT / 'src' / 'semantic_memory_node.cpp'
     ).read_text()
 
-    assert 'static_target_profile requires camera_only_memory_enabled' in source
-    assert 'camera_attachment_enabled_ &&' in source
+    subscriptions = source[
+        source.index('  void create_input_subscriptions()'):
+        source.index('  void on_camera_info(')
+    ]
+    subscription_gate = 'if (input_policy_.requires_lidar_subscription())'
+    subscription_create = 'lidar_subscription_ = create_subscription<'
+    assert subscription_gate in subscriptions
+    assert subscriptions.index(subscription_gate) < subscriptions.index(
+        subscription_create)
+
+    on_lidar = source[
+        source.index('  void on_lidar('):
+        source.index('  std::optional<VisualAssociationKey>')
+    ]
+    direct_update_gate = (
+        'if (!input_policy_.allows_direct_lidar_memory_update())')
+    assert direct_update_gate in on_lidar
+    assert on_lidar.index(direct_update_gate) < on_lidar.index(
+        'if (!memory_core_)')
+    assert on_lidar.index(direct_update_gate) < on_lidar.index(
+        'next_memory_core.update(')
+
+
+def test_node_delegates_static_profile_authorization_to_input_policy():
+    source = (
+        PACKAGE_ROOT / 'src' / 'semantic_memory_node.cpp'
+    ).read_text()
+    static_guard = source[
+        source.index('    if (static_target_profile_) {'):
+        source.index('    task_relevance_config_.normalization_tolerance')
+    ]
+
+    assert 'input_policy_.validate_static_target_profile();' in static_guard
+    assert "maximum_static_budget_ns = 4'000'000'000LL" in static_guard
 
 
 def test_stage2e_runtime_fixture_covers_bounded_leave_and_reentry_cleanup():

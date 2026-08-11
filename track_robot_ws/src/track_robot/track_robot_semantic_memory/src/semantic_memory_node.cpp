@@ -38,6 +38,7 @@
 #include "track_robot_semantic_memory/camera_lidar_projector.hpp"
 #include "track_robot_semantic_memory/association_calibration.hpp"
 #include "track_robot_semantic_memory/cross_modal_associator.hpp"
+#include "track_robot_semantic_memory/input_policy.hpp"
 #include "track_robot_semantic_memory/memory_core.hpp"
 #include "track_robot_semantic_memory/ros_conversions.hpp"
 #include "track_robot_semantic_memory/reidentification_calibration.hpp"
@@ -144,6 +145,8 @@ public:
       "publish_association_debug", true);
     association_shadow_mode_ = declare_parameter<bool>(
       "association_shadow_mode", true);
+    input_policy_.lidar_memory_updates_enabled = declare_parameter<bool>(
+      "lidar_memory_updates_enabled", true);
     camera_attachment_enabled_ = declare_parameter<bool>(
       "camera_attachment_enabled", false);
     camera_only_memory_enabled_ = declare_parameter<bool>(
@@ -154,6 +157,12 @@ public:
       "allow_degraded_calibration", false);
     static_target_profile_ = declare_parameter<bool>(
       "static_target_profile", false);
+    input_policy_.association_shadow_mode = association_shadow_mode_;
+    input_policy_.camera_attachment_enabled = camera_attachment_enabled_;
+    input_policy_.camera_only_memory_enabled = camera_only_memory_enabled_;
+    input_policy_.enable_test_camera_attachment = enable_test_camera_attachment_;
+    input_policy_.allow_degraded_calibration = allow_degraded_calibration_;
+    input_policy_.static_target_profile = static_target_profile_;
     appearance_memory_enabled_ = declare_parameter<bool>(
       "appearance_memory_enabled", true);
     reidentification_shadow_mode_ = declare_parameter<bool>(
@@ -312,17 +321,8 @@ public:
 
     core_config_ = read_core_config();
     if (static_target_profile_) {
+      input_policy_.validate_static_target_profile();
       constexpr std::int64_t maximum_static_budget_ns = 4'000'000'000LL;
-      if (!camera_only_memory_enabled_) {
-        throw std::invalid_argument(
-                "static_target_profile requires camera_only_memory_enabled");
-      }
-      if (camera_attachment_enabled_ &&
-        (!enable_test_camera_attachment_ || !allow_degraded_calibration_))
-      {
-        throw std::invalid_argument(
-                "static target LiDAR attachment requires the explicit degraded test profile");
-      }
       if (task_relevance_config_.maximum_grounding_age_ns >
         maximum_static_budget_ns ||
         core_config_.static_lifecycle.stale_after_ns <
@@ -1034,11 +1034,13 @@ private:
       localization_topic,
       rclcpp::QoS(rclcpp::KeepLast(localization_depth)).reliable(),
       std::bind(&SemanticMemoryNode::on_localization, this, std::placeholders::_1));
-    lidar_subscription_ = create_subscription<
-      track_robot_interfaces::msg::SemanticLidarTrackletArray>(
-      lidar_topic,
-      rclcpp::QoS(rclcpp::KeepLast(lidar_depth)).best_effort(),
-      std::bind(&SemanticMemoryNode::on_lidar, this, std::placeholders::_1));
+    if (input_policy_.requires_lidar_subscription()) {
+      lidar_subscription_ = create_subscription<
+        track_robot_interfaces::msg::SemanticLidarTrackletArray>(
+        lidar_topic,
+        rclcpp::QoS(rclcpp::KeepLast(lidar_depth)).best_effort(),
+        std::bind(&SemanticMemoryNode::on_lidar, this, std::placeholders::_1));
+    }
     observation_subscription_ = create_subscription<
       track_robot_interfaces::msg::SemanticObservationArray>(
       observations_topic_,
@@ -1149,6 +1151,10 @@ private:
   {
     ++lidar_message_count_;
     producer_dropped_tracklet_count_ += message->dropped_tracklet_count;
+    if (!input_policy_.requires_lidar_subscription()) {
+      last_lidar_reason_ = "disabled_by_input_policy";
+      return;
+    }
     if (!current_domain_) {
       ++rejected_lidar_batch_count_;
       last_lidar_reason_ = "waiting_for_valid_localization_domain";
@@ -1188,6 +1194,10 @@ private:
           message->source_epoch_id,
           0},
         *message);
+    }
+    if (!input_policy_.allows_direct_lidar_memory_update()) {
+      last_lidar_reason_ = "buffered_for_association";
+      return;
     }
     if (!memory_core_) {
       const auto epoch = initial_memory_epoch_override_ != 0U ?
@@ -2251,6 +2261,7 @@ private:
   bool enable_test_camera_attachment_{false};
   bool allow_degraded_calibration_{false};
   bool static_target_profile_{false};
+  SemanticInputPolicy input_policy_;
   bool appearance_memory_enabled_{true};
   bool reidentification_shadow_mode_{true};
   bool reidentification_mutation_enabled_{false};

@@ -28,6 +28,7 @@ semantic_memory:
     publish_events: true
     publish_association_debug: true
     association_shadow_mode: true
+    lidar_memory_updates_enabled: true
     camera_attachment_enabled: false
     camera_only_memory_enabled: false
     enable_test_camera_attachment: false
