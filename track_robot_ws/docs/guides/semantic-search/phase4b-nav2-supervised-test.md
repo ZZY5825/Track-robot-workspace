@@ -181,7 +181,9 @@ ros2 run track_robot_semantic_search semantic_search_query \
   --subscriber-timeout 10
 ```
 
-在独立终端采集 30–60 秒原始证据：
+在独立终端用一个 Domain 20 rosbag 同步采集原始证据。启动命令后保持目标和
+机器人静止 30–60 秒，再按 `Ctrl-C` 结束录制；不要在这个终端依次运行多个
+持续阻塞的 `topic hz`/`topic echo`：
 
 ```bash
 source /opt/ros/foxy/setup.bash
@@ -190,21 +192,42 @@ export ROS_DOMAIN_ID=20
 export ROS_LOCALHOST_ONLY=0
 unset FASTRTPS_DEFAULT_PROFILES_FILE
 
-ros2 topic hz /zed/zed_node/depth/depth_registered
-ros2 topic hz /semantic_memory/spatial_observations
-ros2 topic echo /semantic_search/spatial_observation_diagnostics
-ros2 topic echo /semantic_memory/spatial_observations
-ros2 topic echo /semantic_memory/diagnostic_ranking
-ros2 topic echo /semantic_search/phase4a/selected_target
-ros2 topic hz /rslidar_points
-ros2 topic hz /safety/local_obstacle_grid
+BAG_DIR="$HOME/zed_depth_gate_domain20_$(date +%Y%m%d_%H%M%S)"
+ros2 bag record -o "$BAG_DIR" \
+  /zed/zed_node/depth/depth_registered \
+  /semantic_memory/spatial_observations \
+  /semantic_search/spatial_observation_diagnostics \
+  /semantic_memory/diagnostic_ranking \
+  /semantic_search/phase4a/selected_target \
+  /rslidar_points \
+  /safety/local_obstacle_grid
 ```
 
-深度诊断必须显示有限的 `depth_delta_ms`、`valid_depth_samples`、
-`depth_quality`，并为下列固定 counters 给出原始整数值：`matched_depth`、
+这个 bag 是位置跳变调查的首要原始证据。它同时保留 registered-depth Image 和
+spatial observation 的 ROS 时间戳，因此每个 `position_valid=true` 样本及其
+相邻位置跳变都能对应到实际深度帧，而不是只保留汇总频率或手抄位置。
+
+rosbag 停止后，可在同一终端顺序执行下列有时限的快速检查；每条命令会自行
+结束，不会阻塞后续检查：
+
+```bash
+timeout 15s ros2 topic hz /zed/zed_node/depth/depth_registered
+timeout 15s ros2 topic hz /semantic_memory/spatial_observations
+timeout 10s ros2 topic echo /semantic_search/spatial_observation_diagnostics --once
+timeout 10s ros2 topic echo /semantic_memory/spatial_observations --once
+timeout 10s ros2 topic echo /semantic_memory/diagnostic_ranking --once
+timeout 10s ros2 topic echo /semantic_search/phase4a/selected_target --once
+timeout 15s ros2 topic hz /rslidar_points
+timeout 15s ros2 topic hz /safety/local_obstacle_grid
+```
+
+深度诊断必须显示 `depth_delta_valid`；当其为 `true` 时，`depth_delta_ms`
+必须是有限真实值。诊断还必须显示 `valid_depth_samples`、`depth_quality`，并为
+下列固定 counters 给出原始整数值：`matched_depth`、
 `no_matching_depth`、`depth_delta_exceeded`、`insufficient_depth_samples`、
 `depth_out_of_range`、`tf_unavailable`、`invalid_transformed_position`。每个拒绝
-必须落入一个明确原因，不能只记为无输出。
+以及 `camera_info_unavailable`、`localization_unavailable`。每个拒绝必须落入
+一个明确原因，不能只记为无输出。
 
 同时确认无任何可执行运动发布者：
 

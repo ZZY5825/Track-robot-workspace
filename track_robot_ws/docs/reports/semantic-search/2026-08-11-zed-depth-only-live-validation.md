@@ -202,6 +202,32 @@ ros2 run track_robot_semantic_search semantic_search_query \
 No `start_approach` or `start_finding` request was made. No message was
 published to `/cmd_vel` or any Nav2 velocity topic.
 
+The synchronized evidence command was also **NOT RUN**. Once both sensor
+preconditions are restored, it must run in one Domain 20 terminal for 30–60
+seconds and be stopped with `Ctrl-C`:
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /home/track-robot/track_robot_ws/.worktrees/main-integration/track_robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+BAG_DIR="$HOME/zed_depth_gate_domain20_$(date +%Y%m%d_%H%M%S)"
+ros2 bag record -o "$BAG_DIR" \
+  /zed/zed_node/depth/depth_registered \
+  /semantic_memory/spatial_observations \
+  /semantic_search/spatial_observation_diagnostics \
+  /semantic_memory/diagnostic_ranking \
+  /semantic_search/phase4a/selected_target \
+  /rslidar_points \
+  /safety/local_obstacle_grid
+```
+
+That single bag is required to correlate each spatial-position jump with the
+raw registered-depth frame at the same source time. Any supplementary rate or
+echo check must be bounded (for example, `timeout 15s ros2 topic hz TOPIC` or
+`timeout 10s ros2 topic echo TOPIC --once`) so checks can run sequentially.
+
 ## Requested 30–60 second measurements
 
 | Evidence | Measured value |
@@ -209,11 +235,15 @@ published to `/cmd_vel` or any Nav2 velocity topic.
 | Bottle measured fixed distance | NOT MEASURED |
 | Capture start/end | NOT MEASURED |
 | Capture duration | NOT MEASURED |
+| Rosbag output path | NOT MEASURED |
+| Rosbag capture duration | NOT MEASURED |
+| Rosbag size and message counts | NOT MEASURED |
 | `/zed/zed_node/depth/depth_registered` rate | NOT MEASURED |
 | `/semantic_memory/spatial_observations` rate | NOT MEASURED |
 | Selected `global_object_id` | NOT MEASURED |
 | Position samples | NOT MEASURED |
 | ZED depth samples corresponding to position changes | NOT MEASURED |
+| Registered-depth frames corresponding to position jumps | NOT MEASURED |
 | Dropouts | NOT MEASURED |
 | `/rslidar_points` rate | NOT MEASURED |
 | `/safety/local_obstacle_grid` rate | NOT MEASURED |
@@ -228,6 +258,7 @@ Diagnostic counters on
 | --- | --- |
 | `latest_reason` | NOT MEASURED |
 | `depth_delta_ms` | NOT MEASURED |
+| `depth_delta_valid` | NOT MEASURED |
 | `valid_depth_samples` | NOT MEASURED |
 | `depth_quality` | NOT MEASURED |
 | `matched_depth` | NOT MEASURED |
@@ -237,6 +268,8 @@ Diagnostic counters on
 | `depth_out_of_range` | NOT MEASURED |
 | `tf_unavailable` | NOT MEASURED |
 | `invalid_transformed_position` | NOT MEASURED |
+| `camera_info_unavailable` | NOT MEASURED |
+| `localization_unavailable` | NOT MEASURED |
 
 ## Acceptance gates
 
@@ -265,17 +298,21 @@ false positives, which were not stopped. No unrelated process was stopped.
 
 ## Rollback points
 
-The tested Tasks 1–4 series is:
+The runtime-code series begins after rollback base
+`65c53970f8dde95938936c4b89063b6e2ddb478d` and contains these six commits in
+chronological order:
 
-1. `44d71981af9cdc8a8a119e917beaa2c14e1eb53f` — depth enrichment callback tests;
-2. `14a319852f91c0f58625866e25abf629184c808c` — single semantic 3D owner;
-3. `9e40303891d029421e76c1eff1ce9de76f82fe30` — ZED-only semantic memory geometry;
-4. `3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b` — direct LiDAR update gate.
+1. `baf29d5875cc6ab2ed468232b3dc78c1462ee8cb` — bounded ZED depth buffer;
+2. `1675b0691429ea2c7d18423b67b68de16801e289` — camera-source depth correlation;
+3. `44d71981af9cdc8a8a119e917beaa2c14e1eb53f` — depth enrichment callback tests;
+4. `14a319852f91c0f58625866e25abf629184c808c` — single semantic 3D owner;
+5. `9e40303891d029421e76c1eff1ce9de76f82fe30` — ZED-only semantic memory geometry;
+6. `3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b` — direct LiDAR update gate.
 
-The rollback point immediately before the Tasks 1–4 series is
-`1675b0691429ea2c7d18423b67b68de16801e289`. Reverting individual commits should
-follow normal reverse order (`3f2e4e5`, `9e40303`, `14a3198`, `44d7198`) and is
-not part of this validation.
+If the whole runtime change must be rolled back, revert the six code commits in
+this exact reverse order: `3f2e4e5`, `9e40303`, `14a3198`, `44d7198`,
+`1675b06`, `baf29d5`. The documentation-only follow-ups `9345b0b` and
+`44d0e45` may be reverted separately; rollback is not part of this validation.
 
 ## Minimal next step
 

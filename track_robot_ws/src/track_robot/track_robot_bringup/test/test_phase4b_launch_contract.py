@@ -9,6 +9,10 @@ GUIDE = (
     PACKAGE.parents[2] / 'docs' / 'guides' / 'semantic-search' /
     'phase4b-nav2-supervised-test.md'
 )
+LIVE_REPORT = (
+    PACKAGE.parents[2] / 'docs' / 'reports' / 'semantic-search' /
+    '2026-08-11-zed-depth-only-live-validation.md'
+)
 
 
 def _source(path):
@@ -87,3 +91,40 @@ def test_phase4b_operator_guide_matches_static_mission_and_dino_defaults():
     assert '`inflation_radius=0.60 m`' in guide
     assert '`cost_scaling_factor=12.0`' in guide
     assert '`0.88 x 0.80 m`' in guide
+
+
+def test_zed_gate_uses_one_bounded_synchronized_evidence_capture():
+    guide = _source(GUIDE)
+    gate = guide.split('### 3.1', 1)[1].split('## 4.', 1)[0]
+
+    assert 'ros2 bag record' in gate
+    assert '30–60' in gate
+    assert 'Ctrl-C' in gate
+    for topic in (
+            '/zed/zed_node/depth/depth_registered',
+            '/semantic_memory/spatial_observations',
+            '/semantic_search/spatial_observation_diagnostics',
+            '/semantic_memory/diagnostic_ranking',
+            '/semantic_search/phase4a/selected_target',
+            '/rslidar_points',
+            '/safety/local_obstacle_grid'):
+        assert topic in gate
+    for line in gate.splitlines():
+        if 'ros2 topic hz ' in line or 'ros2 topic echo ' in line:
+            assert line.startswith('timeout ')
+
+
+def test_zed_live_report_preserves_unmeasured_bag_fields_and_full_rollback():
+    report = _source(LIVE_REPORT)
+
+    assert 'Rosbag output path | NOT MEASURED' in report
+    assert 'Rosbag capture duration | NOT MEASURED' in report
+    assert 'Registered-depth frames corresponding to position jumps' in report
+    assert '65c53970f8dde95938936c4b89063b6e2ddb478d' in report
+    inverse_commits = (
+        '3f2e4e5', '9e40303', '14a3198',
+        '44d7198', '1675b06', 'baf29d5',
+    )
+    rollback = report.split('this exact reverse order:', 1)[1]
+    positions = [rollback.index(commit) for commit in inverse_commits]
+    assert positions == sorted(positions)
