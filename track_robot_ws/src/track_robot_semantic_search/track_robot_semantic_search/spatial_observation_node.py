@@ -39,6 +39,8 @@ class SpatialObservationNode(Node):
         'depth_out_of_range',
         'tf_unavailable',
         'invalid_transformed_position',
+        'camera_info_unavailable',
+        'localization_unavailable',
     )
 
     def __init__(self):
@@ -112,9 +114,11 @@ class SpatialObservationNode(Node):
             10)
 
     def _on_localization(self, message):
+        self._localization_epoch_id = 0
         if (
                 message.local_healthy
-                and str(message.canonical_frame_id) == self._config.frame_id):
+                and str(message.canonical_frame_id) == self._config.frame_id
+                and int(message.localization_epoch_id) > 0):
             self._localization_epoch_id = int(message.localization_epoch_id)
 
     def _on_camera_info(self, message):
@@ -158,6 +162,18 @@ class SpatialObservationNode(Node):
         valid_depth_samples = 0
         depth_quality = 0.0
         for observation in message.observations:
+            if self._intrinsics is None or self._localization_epoch_id <= 0:
+                latest_reason = (
+                    'camera_info_unavailable'
+                    if self._intrinsics is None
+                    else 'localization_unavailable')
+                self._counters[latest_reason] += 1
+                enriched.append(copy.deepcopy(observation))
+                depth_delta_ns = 0
+                valid_depth_samples = 0
+                depth_quality = 0.0
+                continue
+
             source_stamp_ns = self._observation_stamp_ns(message, observation)
             match = self._depth_buffer.nearest(source_stamp_ns,
                                                self._maximum_depth_delta_ns)

@@ -105,6 +105,14 @@ def diagnostic_values(message):
     return {item.key: item.value for item in message.status[0].values}
 
 
+def localization_state(*, healthy=True, frame_id='base_link', epoch_id=7):
+    return SimpleNamespace(
+        local_healthy=healthy,
+        canonical_frame_id=frame_id,
+        localization_epoch_id=epoch_id,
+    )
+
+
 def test_enricher_matches_observation_stamp_and_uses_exact_depth_tf():
     source = (
         Path(__file__).resolve().parents[1]
@@ -132,6 +140,8 @@ def test_enricher_diagnostics_use_only_fixed_reason_counters():
         'depth_out_of_range',
         'tf_unavailable',
         'invalid_transformed_position',
+        'camera_info_unavailable',
+        'localization_unavailable',
     )
 
     assert '_COUNTER_KEYS = (' in source
@@ -152,6 +162,82 @@ def test_enricher_configures_bounded_depth_matching():
     assert 'depth_buffer_frames: 16' in config
     assert 'depth_buffer_max_age_sec: 2.0' in config
     assert 'maximum_depth_delta_sec: 0.20' in config
+
+
+def test_unhealthy_localization_clears_previously_accepted_epoch():
+    node = make_node(DepthFrameBuffer(max_frames=4, max_age_ns=10_000))
+    node._on_localization(localization_state(epoch_id=41))
+    assert node._localization_epoch_id == 41
+
+    node._on_localization(localization_state(healthy=False, epoch_id=41))
+
+    assert node._localization_epoch_id == 0
+
+
+def test_frame_mismatch_clears_previously_accepted_epoch():
+    node = make_node(DepthFrameBuffer(max_frames=4, max_age_ns=10_000))
+    node._on_localization(localization_state(epoch_id=41))
+    assert node._localization_epoch_id == 41
+
+    node._on_localization(localization_state(
+        frame_id='odom', epoch_id=41))
+
+    assert node._localization_epoch_id == 0
+
+
+def test_nonpositive_localization_epoch_is_not_accepted():
+    node = make_node(DepthFrameBuffer(max_frames=4, max_age_ns=10_000))
+    node._on_localization(localization_state(epoch_id=41))
+
+    node._on_localization(localization_state(epoch_id=0))
+
+    assert node._localization_epoch_id == 0
+
+
+def test_missing_camera_info_preserves_each_2d_observation_once():
+    depth_buffer = DepthFrameBuffer(max_frames=4, max_age_ns=10_000)
+    depth_buffer.push(depth_frame(100))
+    node = make_node(depth_buffer)
+    node._intrinsics = None
+    message = observation_array(
+        observation('first', 100), observation('second', 100))
+
+    node._on_observations(message)
+
+    assert len(node._publisher.messages) == 1
+    assert [item.observation_id for item in
+            node._publisher.messages[0].observations] == ['first', 'second']
+    assert all(not item.position_valid for item in
+               node._publisher.messages[0].observations)
+    assert node._tf_buffer.calls == []
+    assert node._counters['camera_info_unavailable'] == 2
+    assert len(node._diagnostics_publisher.messages) == 1
+    values = diagnostic_values(node._diagnostics_publisher.messages[0])
+    assert values['latest_reason'] == 'camera_info_unavailable'
+    assert values['camera_info_unavailable'] == '2'
+
+
+def test_missing_localization_preserves_each_2d_observation_once():
+    depth_buffer = DepthFrameBuffer(max_frames=4, max_age_ns=10_000)
+    depth_buffer.push(depth_frame(100))
+    node = make_node(depth_buffer)
+    node._localization_epoch_id = 0
+    message = observation_array(
+        observation('first', 100), observation('second', 100))
+
+    node._on_observations(message)
+
+    assert len(node._publisher.messages) == 1
+    assert [item.observation_id for item in
+            node._publisher.messages[0].observations] == ['first', 'second']
+    assert all(not item.position_valid for item in
+               node._publisher.messages[0].observations)
+    assert node._tf_buffer.calls == []
+    assert node._counters['localization_unavailable'] == 2
+    assert len(node._diagnostics_publisher.messages) == 1
+    values = diagnostic_values(node._diagnostics_publisher.messages[0])
+    assert values['latest_reason'] == 'localization_unavailable'
+    assert values['localization_unavailable'] == '2'
 
 
 def test_callback_keeps_mixed_results_and_uses_matched_depth_tf():
