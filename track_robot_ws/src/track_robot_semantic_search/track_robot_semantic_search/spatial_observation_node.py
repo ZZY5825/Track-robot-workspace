@@ -159,6 +159,7 @@ class SpatialObservationNode(Node):
         enriched_count = 0
         latest_reason = 'no_observations'
         depth_delta_ns = 0
+        depth_delta_valid = False
         valid_depth_samples = 0
         depth_quality = 0.0
         for observation in message.observations:
@@ -170,26 +171,34 @@ class SpatialObservationNode(Node):
                 self._counters[latest_reason] += 1
                 enriched.append(copy.deepcopy(observation))
                 depth_delta_ns = 0
+                depth_delta_valid = False
                 valid_depth_samples = 0
                 depth_quality = 0.0
                 continue
 
             source_stamp_ns = self._observation_stamp_ns(message, observation)
-            match = self._depth_buffer.nearest(source_stamp_ns,
-                                               self._maximum_depth_delta_ns)
+            match = self._depth_buffer.closest(source_stamp_ns)
             if match is None:
-                latest_reason = (
-                    'no_matching_depth'
-                    if self._depth_buffer.size == 0
-                    else 'depth_delta_exceeded')
+                latest_reason = 'no_matching_depth'
                 self._counters[latest_reason] += 1
                 enriched.append(copy.deepcopy(observation))
                 depth_delta_ns = 0
+                depth_delta_valid = False
+                valid_depth_samples = 0
+                depth_quality = 0.0
+                continue
+            if match.delta_ns > self._maximum_depth_delta_ns:
+                latest_reason = 'depth_delta_exceeded'
+                self._counters[latest_reason] += 1
+                enriched.append(copy.deepcopy(observation))
+                depth_delta_ns = match.delta_ns
+                depth_delta_valid = True
                 valid_depth_samples = 0
                 depth_quality = 0.0
                 continue
 
             depth_delta_ns = match.delta_ns
+            depth_delta_valid = True
             try:
                 transform = self._tf_buffer.lookup_transform(
                     self._config.frame_id,
@@ -232,6 +241,7 @@ class SpatialObservationNode(Node):
             enriched_count=enriched_count,
             latest_reason=latest_reason,
             depth_delta_ns=depth_delta_ns,
+            depth_delta_valid=depth_delta_valid,
             valid_depth_samples=valid_depth_samples,
             depth_quality=depth_quality,
         )
@@ -242,6 +252,7 @@ class SpatialObservationNode(Node):
             enriched_count,
             latest_reason,
             depth_delta_ns,
+            depth_delta_valid,
             valid_depth_samples,
             depth_quality):
         status = DiagnosticStatus()
@@ -257,6 +268,9 @@ class SpatialObservationNode(Node):
             KeyValue(
                 key='depth_delta_ms',
                 value='{:.3f}'.format(depth_delta_ns / 1e6)),
+            KeyValue(
+                key='depth_delta_valid',
+                value='true' if depth_delta_valid else 'false'),
             KeyValue(
                 key='valid_depth_samples', value=str(valid_depth_samples)),
             KeyValue(

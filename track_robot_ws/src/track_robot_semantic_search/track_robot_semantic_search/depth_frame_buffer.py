@@ -42,16 +42,22 @@ class DepthFrameBuffer:
                 or newest - self._frames[0].stamp_ns > self._max_age_ns):
             self._frames.popleft()
 
-    def nearest(self, stamp_ns, maximum_delta_ns):
+    def closest(self, stamp_ns):
         stamp_ns = int(stamp_ns)
-        maximum_delta_ns = int(maximum_delta_ns)
-        if stamp_ns <= 0 or maximum_delta_ns < 0 or not self._frames:
+        if stamp_ns <= 0 or not self._frames:
             return None
         selected = min(
             self._frames,
             key=lambda frame: (abs(frame.stamp_ns - stamp_ns), frame.stamp_ns),
         )
         delta_ns = abs(selected.stamp_ns - stamp_ns)
-        if delta_ns > maximum_delta_ns:
-            return None
         return DepthMatch(selected, delta_ns)
+
+    def nearest(self, stamp_ns, maximum_delta_ns):
+        maximum_delta_ns = int(maximum_delta_ns)
+        if maximum_delta_ns < 0:
+            return None
+        match = self.closest(stamp_ns)
+        if match is None or match.delta_ns > maximum_delta_ns:
+            return None
+        return match

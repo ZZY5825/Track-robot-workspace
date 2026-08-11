@@ -120,7 +120,7 @@ def test_enricher_matches_observation_stamp_and_uses_exact_depth_tf():
         / 'spatial_observation_node.py'
     ).read_text()
     assert 'DepthFrameBuffer' in source
-    assert 'nearest(source_stamp_ns' in source
+    assert 'closest(source_stamp_ns' in source
     assert 'Time(nanoseconds=match.frame.stamp_ns)' in source
     assert 'Time()' not in source
     assert 'DiagnosticArray' in source
@@ -280,7 +280,8 @@ def test_callback_distinguishes_empty_and_outside_delta_buffers():
 
     node._on_observations(observation_array(observation('empty', 100)))
     depth_buffer.push(depth_frame(100))
-    node._on_observations(observation_array(observation('outside', 1_000)))
+    node._on_observations(observation_array(
+        observation('outside', 1_000_100)))
 
     assert len(node._publisher.messages) == 2
     assert [
@@ -296,3 +297,7 @@ def test_callback_distinguishes_empty_and_outside_delta_buffers():
         node._diagnostics_publisher.messages[1])
     assert first_values['latest_reason'] == 'no_matching_depth'
     assert second_values['latest_reason'] == 'depth_delta_exceeded'
+    assert first_values['depth_delta_valid'] == 'false'
+    assert first_values['depth_delta_ms'] == '0.000'
+    assert second_values['depth_delta_valid'] == 'true'
+    assert second_values['depth_delta_ms'] == '1.000'
