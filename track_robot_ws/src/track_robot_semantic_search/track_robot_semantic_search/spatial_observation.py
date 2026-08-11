@@ -65,7 +65,6 @@ def spatialize_observation(
         config=SpatialObservationConfig()):
     """Return a copied observation with metric stereo geometry when valid."""
     output = copy.deepcopy(observation)
-    estimate = None
     try:
         config.validate()
         if int(localization_epoch_id) <= 0 or int(depth_stamp_ns) <= 0:
@@ -85,15 +84,6 @@ def spatialize_observation(
             maximum_depth_m=config.maximum_depth_m,
             inner_fraction=config.inner_fraction,
         )
-        x, y, z = transform_point(
-            (estimate.x, estimate.y, estimate.z),
-            translation=translation,
-            quaternion=quaternion,
-        )
-        if (
-                not all(math.isfinite(value) for value in (x, y, z))
-                or not any(abs(value) > 1e-12 for value in (x, y, z))):
-            raise ValueError('transformed position is non-finite')
     except DepthEstimationError as error:
         return SpatializationResult(
             observation=output,
@@ -106,10 +96,28 @@ def spatialize_observation(
         return SpatializationResult(
             observation=output,
             accepted=False,
+            reason='insufficient_depth_samples',
+            valid_depth_samples=0,
+            depth_quality=0.0,
+        )
+
+    try:
+        x, y, z = transform_point(
+            (estimate.x, estimate.y, estimate.z),
+            translation=translation,
+            quaternion=quaternion,
+        )
+        if (
+                not all(math.isfinite(value) for value in (x, y, z))
+                or not any(abs(value) > 1e-12 for value in (x, y, z))):
+            raise ValueError('transformed position is invalid')
+    except (TypeError, ValueError):
+        return SpatializationResult(
+            observation=output,
+            accepted=False,
             reason='invalid_transformed_position',
-            valid_depth_samples=(
-                estimate.valid_samples if estimate is not None else 0),
-            depth_quality=(estimate.quality if estimate is not None else 0.0),
+            valid_depth_samples=estimate.valid_samples,
+            depth_quality=estimate.quality,
         )
 
     output.position_valid = True

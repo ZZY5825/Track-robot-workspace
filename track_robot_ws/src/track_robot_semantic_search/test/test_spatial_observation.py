@@ -122,3 +122,24 @@ def test_invalid_transformed_position_preserves_2d_observation():
     assert result.valid_depth_samples == 16
     assert result.depth_quality == 1.0
     assert result.observation.position_valid is False
+
+
+def test_invalid_intrinsics_are_not_reported_as_transform_failure():
+    result = spatialize_observation(
+        observation(),
+        depth=np.full((4, 4), 2.0, dtype=np.float32),
+        intrinsics=CameraIntrinsics(
+            fx=0.0, fy=100.0, cx=1.5, cy=1.5),
+        translation=(0.0, 0.0, 0.0),
+        quaternion=(0.0, 0.0, 0.0, 1.0),
+        localization_epoch_id=7,
+        depth_stamp_ns=2_500_000_123,
+        config=SpatialObservationConfig(
+            minimum_samples=4,
+            inner_fraction=1.0,
+        ),
+    )
+
+    assert result.accepted is False
+    assert result.reason == 'insufficient_depth_samples'
+    assert result.observation.position_valid is False
