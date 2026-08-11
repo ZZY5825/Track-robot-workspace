@@ -1,8 +1,9 @@
-"""ROS adapter that enriches semantic observations with registered ZED depth."""
+"""Enrich semantic observations with registered ZED depth."""
 
 import copy
 
 from cv_bridge import CvBridge, CvBridgeError
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -15,6 +16,7 @@ from track_robot_interfaces.msg import (
     SemanticObservationArray,
 )
 
+from .depth_frame_buffer import DepthFrame, DepthFrameBuffer
 from .phase4a_depth import CameraIntrinsics
 from .spatial_observation import (
     SpatialObservationConfig,
@@ -29,14 +31,21 @@ def _stamp_ns(stamp):
 class SpatialObservationNode(Node):
     """Publish every observation array, adding metric depth when available."""
 
+    _COUNTER_KEYS = (
+        'matched_depth',
+        'no_matching_depth',
+        'depth_delta_exceeded',
+        'insufficient_depth_samples',
+        'depth_out_of_range',
+        'tf_unavailable',
+        'invalid_transformed_position',
+    )
+
     def __init__(self):
         super().__init__('semantic_depth_enricher')
         self._bridge = CvBridge()
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
-        self._depth = None
-        self._depth_stamp_ns = 0
-        self._depth_frame_id = ''
         self._intrinsics = None
         self._localization_epoch_id = 0
 
@@ -55,8 +64,17 @@ class SpatialObservationNode(Node):
         localization_topic = self.declare_parameter(
             'localization_topic',
             '/semantic_search/phase4a/localization_state').value
+        diagnostics_topic = self.declare_parameter(
+            'diagnostics_topic',
+            '/semantic_search/spatial_observation_diagnostics').value
+        self._depth_buffer = DepthFrameBuffer(
+            max_frames=int(self.declare_parameter(
+                'depth_buffer_frames', 16).value),
+            max_age_ns=int(float(self.declare_parameter(
+                'depth_buffer_max_age_sec', 2.0).value) * 1_000_000_000),
+        )
         self._maximum_depth_delta_ns = int(float(self.declare_parameter(
-            'maximum_depth_delta_sec', 0.5).value) * 1_000_000_000)
+            'maximum_depth_delta_sec', 0.20).value) * 1_000_000_000)
         self._tf_timeout_sec = float(self.declare_parameter(
             'tf_timeout_sec', 0.05).value)
         self._config = SpatialObservationConfig(
@@ -72,9 +90,12 @@ class SpatialObservationNode(Node):
                 'depth_inner_fraction', 0.5).value),
         )
         self._config.validate()
+        self._counters = {key: 0 for key in self._COUNTER_KEYS}
 
         self._publisher = self.create_publisher(
             SemanticObservationArray, output_topic, 10)
+        self._diagnostics_publisher = self.create_publisher(
+            DiagnosticArray, diagnostics_topic, 10)
         self._observation_subscription = self.create_subscription(
             SemanticObservationArray, input_topic, self._on_observations, 10)
         self._depth_subscription = self.create_subscription(
@@ -115,13 +136,13 @@ class SpatialObservationNode(Node):
                 message, desired_encoding='32FC1')
             if depth.ndim != 2:
                 raise ValueError('depth image is not two-dimensional')
-            self._depth = depth
-            self._depth_stamp_ns = _stamp_ns(message.header.stamp)
-            self._depth_frame_id = str(message.header.frame_id)
+            self._depth_buffer.push(DepthFrame(
+                stamp_ns=_stamp_ns(message.header.stamp),
+                frame_id=str(message.header.frame_id),
+                image=depth,
+            ))
         except (CvBridgeError, TypeError, ValueError):
-            self._depth = None
-            self._depth_stamp_ns = 0
-            self._depth_frame_id = ''
+            pass
 
     def _observation_stamp_ns(self, message, observation):
         if observation.camera_stamp_valid:
@@ -130,50 +151,108 @@ class SpatialObservationNode(Node):
 
     def _on_observations(self, message):
         output = copy.deepcopy(message)
-        if (
-                self._depth is None
-                or self._intrinsics is None
-                or not self._depth_frame_id
-                or self._depth_stamp_ns <= 0
-                or self._localization_epoch_id <= 0):
-            self._publisher.publish(output)
-            return
-        try:
-            transform = self._tf_buffer.lookup_transform(
-                self._config.frame_id,
-                self._depth_frame_id,
-                Time(nanoseconds=self._depth_stamp_ns),
-                timeout=Duration(seconds=self._tf_timeout_sec),
-            )
-        except Exception:  # Foxy tf2 exception classes differ by patch release.
-            self._publisher.publish(output)
-            return
-        translation = transform.transform.translation
-        rotation = transform.transform.rotation
         enriched = []
+        enriched_count = 0
+        latest_reason = 'no_observations'
+        depth_delta_ns = 0
+        valid_depth_samples = 0
+        depth_quality = 0.0
         for observation in message.observations:
             source_stamp_ns = self._observation_stamp_ns(message, observation)
-            if (
-                    source_stamp_ns <= 0
-                    or abs(source_stamp_ns - self._depth_stamp_ns)
-                    > self._maximum_depth_delta_ns):
+            match = self._depth_buffer.nearest(source_stamp_ns,
+                                               self._maximum_depth_delta_ns)
+            if match is None:
+                latest_reason = (
+                    'no_matching_depth'
+                    if self._depth_buffer.size == 0
+                    else 'depth_delta_exceeded')
+                self._counters[latest_reason] += 1
                 enriched.append(copy.deepcopy(observation))
+                depth_delta_ns = 0
+                valid_depth_samples = 0
+                depth_quality = 0.0
                 continue
-            spatial, _ = spatialize_observation(
+
+            depth_delta_ns = match.delta_ns
+            try:
+                transform = self._tf_buffer.lookup_transform(
+                    self._config.frame_id,
+                    match.frame.frame_id,
+                    Time(nanoseconds=match.frame.stamp_ns),
+                    timeout=Duration(seconds=self._tf_timeout_sec),
+                )
+            except Exception:  # Foxy tf2 exception classes vary by patch.
+                latest_reason = 'tf_unavailable'
+                self._counters[latest_reason] += 1
+                enriched.append(copy.deepcopy(observation))
+                valid_depth_samples = 0
+                depth_quality = 0.0
+                continue
+
+            translation = transform.transform.translation
+            rotation = transform.transform.rotation
+            result = spatialize_observation(
                 observation,
-                depth=self._depth,
+                depth=match.frame.image,
                 intrinsics=self._intrinsics,
                 translation=(
                     translation.x, translation.y, translation.z),
                 quaternion=(
                     rotation.x, rotation.y, rotation.z, rotation.w),
                 localization_epoch_id=self._localization_epoch_id,
-                depth_stamp_ns=self._depth_stamp_ns,
+                depth_stamp_ns=match.frame.stamp_ns,
                 config=self._config,
             )
-            enriched.append(spatial)
+            enriched.append(result.observation)
+            latest_reason = result.reason
+            self._counters[latest_reason] += 1
+            valid_depth_samples = result.valid_depth_samples
+            depth_quality = result.depth_quality
+            if result.accepted:
+                enriched_count += 1
         output.observations = enriched
         self._publisher.publish(output)
+        self._publish_diagnostics(
+            enriched_count=enriched_count,
+            latest_reason=latest_reason,
+            depth_delta_ns=depth_delta_ns,
+            valid_depth_samples=valid_depth_samples,
+            depth_quality=depth_quality,
+        )
+
+    def _publish_diagnostics(
+            self,
+            *,
+            enriched_count,
+            latest_reason,
+            depth_delta_ns,
+            valid_depth_samples,
+            depth_quality):
+        status = DiagnosticStatus()
+        status.name = 'semantic_search/spatial_observation'
+        status.hardware_id = 'zed_registered_depth'
+        status.level = (
+            DiagnosticStatus.OK
+            if enriched_count > 0
+            else DiagnosticStatus.WARN)
+        status.message = latest_reason
+        status.values = [
+            KeyValue(key='latest_reason', value=latest_reason),
+            KeyValue(
+                key='depth_delta_ms',
+                value='{:.3f}'.format(depth_delta_ns / 1e6)),
+            KeyValue(
+                key='valid_depth_samples', value=str(valid_depth_samples)),
+            KeyValue(
+                key='depth_quality', value='{:.6f}'.format(depth_quality)),
+        ] + [
+            KeyValue(key=key, value=str(self._counters[key]))
+            for key in self._COUNTER_KEYS
+        ]
+        output = DiagnosticArray()
+        output.header.stamp = self.get_clock().now().to_msg()
+        output.status = [status]
+        self._diagnostics_publisher.publish(output)
 
 
 def main(args=None):

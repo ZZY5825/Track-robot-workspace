@@ -26,10 +26,10 @@ def observation():
     )
 
 
-def test_spatialize_observation_sets_camera_depth_geometry_without_mutating_input():
+def test_spatialize_observation_sets_geometry_without_mutating_input():
     source = observation()
     depth = np.full((4, 4), 2.0, dtype=np.float32)
-    output, accepted = spatialize_observation(
+    result = spatialize_observation(
         source,
         depth=depth,
         intrinsics=CameraIntrinsics(
@@ -44,7 +44,11 @@ def test_spatialize_observation_sets_camera_depth_geometry_without_mutating_inpu
         ),
     )
 
-    assert accepted is True
+    assert result.accepted is True
+    assert result.reason == 'matched_depth'
+    assert result.valid_depth_samples == 16
+    assert result.depth_quality == 1.0
+    output = result.observation
     assert source.position_valid is False
     assert output.position_valid is True
     assert output.position_frame_id == 'base_link'
@@ -69,7 +73,7 @@ def test_spatialize_observation_sets_camera_depth_geometry_without_mutating_inpu
 
 def test_invalid_depth_preserves_the_original_observation():
     source = observation()
-    output, accepted = spatialize_observation(
+    result = spatialize_observation(
         source,
         depth=np.full((4, 4), np.nan, dtype=np.float32),
         intrinsics=CameraIntrinsics(
@@ -84,9 +88,37 @@ def test_invalid_depth_preserves_the_original_observation():
         ),
     )
 
-    assert accepted is False
+    assert result.accepted is False
+    assert result.reason == 'insufficient_depth_samples'
+    assert result.valid_depth_samples == 0
+    assert result.depth_quality == 0.0
+    output = result.observation
     assert output is not source
     assert output.position_valid is False
     assert output.position_frame_id == ''
     assert output.localization_epoch_id == 0
     assert output.evidence_flags == 0
+
+
+def test_invalid_transformed_position_preserves_2d_observation():
+    source = observation()
+    result = spatialize_observation(
+        source,
+        depth=np.full((4, 4), 2.0, dtype=np.float32),
+        intrinsics=CameraIntrinsics(
+            fx=100.0, fy=100.0, cx=1.5, cy=1.5),
+        translation=(0.0, 0.0, -2.0),
+        quaternion=(0.0, 0.0, 0.0, 1.0),
+        localization_epoch_id=7,
+        depth_stamp_ns=2_500_000_123,
+        config=SpatialObservationConfig(
+            minimum_samples=4,
+            inner_fraction=1.0,
+        ),
+    )
+
+    assert result.accepted is False
+    assert result.reason == 'invalid_transformed_position'
+    assert result.valid_depth_samples == 16
+    assert result.depth_quality == 1.0
+    assert result.observation.position_valid is False
