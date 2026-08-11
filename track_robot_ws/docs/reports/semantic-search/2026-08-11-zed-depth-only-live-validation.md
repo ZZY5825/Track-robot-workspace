@@ -4,7 +4,10 @@
 
 - Software build/regression: **PASS**, with the harness caveats recorded below.
 - Stationary `green bottle` live gate: **NOT EVALUATED**.
-- Tested source commit: `3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b`.
+- Hardware preflight source commit: `3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b`.
+- Latest verified runtime code head: `f7a3558622c29b1f61c223518313a2677f5b474a`.
+- `4734240ac9863169626737644b3b2c750d1aa443` and this report correction are
+  documentation/contract-only changes after that runtime head.
 - ROS domain: `20`.
 - Motion authorization: none. No base, approach/finding service, Nav2 execution,
   or velocity publisher was started by this validation.
@@ -87,10 +90,12 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest \
 
 Measured results:
 
-- semantic search: `884 passed in 8.31 seconds`;
+- semantic search: `891 passed in 8.41 seconds`;
 - Phase 4A bringup launch contract: `6 passed in 0.05 seconds`;
+- Phase 4B documentation/launch contract: `7 passed in 0.02 seconds`;
 - semantic memory launch contract: `13 passed in 0.12 seconds`;
-- total affected assertions: `903 passed`, `0 failed`.
+- total focused assertions: `917 passed`, `0 failed`.
+- latest aggregate: `1583 tests, 0 errors, 0 failures, 4 skipped`.
 
 ### Three-package build
 
@@ -120,14 +125,17 @@ colcon test --packages-select \
 colcon test-result --verbose
 ```
 
-Result: both commands exited `0`; `Summary: 1574 tests, 0 errors, 0 failures,
+Result: both commands exited `0`; `Summary: 1583 tests, 0 errors, 0 failures,
 4 skipped`.
 
 A fresh pre-commit rerun after the documentation changes also exited `0`:
-three-package build `3 packages finished`, affected pytest splits `884 passed in
-8.67 seconds`, `6 passed in 0.05 seconds`, and `13 passed in 0.11 seconds`, then
-`colcon test-result --verbose` again reported `1574 tests, 0 errors, 0 failures,
-4 skipped`.
+three-package build `3 packages finished`; the latest runtime-head verification
+reported semantic search `891 passed`, Phase 4A `6 passed`, Phase 4B docs
+contract `7 passed`, and semantic memory `13 passed`. The aggregate
+`colcon test-result --verbose` reported `1583 tests, 0 errors, 0 failures,
+4 skipped`. The four skips are the existing semantic-memory ROS runtime tests
+that require local DDS interface access; no hardware result is inferred from
+these software metrics.
 
 All four existing skips are in
 `track_robot_semantic_memory/test/test_ros_runtime.py` and carry the same reason:
@@ -226,7 +234,8 @@ ros2 bag record -o "$BAG_DIR" \
 That single bag is required to correlate each spatial-position jump with the
 raw registered-depth frame at the same source time. Any supplementary rate or
 echo check must be bounded (for example, `timeout 15s ros2 topic hz TOPIC` or
-`timeout 10s ros2 topic echo TOPIC --once`) so checks can run sequentially.
+`timeout 10s ros2 topic echo TOPIC`) so checks can run sequentially. ROS 2 Foxy
+does not provide a one-message-only option for `ros2 topic echo`.
 
 ## Requested 30–60 second measurements
 
@@ -299,20 +308,25 @@ false positives, which were not stopped. No unrelated process was stopped.
 ## Rollback points
 
 The runtime-code series begins after rollback base
-`65c53970f8dde95938936c4b89063b6e2ddb478d` and contains these six commits in
-chronological order:
+`65c53970f8dde95938936c4b89063b6e2ddb478d`.
 
-1. `baf29d5875cc6ab2ed468232b3dc78c1462ee8cb` — bounded ZED depth buffer;
-2. `1675b0691429ea2c7d18423b67b68de16801e289` — camera-source depth correlation;
-3. `44d71981af9cdc8a8a119e917beaa2c14e1eb53f` — depth enrichment callback tests;
-4. `14a319852f91c0f58625866e25abf629184c808c` — single semantic 3D owner;
-5. `9e40303891d029421e76c1eff1ce9de76f82fe30` — ZED-only semantic memory geometry;
-6. `3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b` — direct LiDAR update gate.
+Runtime reverse order: `f7a3558`, `c0a234b`, `3f2e4e5`, `9e40303`,
+`14a3198`, `44d7198`, `1675b06`, `baf29d5`.
 
-If the whole runtime change must be rolled back, revert the six code commits in
-this exact reverse order: `3f2e4e5`, `9e40303`, `14a3198`, `44d7198`,
-`1675b06`, `baf29d5`. The documentation-only follow-ups `9345b0b` and
-`44d0e45` may be reverted separately; rollback is not part of this validation.
+These abbreviations resolve respectively to
+`f7a3558622c29b1f61c223518313a2677f5b474a`,
+`c0a234b752b6db82641628a413df8909f3ea143c`,
+`3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b`,
+`9e40303891d029421e76c1eff1ce9de76f82fe30`,
+`14a319852f91c0f58625866e25abf629184c808c`,
+`44d71981af9cdc8a8a119e917beaa2c14e1eb53f`,
+`1675b0691429ea2c7d18423b67b68de16801e289`, and
+`baf29d5875cc6ab2ed468232b3dc78c1462ee8cb`.
+
+Docs-only reverse order: `4734240`, `44d0e45`, `9345b0b`. These are not runtime
+commits. This report correction itself is also documentation/contract-only and
+can be undone by reverting its containing docs-only commit. No rollback was
+performed during this validation.
 
 ## Minimal next step
 

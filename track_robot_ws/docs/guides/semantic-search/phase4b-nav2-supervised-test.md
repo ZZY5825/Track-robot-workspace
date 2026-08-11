@@ -213,10 +213,10 @@ rosbag 停止后，可在同一终端顺序执行下列有时限的快速检查�
 ```bash
 timeout 15s ros2 topic hz /zed/zed_node/depth/depth_registered
 timeout 15s ros2 topic hz /semantic_memory/spatial_observations
-timeout 10s ros2 topic echo /semantic_search/spatial_observation_diagnostics --once
-timeout 10s ros2 topic echo /semantic_memory/spatial_observations --once
-timeout 10s ros2 topic echo /semantic_memory/diagnostic_ranking --once
-timeout 10s ros2 topic echo /semantic_search/phase4a/selected_target --once
+timeout 10s ros2 topic echo /semantic_search/spatial_observation_diagnostics
+timeout 10s ros2 topic echo /semantic_memory/spatial_observations
+timeout 10s ros2 topic echo /semantic_memory/diagnostic_ranking
+timeout 10s ros2 topic echo /semantic_search/phase4a/selected_target
 timeout 15s ros2 topic hz /rslidar_points
 timeout 15s ros2 topic hz /safety/local_obstacle_grid
 ```
@@ -225,9 +225,10 @@ timeout 15s ros2 topic hz /safety/local_obstacle_grid
 必须是有限真实值。诊断还必须显示 `valid_depth_samples`、`depth_quality`，并为
 下列固定 counters 给出原始整数值：`matched_depth`、
 `no_matching_depth`、`depth_delta_exceeded`、`insufficient_depth_samples`、
-`depth_out_of_range`、`tf_unavailable`、`invalid_transformed_position`。每个拒绝
-以及 `camera_info_unavailable`、`localization_unavailable`。每个拒绝必须落入
-一个明确原因，不能只记为无输出。
+`depth_out_of_range`、`tf_unavailable`、`invalid_transformed_position`、
+`camera_info_unavailable`、`localization_unavailable`。
+
+每个拒绝必须落入一个明确原因，不能只记为无输出。
 
 同时确认无任何可执行运动发布者：
 

@@ -100,6 +100,7 @@ def test_zed_gate_uses_one_bounded_synchronized_evidence_capture():
     assert 'ros2 bag record' in gate
     assert '30–60' in gate
     assert 'Ctrl-C' in gate
+    assert '--once' not in gate
     for topic in (
             '/zed/zed_node/depth/depth_registered',
             '/semantic_memory/spatial_observations',
@@ -113,18 +114,47 @@ def test_zed_gate_uses_one_bounded_synchronized_evidence_capture():
         if 'ros2 topic hz ' in line or 'ros2 topic echo ' in line:
             assert line.startswith('timeout ')
 
+    expected_counters = (
+        'matched_depth',
+        'no_matching_depth',
+        'depth_delta_exceeded',
+        'insufficient_depth_samples',
+        'depth_out_of_range',
+        'tf_unavailable',
+        'invalid_transformed_position',
+        'camera_info_unavailable',
+        'localization_unavailable',
+    )
+    for counter in expected_counters:
+        assert '`{}`'.format(counter) in gate
+    assert '每个拒绝必须落入一个明确原因' in gate
+
 
 def test_zed_live_report_preserves_unmeasured_bag_fields_and_full_rollback():
     report = _source(LIVE_REPORT)
 
+    assert '--once' not in report
     assert 'Rosbag output path | NOT MEASURED' in report
     assert 'Rosbag capture duration | NOT MEASURED' in report
     assert 'Registered-depth frames corresponding to position jumps' in report
     assert '65c53970f8dde95938936c4b89063b6e2ddb478d' in report
-    inverse_commits = (
-        '3f2e4e5', '9e40303', '14a3198',
-        '44d7198', '1675b06', 'baf29d5',
+    assert ('Hardware preflight source commit: '
+            '`3f2e4e581d5bb22834f0de7b84d9308b78ed8b0b`') in report
+    assert ('Latest verified runtime code head: '
+            '`f7a3558622c29b1f61c223518313a2677f5b474a`') in report
+    assert 'semantic search: `891 passed' in report
+    assert '1583 tests, 0 errors, 0 failures, 4 skipped' in report
+    inverse_runtime_commits = (
+        'f7a3558', 'c0a234b', '3f2e4e5', '9e40303',
+        '14a3198', '44d7198', '1675b06', 'baf29d5',
     )
-    rollback = report.split('this exact reverse order:', 1)[1]
-    positions = [rollback.index(commit) for commit in inverse_commits]
+    rollback = report.split('Runtime reverse order:', 1)[1]
+    positions = [rollback.index(commit) for commit in inverse_runtime_commits]
     assert positions == sorted(positions)
+    docs_only = rollback.split('Docs-only reverse order:', 1)[1]
+    docs_positions = [
+        docs_only.index(commit)
+        for commit in ('4734240', '44d0e45', '9345b0b')
+    ]
+    assert docs_positions == sorted(docs_positions)
+    assert 'containing docs-only commit' in report
