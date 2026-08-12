@@ -37,12 +37,12 @@
 判定到达时按现有安全链执行：
 
 1. 取消当前 Nav2 `NavigateToPose` action；
-2. 清除本次 approach authorization，阻止自动重新 dispatch；
+2. 将本次 mission 锁存为 arrived，保留 authorization、目标引用和冻结的 `odom` 锚点，但阻止再次 dispatch 或 recovery；
 3. 请求现有 safety supervisor disarm，使最终速度归零；
 4. 发布 `target_reached` 诊断，并记录最终目标距离；
 5. 保留上游语义记忆、global ID 和目标三维位置，不修改 Phase 2/3 数据。
 
-到达逻辑不得直接发布 `/cmd_vel`。新 query 或操作者之后重新发起 approach 可建立新任务，但如果仍小于阈值，新任务也会立即停住。
+到达逻辑不得直接发布 `/cmd_vel`。arrived 状态持续到新 query、operator cancel 或新的 mission 被明确建立，不会因为 safety disarm 或实时目标观测抖动自行解除。
 
 ## 5. 失败与兼容行为
 
