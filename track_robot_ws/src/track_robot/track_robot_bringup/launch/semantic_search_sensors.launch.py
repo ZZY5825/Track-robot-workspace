@@ -1,54 +1,36 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
-    camera = IncludeLaunchDescription(
+    hardware = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([
             FindPackageShare('track_robot_bringup'),
             'launch',
-            'semantic_search_camera.launch.py',
+            'track_robot_hardware.launch.py',
         ])),
         launch_arguments={
+            'start_description': 'false',
             'start_camera': LaunchConfiguration('start_camera'),
-            'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
-            'extrinsic_file': LaunchConfiguration('extrinsic_file'),
-            'allow_degraded': LaunchConfiguration('allow_degraded'),
-            'depth_mode': LaunchConfiguration('camera_depth_mode'),
-        }.items(),
-    )
-    lidar = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(PathJoinSubstitution([
-            FindPackageShare('track_robot_bringup'),
-            'launch',
-            'rslidar_with_tf.launch.py',
-        ])),
-        launch_arguments={
+            'start_lidar': LaunchConfiguration('start_lidar'),
+            'start_base': LaunchConfiguration('start_base'),
+            'start_imu': LaunchConfiguration('start_imu'),
+            'base_frame': LaunchConfiguration('base_frame'),
+            'camera_depth_mode': LaunchConfiguration('camera_depth_mode'),
             'configure_network': LaunchConfiguration('configure_network'),
             'network_interface': LaunchConfiguration('network_interface'),
             'host_ip': LaunchConfiguration('host_ip'),
             'host_cidr': LaunchConfiguration('host_cidr'),
             'driver_start_delay': LaunchConfiguration('driver_start_delay'),
-            'config_path': LaunchConfiguration('lidar_config_path'),
+            'lidar_config_path': LaunchConfiguration('lidar_config_path'),
             'publish_base_lidar_tf':
                 LaunchConfiguration('publish_base_lidar_tf'),
-        }.items(),
-        condition=IfCondition(LaunchConfiguration('start_lidar')),
-    )
-    platform = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(PathJoinSubstitution([
-            FindPackageShare('track_robot_bringup'),
-            'launch',
-            'semantic_search_platform.launch.py',
-        ])),
-        launch_arguments={
-            'start_base': LaunchConfiguration('start_base'),
-            'start_imu': LaunchConfiguration('start_imu'),
-            'base_frame': LaunchConfiguration('base_frame'),
+            'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+            'extrinsic_file': LaunchConfiguration('extrinsic_file'),
+            'allow_degraded': LaunchConfiguration('allow_degraded'),
         }.items(),
     )
 
@@ -79,7 +61,5 @@ def generate_launch_description():
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('allow_degraded', default_value='false'),
         DeclareLaunchArgument('camera_depth_mode', default_value='NONE'),
-        camera,
-        lidar,
-        platform,
+        hardware,
     ])

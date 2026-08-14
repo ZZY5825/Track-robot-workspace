@@ -40,6 +40,11 @@ if(BUILD_TESTING)
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
   ament_add_pytest_test(
+    test_shared_hardware_launch_contract
+    test/test_shared_hardware_launch_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
     test_readiness
     test/test_readiness.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
