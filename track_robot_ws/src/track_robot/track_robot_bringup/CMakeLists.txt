@@ -20,6 +20,7 @@ install(DIRECTORY
 )
 
 install(PROGRAMS
+  scripts/human_following_ctl
   scripts/semantic_search_ctl
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -97,6 +98,16 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_human_following_launch_contract
     test/test_human_following_launch_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
+    test_human_following_cli
+    test/test_human_following_cli.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
+  ament_add_pytest_test(
+    test_human_following_readiness
+    test/test_human_following_readiness.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
 endif()
