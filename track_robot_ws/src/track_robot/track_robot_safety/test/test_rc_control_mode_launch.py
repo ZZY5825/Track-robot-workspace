@@ -101,7 +101,7 @@ class TestRcControlMode(unittest.TestCase):
             rclpy.spin_once(self.node, timeout_sec=0.05)
             time.sleep(0.02)
 
-    def test_rc_mode_with_neutral_sticks_disarms_and_requires_rearm(self):
+    def test_rc_mode_with_neutral_sticks_disarms_and_stays_disarmed_after_can_restore(self):
         self.publish_inputs(control_mode=1)
         self.assertTrue(self.arm_client.wait_for_service(timeout_sec=2.0))
         future = self.arm_client.call_async(Trigger.Request())

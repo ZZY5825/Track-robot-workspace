@@ -464,23 +464,55 @@ private:
       if (decision_.behavior == decision_.BEHAVIOR_TARGET_LOST ||
         decision_.behavior == decision_.BEHAVIOR_RC_OVERRIDE)
       {
-        requestTargetReset(
+        queueTargetReset(
           decision_.behavior == decision_.BEHAVIOR_RC_OVERRIDE ? "rc_override" : "target_lost");
       }
       RCLCPP_INFO(get_logger(), "Decision %u -> %u: %s", last_behavior_, decision_.behavior,
         decision_.reason.c_str());
       last_behavior_ = decision_.behavior;
     }
+    attemptPendingTargetReset();
   }
 
-  void requestTargetReset(const std::string & reason)
+  void queueTargetReset(const std::string & reason)
   {
-    if (!reset_target_client_->service_is_ready()) {
-      RCLCPP_WARN(get_logger(), "%s; reset service is not available", reason.c_str());
+    reset_target_pending_ = true;
+    reset_target_reason_ = reason;
+    next_reset_target_attempt_time_ = steadyNow();
+  }
+
+  void attemptPendingTargetReset()
+  {
+    if (!reset_target_pending_ || reset_target_request_in_flight_ ||
+      steadyNow() < next_reset_target_attempt_time_)
+    {
       return;
     }
-    reset_target_client_->async_send_request(std::make_shared<std_srvs::srv::Trigger::Request>());
-    RCLCPP_WARN(get_logger(), "%s; requested logical target reset", reason.c_str());
+    if (!reset_target_client_->service_is_ready()) {
+      next_reset_target_attempt_time_ = steadyNow() + std::chrono::milliseconds(200);
+      return;
+    }
+
+    reset_target_request_in_flight_ = true;
+    reset_target_client_->async_send_request(
+      std::make_shared<std_srvs::srv::Trigger::Request>(),
+      [this](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+        reset_target_request_in_flight_ = false;
+        try {
+          const auto response = future.get();
+          if (response->success) {
+            reset_target_pending_ = false;
+            RCLCPP_WARN(get_logger(), "%s; reset logical target", reset_target_reason_.c_str());
+            return;
+          }
+          RCLCPP_WARN(get_logger(), "%s; reset target failed; retrying",
+            reset_target_reason_.c_str());
+        } catch (const std::exception & error) {
+          RCLCPP_WARN(get_logger(), "%s; reset target request failed: %s; retrying",
+            reset_target_reason_.c_str(), error.what());
+        }
+        next_reset_target_attempt_time_ = steadyNow() + std::chrono::milliseconds(200);
+      });
   }
 
   void publishDebug()
@@ -643,12 +675,14 @@ private:
   bool have_target_{false}, have_health_{false}, have_avoidance_{false}, have_safety_{false};
   bool have_reliable_target_{false}, lidar_only_active_{false}, search_active_{false};
   bool blocked_latched_{false};
+  bool reset_target_pending_{false}, reset_target_request_in_flight_{false};
   int confirmed_ticks_{0}, lidar_ticks_{0}, blocked_clear_ticks_{0}, last_candidate_id_{-1};
   uint8_t last_behavior_{255};
   double search_center_world_yaw_{0.0};
-  std::string hard_stop_reason_, blocked_reason_;
+  std::string hard_stop_reason_, blocked_reason_, reset_target_reason_;
   SteadyTime target_time_, health_time_, avoidance_time_, safety_time_;
   SteadyTime last_reliable_time_, lidar_only_start_, search_start_;
+  SteadyTime next_reset_target_attempt_time_;
   track_robot_interfaces::msg::TargetState target_, last_reliable_target_;
   track_robot_interfaces::msg::PerceptionHealth health_;
   track_robot_interfaces::msg::AvoidanceState avoidance_;

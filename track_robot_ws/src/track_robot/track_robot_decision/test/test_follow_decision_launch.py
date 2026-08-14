@@ -54,6 +54,8 @@ class TestFollowDecision(unittest.TestCase):
     def setUp(self):
         self.node = rclpy.create_node('follow_decision_test_client')
         self.reset_target_calls = 0
+        self.reset_target_successes = 0
+        self.reset_target_failures_remaining = 0
         self.reset_target_service = self.node.create_service(
             Trigger, '/human_tracking/reset_target', self.on_reset_target)
         self.target_pub = self.node.create_publisher(
@@ -71,6 +73,12 @@ class TestFollowDecision(unittest.TestCase):
 
     def on_reset_target(self, _request, response):
         self.reset_target_calls += 1
+        if self.reset_target_failures_remaining:
+            self.reset_target_failures_remaining -= 1
+            response.success = False
+            response.message = 'retry'
+            return response
+        self.reset_target_successes += 1
         response.success = True
         response.message = 'reset'
         return response
@@ -89,6 +97,11 @@ class TestFollowDecision(unittest.TestCase):
             publisher.publish(message)
             rclpy.spin_once(self.node, timeout_sec=0.05)
             time.sleep(0.04)
+
+    def spin_for(self, duration):
+        deadline = time.monotonic() + duration
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self.node, timeout_sec=0.05)
 
     @staticmethod
     def confirmed_target():
@@ -182,11 +195,43 @@ class TestFollowDecision(unittest.TestCase):
         rc = SafetyState()
         rc.state = SafetyState.STATE_RC_OVERRIDE
         rc.reason = 'test_rc_override'
-        resets_before_rc = self.reset_target_calls
+        reset_calls_before_rc = self.reset_target_calls
+        reset_successes_before_rc = self.reset_target_successes
         self.publish_repeated(self.safety_pub, rc, count=1)
         stopped = self.spin_until(
             lambda: self.decisions[-1].behavior ==
             FollowDecision.BEHAVIOR_RC_OVERRIDE)
         self.assertFalse(stopped.motion_permitted)
         self.spin_until(
-            lambda: self.reset_target_calls > resets_before_rc)
+            lambda: self.reset_target_successes == reset_successes_before_rc + 1)
+        self.spin_for(0.3)
+        self.assertEqual(self.reset_target_calls, reset_calls_before_rc + 1)
+        self.assertEqual(self.reset_target_successes, reset_successes_before_rc + 1)
+
+    def test_rc_reset_retries_after_failed_response(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        clear = AvoidanceState()
+        clear.state = AvoidanceState.STATE_DIRECT_CLEAR
+        self.publish_repeated(self.safety_pub, disarmed, count=3)
+        self.publish_repeated(self.avoidance_pub, clear, count=3)
+        self.spin_until(
+            lambda: self.decisions and self.decisions[-1].behavior !=
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+
+        self.reset_target_failures_remaining = 1
+        reset_calls_before_rc = self.reset_target_calls
+        reset_successes_before_rc = self.reset_target_successes
+        rc = SafetyState()
+        rc.state = SafetyState.STATE_RC_OVERRIDE
+        rc.reason = 'test_rc_override_retry'
+        self.publish_repeated(self.safety_pub, rc, count=1)
+        stopped = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.assertFalse(stopped.motion_permitted)
+        self.spin_until(
+            lambda: self.reset_target_successes == reset_successes_before_rc + 1)
+        self.spin_for(0.3)
+        self.assertEqual(self.reset_target_calls, reset_calls_before_rc + 2)
+        self.assertEqual(self.reset_target_successes, reset_successes_before_rc + 1)
