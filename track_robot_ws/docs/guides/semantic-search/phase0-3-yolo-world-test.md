@@ -33,9 +33,11 @@ These rules are test gates, not troubleshooting suggestions:
    - `base_link -> zed_left_camera_optical_frame` is available for Phase 2/3.
 6. This is a passive test. Before and during the run,
    `ros2 topic info /cmd_vel` must show zero publishers.
-7. Use one English query per fresh perception process. Until transactional
-   query switching is verified, restart the stack before testing another
-   query.
+7. Use English queries only. Query switching no longer requires restarting
+   the perception process: the cached CLIP text encoder is restored to FP32
+   before updating the YOLO-World vocabulary, while image inference remains
+   FP16. See `phase1-query-switch-fp16-clip-fix.md` for the failure analysis,
+   regression evidence, and live verification boundary.
 8. Stop RViz and every test-owned ROS process after collecting evidence, then
    verify that no test-owned node remains.
 
