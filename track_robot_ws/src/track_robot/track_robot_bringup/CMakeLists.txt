@@ -94,6 +94,11 @@ if(BUILD_TESTING)
     test/test_human_following_profiles.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_human_following_launch_contract
+    test/test_human_following_launch_contract.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()
