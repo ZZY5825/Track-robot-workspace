@@ -36,6 +36,10 @@ SCENARIOS = {
     'test_can_return_requires_new_wave': ('/test/session_can', 'active'),
     'test_stop_from_other_visual_target_is_ignored':
         ('/test/session_wrong_stop', 'active'),
+    'test_initial_arm_rejects_stale_base_status':
+        ('/test/session_base_stale', 'active'),
+    'test_bad_base_status_revokes_authorized_session':
+        ('/test/session_base_fault', 'active'),
     'test_stale_arm_success_disarms_and_cannot_authorize_new_session':
         ('/test/session_stale_arm', 'active'),
 }
@@ -155,6 +159,8 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
         self.visual_track_id = 7
         self.bunker_mode = 1
         self.safety_armed = False
+        self.base_status_fresh = True
+        self.base_status_ok = True
         self.executor_thread.start()
         self.wait_for_graph()
 
@@ -274,8 +280,8 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
             safety.state = SafetyState.STATE_CLEAR if self.safety_armed \
                 else SafetyState.STATE_DISARMED
             safety.armed = self.safety_armed
-            safety.base_status_fresh = True
-            safety.base_status_ok = True
+            safety.base_status_fresh = self.base_status_fresh
+            safety.base_status_ok = self.base_status_ok
             self.safety_pub.publish(safety)
 
             bunker = BunkerStatus()
@@ -384,6 +390,24 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
         self.assertEqual(disarm_calls, self.disarm_calls)
         self.assertEqual(reset_calls, self.reset_calls)
         self.assertTrue(self.states[-1].target_authorized)
+
+    def test_initial_arm_rejects_stale_base_status(self):
+        self.base_status_fresh = False
+        self.publish_inputs(count=4)
+        self.publish_gesture('start_tracking')
+        self.publish_inputs(count=8)
+        self.assertEqual(0, self.arm_calls)
+        self.assertFalse(self.states[-1].target_authorized)
+
+    def test_bad_base_status_revokes_authorized_session(self):
+        self.start_session()
+        self.base_status_ok = False
+        self.wait_until(
+            lambda: self.disarm_calls >= 1 and self.reset_calls >= 1 and any(
+                msg.state == HumanFollowingSession.STATE_FAULT and
+                not msg.target_authorized for msg in self.states[-20:]),
+            republish=True)
+        self.assertFalse(self.states[-1].target_authorized)
 
     def test_stale_arm_success_disarms_and_cannot_authorize_new_session(self):
         self.delay_first_arm = True

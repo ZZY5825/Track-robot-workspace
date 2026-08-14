@@ -306,10 +306,12 @@ private:
       avoidance_->state == avoidance_->STATE_NO_SAFE_TRAJECTORY;
     inputs.safety_disarmed_ready = safety_fresh &&
       safety_->state == safety_->STATE_DISARMED && !safety_->armed &&
-      !safety_->rc_override_active && !safety_->emergency_stop_latched;
+      !safety_->rc_override_active && !safety_->emergency_stop_latched &&
+      safety_->base_status_fresh && safety_->base_status_ok;
     inputs.safety_armed = safety_fresh && safety_->armed;
     inputs.safety_hard_fault = safety_fresh &&
-      (safety_->emergency_stop_latched ||
+      (!safety_->base_status_fresh || !safety_->base_status_ok ||
+      safety_->emergency_stop_latched ||
       safety_->state == safety_->STATE_EMERGENCY_STOP ||
       safety_->state == safety_->STATE_BASE_FAULT ||
       safety_->state == safety_->STATE_SENSOR_STALE);
