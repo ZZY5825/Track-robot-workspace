@@ -192,8 +192,11 @@ private:
 
   void safetyCallback(const track_robot_interfaces::msg::SafetyState & msg)
   {
-    const bool entering_rc = msg.state == msg.STATE_RC_OVERRIDE &&
-      (!have_safety_ || safety_.state != safety_.STATE_RC_OVERRIDE);
+    const bool rc_takeover_active = msg.rc_override_active ||
+      msg.state == msg.STATE_RC_OVERRIDE;
+    const bool previous_rc_takeover_active = have_safety_ &&
+      (safety_.rc_override_active || safety_.state == safety_.STATE_RC_OVERRIDE);
+    const bool entering_rc = rc_takeover_active && !previous_rc_takeover_active;
     safety_ = msg;
     safety_time_ = steadyNow();
     have_safety_ = true;

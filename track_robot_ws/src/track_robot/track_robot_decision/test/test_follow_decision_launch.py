@@ -52,12 +52,14 @@ def decision_node(name='follow_behavior_tree_node', prefix=''):
 def generate_test_description():
     decision = decision_node()
     relock_decision = decision_node('relock_decision', '/test/relock')
+    masked_rc_decision = decision_node('masked_rc_decision', '/test/masked_rc')
     generation_decision = decision_node('generation_decision', '/test/generation')
     delayed_decision = decision_node('delayed_decision', '/test/delayed')
     unavailable_decision = decision_node('unavailable_decision', '/test/unavailable')
     return launch.LaunchDescription([
         decision,
         relock_decision,
+        masked_rc_decision,
         generation_decision,
         delayed_decision,
         unavailable_decision,
@@ -80,6 +82,8 @@ class TestFollowDecision(unittest.TestCase):
         prefixes = {
             'test_rc_clear_requires_reset_and_no_target_before_relock':
                 '/test/relock',
+            'test_emergency_stop_masked_rc_requires_relock':
+                '/test/masked_rc',
             'test_new_rc_generation_waits_for_own_reset_response':
                 '/test/generation',
             'test_delayed_reset_response_keeps_one_request_in_flight':
@@ -151,7 +155,7 @@ class TestFollowDecision(unittest.TestCase):
             [(msg.behavior, msg.reason) for msg in self.decisions[-8:]]))
 
     def publish_repeated(self, publisher, message, count=4):
-        for _ in range(count):
+        for _ in range(max(3, count)):
             publisher.publish(message)
             rclpy.spin_once(self.node, timeout_sec=0.05)
             time.sleep(0.04)
@@ -324,6 +328,54 @@ class TestFollowDecision(unittest.TestCase):
             FollowDecision.BEHAVIOR_FOLLOW_LIDAR_LIMITED,
             FollowDecision.BEHAVIOR_SEARCH_ROTATE,
         ))
+        self.assertFalse(held.motion_permitted)
+        self.assertFalse(held.automatic_resume_permitted)
+
+        no_target = TargetState()
+        no_target.target_id = -1
+        no_target.lock_state = TargetState.LOCK_NO_TARGET
+        no_target.track_state = TargetState.TRACK_NO_TARGET
+        self.publish_repeated(self.target_pub, no_target, count=1)
+
+        new_target = self.confirmed_target()
+        new_target.target_id = 8
+        self.publish_repeated(self.target_pub, new_target)
+        resumed = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED)
+        self.assertTrue(resumed.motion_permitted)
+        self.assertTrue(resumed.automatic_resume_permitted)
+
+    def test_emergency_stop_masked_rc_requires_relock(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+
+        stale_target = self.confirmed_target()
+        self.publish_repeated(self.target_pub, stale_target)
+        self.spin_until(
+            lambda: self.decisions and self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED)
+
+        emergency_stop = SafetyState()
+        emergency_stop.state = SafetyState.STATE_EMERGENCY_STOP
+        emergency_stop.rc_override_active = True
+        emergency_stop.reason = 'test_emergency_stop_masked_rc'
+        self.publish_repeated(self.safety_pub, emergency_stop, count=3)
+        stopped = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_FAULT_HOLD)
+        self.assertFalse(stopped.motion_permitted)
+        self.assertFalse(stopped.automatic_resume_permitted)
+        self.spin_until(lambda: self.reset_target_successes == 1)
+        self.spin_for(0.3)
+        self.assertEqual(self.reset_target_calls, 1)
+
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+        self.publish_repeated(self.target_pub, stale_target)
+        held = self.spin_until(
+            lambda: self.decisions[-1].behavior !=
+            FollowDecision.BEHAVIOR_FAULT_HOLD)
         self.assertFalse(held.motion_permitted)
         self.assertFalse(held.automatic_resume_permitted)
 
