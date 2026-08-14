@@ -27,6 +27,9 @@
 
 namespace {
 
+constexpr uint8_t BUNKER_CONTROL_MODE_CAN = 1U;
+constexpr uint8_t BUNKER_CONTROL_MODE_RC = 3U;
+
 double clampValue(const double value, const double low, const double high)
 {
   return std::max(low, std::min(value, high));
@@ -223,6 +226,8 @@ private:
     latest_bunker_status_ = *msg;
     last_base_status_time_ = std::chrono::steady_clock::now();
     have_base_status_ = true;
+    rc_control_mode_active_ = msg->control_mode == BUNKER_CONTROL_MODE_RC;
+    updateRcOverrideState();
     if (msg->vehicle_state != 0U || msg->error_code != 0U) {
       armed_ = false;
     }
@@ -233,10 +238,25 @@ private:
     latest_rc_state_ = *msg;
     last_rc_time_ = std::chrono::steady_clock::now();
     have_rc_state_ = true;
-    rc_override_active_ = rcOverrideActive(*msg);
-    if (rc_override_active_) {
-      armed_ = false;
-      rc_override_latched_ = true;
+    rc_stick_override_active_ = rcOverrideActive(*msg);
+    updateRcOverrideState();
+  }
+
+  void updateRcOverrideState()
+  {
+    const bool was_active = rc_override_active_;
+    rc_override_active_ = rc_control_mode_active_ || rc_stick_override_active_;
+    if (!rc_override_active_) {
+      return;
+    }
+
+    armed_ = false;
+    waiting_for_first_command_after_arm_ = false;
+    rc_override_latched_ = true;
+    if (!was_active) {
+      RCLCPP_WARN(
+        get_logger(), "RC takeover active (%s); supervisor disarmed",
+        rc_control_mode_active_ ? "bunker control mode" : "stick input");
     }
   }
 
@@ -273,7 +293,7 @@ private:
     }
     if (rc_override_active_) {
       decision.state = track_robot_interfaces::msg::SafetyState::STATE_RC_OVERRIDE;
-      decision.reason = "rc_stick_override";
+      decision.reason = rc_control_mode_active_ ? "rc_control_mode" : "rc_stick_override";
       return decision;
     }
     if (!armed_) {
@@ -547,7 +567,8 @@ private:
     if (latest_bunker_status_.vehicle_state != 0U || latest_bunker_status_.error_code != 0U) {
       return false;
     }
-    return !require_can_control_mode_ || latest_bunker_status_.control_mode == 1U;
+    return !require_can_control_mode_ ||
+      latest_bunker_status_.control_mode == BUNKER_CONTROL_MODE_CAN;
   }
 
   std::string baseFaultReason() const
@@ -558,7 +579,9 @@ private:
     if (latest_bunker_status_.error_code != 0U) {
       return "bunker_error_code_nonzero";
     }
-    if (require_can_control_mode_ && latest_bunker_status_.control_mode != 1U) {
+    if (require_can_control_mode_ &&
+      latest_bunker_status_.control_mode != BUNKER_CONTROL_MODE_CAN)
+    {
       return "bunker_not_in_can_mode";
     }
     return "bunker_status_unavailable";
@@ -596,7 +619,7 @@ private:
     }
     if (rc_override_active_) {
       response->success = false;
-      response->message = "Cannot arm: RC sticks are active";
+      response->message = "Cannot arm: RC takeover is active";
       return;
     }
     if (!allow_arm_without_command_ &&
@@ -674,7 +697,7 @@ private:
   {
     if (rc_override_active_) {
       response->success = false;
-      response->message = "Cannot reset emergency stop while RC sticks are active";
+      response->message = "Cannot reset emergency stop while RC takeover is active";
       return;
     }
     if (require_bunker_status_ && have_base_status_ && !baseStatusOk()) {
@@ -723,6 +746,12 @@ private:
          << "\"reason\":\"" << decision.reason << "\","
          << "\"armed\":" << (armed_ ? "true" : "false") << ","
          << "\"emergency_stop\":" << (emergency_stop_latched_ ? "true" : "false") << ","
+         << "\"bunker_control_mode\":" << (have_base_status_ ?
+      static_cast<int>(latest_bunker_status_.control_mode) : -1) << ","
+         << "\"rc_control_mode_active\":" <<
+      (rc_control_mode_active_ ? "true" : "false") << ","
+         << "\"rc_stick_override_active\":" <<
+      (rc_stick_override_active_ ? "true" : "false") << ","
          << "\"command_age\":" << finiteOrNegative(ageSeconds(last_command_time_, have_command_)) << ","
          << "\"cloud_age\":" << finiteOrNegative(ageSeconds(last_cloud_time_, have_cloud_)) << ","
          << "\"base_status_age\":" << finiteOrNegative(ageSeconds(last_base_status_time_, have_base_status_)) << ","
@@ -872,6 +901,8 @@ private:
   bool armed_{false};
   bool emergency_stop_latched_{false};
   bool rc_override_active_{false};
+  bool rc_control_mode_active_{false};
+  bool rc_stick_override_active_{false};
   bool rc_override_latched_{false};
   bool have_command_{false};
   bool have_cloud_{false};

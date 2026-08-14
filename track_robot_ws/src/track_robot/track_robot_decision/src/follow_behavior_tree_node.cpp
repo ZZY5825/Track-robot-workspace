@@ -461,8 +461,11 @@ private:
     publishDebug();
     publishMarkers();
     if (decision_.behavior != last_behavior_) {
-      if (decision_.behavior == decision_.BEHAVIOR_TARGET_LOST) {
-        requestTargetReset();
+      if (decision_.behavior == decision_.BEHAVIOR_TARGET_LOST ||
+        decision_.behavior == decision_.BEHAVIOR_RC_OVERRIDE)
+      {
+        requestTargetReset(
+          decision_.behavior == decision_.BEHAVIOR_RC_OVERRIDE ? "rc_override" : "target_lost");
       }
       RCLCPP_INFO(get_logger(), "Decision %u -> %u: %s", last_behavior_, decision_.behavior,
         decision_.reason.c_str());
@@ -470,14 +473,14 @@ private:
     }
   }
 
-  void requestTargetReset()
+  void requestTargetReset(const std::string & reason)
   {
     if (!reset_target_client_->service_is_ready()) {
-      RCLCPP_WARN(get_logger(), "Target lost; reset service is not available");
+      RCLCPP_WARN(get_logger(), "%s; reset service is not available", reason.c_str());
       return;
     }
     reset_target_client_->async_send_request(std::make_shared<std_srvs::srv::Trigger::Request>());
-    RCLCPP_WARN(get_logger(), "Target lost; requested logical target reset");
+    RCLCPP_WARN(get_logger(), "%s; requested logical target reset", reason.c_str());
   }
 
   void publishDebug()

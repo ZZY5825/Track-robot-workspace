@@ -80,6 +80,22 @@ planner, safety supervisor, and command gate. The controller remains disabled,
 and the safety supervisor remains disarmed. Do not enable either during initial
 visualization and command-only testing.
 
+## Manual Takeover and Reauthorization
+
+RC takeover is a hard transition, not a temporary pause. When `/safety/state`
+enters `STATE_RC_OVERRIDE`, the decision node publishes `BEHAVIOR_RC_OVERRIDE`
+with motion disabled and requests `/human_tracking/reset_target`. This clears
+the gesture-authorized logical target.
+
+Switching the Bunker back to CAN mode does not resume the old target or re-arm
+the safety supervisor. Resume requires both actions:
+
+1. Perform the start gesture again to authorize a new logical target.
+2. Explicitly call `/safety/arm` after confirming CAN mode and healthy inputs.
+
+This matches the autonomous-approach/Nav2 takeover behavior: manual control
+cancels the current autonomous authorization and cannot auto-resume.
+
 ## Operating Limits
 
 - Structured outdoor paths and mostly level open ground only.

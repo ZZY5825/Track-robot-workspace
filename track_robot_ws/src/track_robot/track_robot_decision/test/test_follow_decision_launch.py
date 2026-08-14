@@ -1,10 +1,14 @@
+import os
 import time
 import unittest
+
+os.environ['ROS_DOMAIN_ID'] = '226'
 
 import launch
 import launch_ros.actions
 import launch_testing.actions
 import rclpy
+from std_srvs.srv import Trigger
 
 from track_robot_interfaces.msg import (
     AvoidanceState,
@@ -49,6 +53,9 @@ class TestFollowDecision(unittest.TestCase):
 
     def setUp(self):
         self.node = rclpy.create_node('follow_decision_test_client')
+        self.reset_target_calls = 0
+        self.reset_target_service = self.node.create_service(
+            Trigger, '/human_tracking/reset_target', self.on_reset_target)
         self.target_pub = self.node.create_publisher(
             TargetState, '/human_tracking/target_state', 10)
         self.avoidance_pub = self.node.create_publisher(
@@ -61,6 +68,12 @@ class TestFollowDecision(unittest.TestCase):
 
     def tearDown(self):
         self.node.destroy_node()
+
+    def on_reset_target(self, _request, response):
+        self.reset_target_calls += 1
+        response.success = True
+        response.message = 'reset'
+        return response
 
     def spin_until(self, predicate, timeout=2.0):
         deadline = time.monotonic() + timeout
@@ -169,8 +182,11 @@ class TestFollowDecision(unittest.TestCase):
         rc = SafetyState()
         rc.state = SafetyState.STATE_RC_OVERRIDE
         rc.reason = 'test_rc_override'
+        resets_before_rc = self.reset_target_calls
         self.publish_repeated(self.safety_pub, rc, count=1)
         stopped = self.spin_until(
             lambda: self.decisions[-1].behavior ==
             FollowDecision.BEHAVIOR_RC_OVERRIDE)
         self.assertFalse(stopped.motion_permitted)
+        self.spin_until(
+            lambda: self.reset_target_calls > resets_before_rc)
