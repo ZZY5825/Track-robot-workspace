@@ -1,40 +1,53 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
-def generate_launch_description():
+def _profile_parameters(context, base_config, overrides):
+    parameters = [base_config]
+    profile_config = LaunchConfiguration('profile_config').perform(context)
+    if profile_config:
+        parameters.append(profile_config)
+    parameters.append(overrides)
+    return parameters
+
+
+def _launch_nodes(context):
     config = LaunchConfiguration('config')
     health = Node(
         package='track_robot_decision',
         executable='perception_health_monitor_node',
         name='perception_health_monitor_node',
         output='screen',
-        parameters=[config, {
+        parameters=_profile_parameters(context, config, {
             'image_topic': LaunchConfiguration('image_topic'),
             'lidar_topic': LaunchConfiguration('lidar_topic'),
             'imu_topic': LaunchConfiguration('imu_topic'),
             'odometry_topic': LaunchConfiguration('odometry_topic'),
             'command_topic': LaunchConfiguration('command_topic'),
-        }],
+        }),
     )
     decision = Node(
         package='track_robot_decision',
         executable='follow_behavior_tree_node',
         name='follow_behavior_tree_node',
         output='screen',
-        parameters=[config, {
+        parameters=_profile_parameters(context, config, {
             'require_health_override': ParameterValue(
                 LaunchConfiguration('require_health'), value_type=str),
             'require_avoidance_feedback_override': ParameterValue(
                 LaunchConfiguration('require_avoidance_feedback'), value_type=str),
             'require_safety_feedback_override': ParameterValue(
                 LaunchConfiguration('require_safety_feedback'), value_type=str),
-        }],
+        }),
     )
+    return [health, decision]
+
+
+def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('config', default_value=PathJoinSubstitution([
             FindPackageShare('track_robot_decision'), 'config', 'outdoor_decision.yaml'])),
@@ -46,6 +59,6 @@ def generate_launch_description():
         DeclareLaunchArgument('require_health', default_value='true'),
         DeclareLaunchArgument('require_avoidance_feedback', default_value='false'),
         DeclareLaunchArgument('require_safety_feedback', default_value='false'),
-        health,
-        decision,
+        DeclareLaunchArgument('profile_config', default_value=''),
+        OpaqueFunction(function=_launch_nodes),
     ])

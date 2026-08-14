@@ -1,22 +1,32 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-def generate_launch_description():
+def _profile_parameters(context, base_config, overrides):
+    parameters = [base_config]
+    profile_config = LaunchConfiguration('profile_config').perform(context)
+    if profile_config:
+        parameters.append(profile_config)
+    parameters.append(overrides)
+    return parameters
+
+
+def _launch_nodes(context):
     obstacle_map = Node(
         package='track_robot_safety',
         executable='local_obstacle_map_node',
         name='local_obstacle_map_node',
         output='screen',
-        parameters=[LaunchConfiguration('obstacle_map_config'), {
+        parameters=_profile_parameters(
+            context, LaunchConfiguration('obstacle_map_config'), {
             'lidar_topic': LaunchConfiguration('lidar_topic'),
             'base_frame': LaunchConfiguration('base_frame'),
             'lidar_qos_reliability': LaunchConfiguration('lidar_qos_reliability'),
             'allow_latest_tf_fallback': LaunchConfiguration('allow_latest_tf_fallback'),
-        }],
+            }),
     )
 
     planner = Node(
@@ -24,10 +34,11 @@ def generate_launch_description():
         executable='local_trajectory_planner_node',
         name='local_trajectory_planner_node',
         output='screen',
-        parameters=[LaunchConfiguration('planner_config'), {
+        parameters=_profile_parameters(
+            context, LaunchConfiguration('planner_config'), {
             'enable_avoidance': LaunchConfiguration('enable_avoidance'),
             'base_frame': LaunchConfiguration('base_frame'),
-        }],
+            }),
     )
 
     supervisor = Node(
@@ -35,12 +46,16 @@ def generate_launch_description():
         executable='motion_safety_supervisor_node',
         name='motion_safety_supervisor_node',
         output='screen',
-        parameters=[LaunchConfiguration('supervisor_config'), {
+        parameters=_profile_parameters(
+            context, LaunchConfiguration('supervisor_config'), {
             'require_bunker_status': LaunchConfiguration('require_bunker_status'),
             'require_rc_state': LaunchConfiguration('require_rc_state'),
-        }],
+            }),
     )
+    return [obstacle_map, planner, supervisor]
 
+
+def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             'obstacle_map_config',
@@ -63,7 +78,6 @@ def generate_launch_description():
         DeclareLaunchArgument('enable_avoidance', default_value='true'),
         DeclareLaunchArgument('require_bunker_status', default_value='true'),
         DeclareLaunchArgument('require_rc_state', default_value='true'),
-        obstacle_map,
-        planner,
-        supervisor,
+        DeclareLaunchArgument('profile_config', default_value=''),
+        OpaqueFunction(function=_launch_nodes),
     ])

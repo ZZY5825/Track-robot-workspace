@@ -1,16 +1,25 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def generate_launch_description():
+def _profile_parameters(context, overrides):
+    parameters = []
+    profile_config = LaunchConfiguration('profile_config').perform(context)
+    if profile_config:
+        parameters.append(profile_config)
+    parameters.append(overrides)
+    return parameters
+
+
+def _launch_nodes(context):
     controller = Node(
         package='track_robot_control',
         executable='target_follow_controller_node',
         name='target_follow_controller_node',
         output='screen',
-        parameters=[{
+        parameters=_profile_parameters(context, {
             'decision_topic': LaunchConfiguration('decision_topic'),
             'rc_state_topic': LaunchConfiguration('rc_state_topic'),
             'debug_cmd_vel_topic': LaunchConfiguration('debug_cmd_vel_topic'),
@@ -40,9 +49,12 @@ def generate_launch_description():
                 'require_gesture_relock_after_rc_override'),
             'allow_lidar_only_forward_motion': LaunchConfiguration(
                 'allow_lidar_only_forward_motion'),
-        }],
+        }),
     )
+    return [controller]
 
+
+def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('decision_topic', default_value='/follow/decision'),
         DeclareLaunchArgument('rc_state_topic', default_value='/bunker_rc_state'),
@@ -71,5 +83,6 @@ def generate_launch_description():
         DeclareLaunchArgument('rc_override_deadband', default_value='10'),
         DeclareLaunchArgument('require_gesture_relock_after_rc_override', default_value='true'),
         DeclareLaunchArgument('allow_lidar_only_forward_motion', default_value='false'),
-        controller,
+        DeclareLaunchArgument('profile_config', default_value=''),
+        OpaqueFunction(function=_launch_nodes),
     ])
