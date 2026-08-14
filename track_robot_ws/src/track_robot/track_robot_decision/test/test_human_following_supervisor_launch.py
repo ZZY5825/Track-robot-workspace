@@ -40,6 +40,8 @@ SCENARIOS = {
         ('/test/session_base_stale', 'active'),
     'test_bad_base_status_revokes_authorized_session':
         ('/test/session_base_fault', 'active'),
+    'test_stale_base_status_revokes_authorized_session':
+        ('/test/session_base_stale_after_arm', 'active'),
     'test_stale_arm_success_disarms_and_cannot_authorize_new_session':
         ('/test/session_stale_arm', 'active'),
 }
@@ -402,6 +404,16 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
     def test_bad_base_status_revokes_authorized_session(self):
         self.start_session()
         self.base_status_ok = False
+        self.wait_until(
+            lambda: self.disarm_calls >= 1 and self.reset_calls >= 1 and any(
+                msg.state == HumanFollowingSession.STATE_FAULT and
+                not msg.target_authorized for msg in self.states[-20:]),
+            republish=True)
+        self.assertFalse(self.states[-1].target_authorized)
+
+    def test_stale_base_status_revokes_authorized_session(self):
+        self.start_session()
+        self.base_status_fresh = False
         self.wait_until(
             lambda: self.disarm_calls >= 1 and self.reset_calls >= 1 and any(
                 msg.state == HumanFollowingSession.STATE_FAULT and
