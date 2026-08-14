@@ -387,6 +387,30 @@ ros2 launch track_robot_bringup semantic_search_phase4b.launch.py \
 action，但保留任务并在状态恢复后重新派发。默认命令继续使用原有有界 Nav2
 重试，不执行自动旋转或倒车。
 
+### 7.1 目标到达停止
+
+已授权静态任务使用冻结的目标 `odom` 锚点判断最终距离，不依赖实时视觉
+confidence、depth 或 LiDAR。机器人参考中心到目标的平面距离严格小于
+`0.70 m`，并连续满足 3 个 10 Hz 监督周期（约 `0.3 s`）后：
+
+- `/semantic_navigation/diagnostics` 持续报告 `reason=target_reached`，并在
+  `target_distance_m` 中给出最后距离；
+- supervisor 取消当前 Nav2 action，并通过现有 `/safety/disarm` 链停止；
+- 已锁定 global ID、目标 `odom` 锚点和语义记忆继续保留；
+- 不再自动重新规划或进入 physical recovery，避免近距离左右摇摆。
+
+查看状态：
+
+```bash
+ros2 topic echo /semantic_navigation/diagnostics
+```
+
+若需要重新开始，先使用现有 RViz `Cancel & Disarm`，或提交新的 query 建立新
+mission。该阈值测量的是机器人参考中心到目标，不是机器人外壳到目标的净空。
+
+实机验收时先在 `0.70 m` 之外确认 Nav2 仍正常执行，再让机器人进入阈值；只有
+连续约 `0.3 s` 后停止、路径取消且不再左右修正，才能记录为 PASS。
+
 显式添加 `--physical-recovery` 后，`NavigateToPose` abort 才进入有界恢复序列：
 
 ```text
@@ -446,6 +470,8 @@ ps -eo pid,ppid,stat,cmd | grep -E \
 - `SEMANTIC_SHADOW` 运行时零运动图验证：PASS；
 - 目标保持物理恢复的软件状态机、Nav2 配置、CLI 和 RViz 诊断：PASS；
 - `physical_recovery_enabled` 默认关闭及 no-motion 模式合同：PASS；
+- `< 0.70 m` 连续三周期目标到达停止的软件单元/配置合同：PASS；实机近距离
+  停止与防摇摆验收：NOT EVALUATED；
 - 实机 Spin/BackUp、后方障碍、RC/E-stop 恢复验收：NOT EVALUATED；
 - 本次 Camera+Stereo Phase 2、costmap 清除和 RViz 授权改动：离线回归通过后仍需按本页流程做一次实机验收，不能仅凭代码宣称实机通过。
 

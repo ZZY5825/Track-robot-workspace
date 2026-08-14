@@ -257,6 +257,10 @@ class _SupervisionHarness:
         self._physical_recovery.navigation_aborted(1.0)
         self._mission_policy = StaticTargetMissionPolicy(0.25)
         self._snapshot_value = mission_snapshot(blocked, active)
+        self._mission_arrived = False
+        self._arrival_confirmation = supervisor._TargetArrivalConfirmation(
+            0.70, 3)
+        self._authorized_target_anchor_xy = ANCHOR
         self._pending_goal_kind = (
             RecoveryCommand.SPIN if active else None)
         self._active_goal_handle = object() if active else None
@@ -274,6 +278,9 @@ class _SupervisionHarness:
 
     def _static_mission_snapshot(self):
         return self._snapshot_value
+
+    def _robot_xy_in_navigation_frame(self):
+        return None
 
     def _dispatch_recovery(self, command):
         self.dispatched.append(command)

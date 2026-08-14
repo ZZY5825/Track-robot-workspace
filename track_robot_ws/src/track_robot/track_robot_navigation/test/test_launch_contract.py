@@ -87,6 +87,15 @@ def test_physical_recovery_is_explicitly_disabled_and_rewritten_by_default():
     assert source.count("default_value='false'") >= 2
 
 
+def test_target_arrival_stop_has_conservative_fixed_defaults():
+    config = (
+        PACKAGE_ROOT / 'config' / 'semantic_navigation.yaml'
+    ).read_text()
+
+    assert 'target_arrival_distance_m: 0.70' in config
+    assert 'target_arrival_confirmation_cycles: 3' in config
+
+
 def test_operator_authorization_is_reference_bound_and_uses_safety_services():
     source = (
         PACKAGE_ROOT

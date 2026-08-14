@@ -1,4 +1,7 @@
+import math
 from types import SimpleNamespace
+
+import pytest
 
 import track_robot_navigation.semantic_navigation_supervisor_node as supervisor
 from track_robot_navigation.semantic_goal_policy import GoalAction
@@ -88,11 +91,38 @@ def test_static_mission_ignores_live_visibility_and_global_id_changes_only():
         locked, (11, 99, 33, 45, 1)) == 'query_changed'
 
 
+def test_target_arrival_requires_three_strictly_inside_samples():
+    policy = supervisor._TargetArrivalConfirmation(0.70, 3)
+
+    assert policy.observe((0.0, 0.0), (0.70, 0.0)) is False
+    assert policy.observe((0.0, 0.0), (0.69, 0.0)) is False
+    assert policy.observe((0.0, 0.0), (0.69, 0.0)) is False
+    assert policy.observe((0.0, 0.0), (0.69, 0.0)) is True
+    assert policy.last_distance_m == pytest.approx(0.69)
+
+
+def test_target_arrival_resets_on_outside_or_invalid_sample():
+    policy = supervisor._TargetArrivalConfirmation(0.70, 3)
+
+    assert policy.observe((0.0, 0.0), (0.60, 0.0)) is False
+    assert policy.observe((0.0, 0.0), None) is False
+    assert policy.observe((0.0, 0.0), (0.60, 0.0)) is False
+    assert policy.observe((0.0, 0.0), (0.80, 0.0)) is False
+    assert policy.observe((0.0, 0.0), (0.60, 0.0)) is False
+
+
 class _MissionHarness:
-    def __init__(self, mission_snapshot):
+    def __init__(
+            self, mission_snapshot, robot_xy=(2.0, 0.0),
+            target_xy=(0.0, 0.0)):
         self._authorized_reference = (11, 22, 33, 44, 1)
         self._mission_policy = StaticTargetMissionPolicy(0.25)
         self._snapshot_value = mission_snapshot
+        self._mission_arrived = False
+        self._arrival_confirmation = supervisor._TargetArrivalConfirmation(
+            0.70, 3)
+        self._authorized_target_anchor_xy = target_xy
+        self._robot_xy = robot_xy
         self.dispatched = []
         self.cancelled = []
         self.cleared = []
@@ -101,6 +131,9 @@ class _MissionHarness:
 
     def _static_mission_snapshot(self):
         return self._snapshot_value
+
+    def _robot_xy_in_navigation_frame(self):
+        return self._robot_xy
 
     def _dispatch(self, action):
         self.dispatched.append(action)
@@ -145,6 +178,50 @@ def test_supervisor_preserves_mission_for_stale_odom_but_ends_on_epoch_reset():
     assert reset.cleared == ['localization_epoch_changed']
     assert reset.cancelled == ['localization_epoch_changed']
     assert reset.disarmed == 1
+
+
+def test_supervisor_latches_arrival_and_stops_once_after_confirmation():
+    harness = _MissionHarness(
+        snapshot(), robot_xy=(0.0, 0.0), target_xy=(0.60, 0.0))
+
+    for _ in range(3):
+        supervisor.SemanticNavigationSupervisorNode._supervise_static_mission(
+            harness)
+
+    assert harness._mission_arrived is True
+    assert harness.cancelled == ['target_reached']
+    assert harness.disarmed == 1
+    assert harness._authorized_reference == (11, 22, 33, 44, 1)
+    assert harness._authorized_target_anchor_xy == (0.60, 0.0)
+    assert harness.dispatched == [GoalAction.NAVIGATE, GoalAction.NAVIGATE]
+
+
+def test_arrived_mission_holds_without_navigation_or_recovery():
+    harness = _MissionHarness(
+        snapshot(safety_armed=False),
+        robot_xy=(0.0, 0.0), target_xy=(0.60, 0.0))
+    harness._mission_arrived = True
+
+    supervisor.SemanticNavigationSupervisorNode._supervise_static_mission(
+        harness)
+
+    assert harness.dispatched == []
+    assert harness.cancelled == []
+    assert harness.diagnostics[-1][1] == 'target_reached'
+
+
+def test_arrived_mission_still_terminates_on_localization_reset():
+    harness = _MissionHarness(
+        snapshot(observed_localization_epoch_id=34),
+        robot_xy=(0.0, 0.0), target_xy=(0.60, 0.0))
+    harness._mission_arrived = True
+
+    supervisor.SemanticNavigationSupervisorNode._supervise_static_mission(
+        harness)
+
+    assert harness.cleared == ['localization_epoch_changed']
+    assert harness.cancelled == ['localization_epoch_changed']
+    assert harness.disarmed == 1
 
 
 def test_locked_mission_goal_is_used_without_retransforming_live_goal():
@@ -257,6 +334,8 @@ def test_query_or_localization_change_terminates_locked_static_mission():
 
 
 def test_lock_static_mission_freezes_reference_anchor_and_odom_goal():
+    arrival = supervisor._TargetArrivalConfirmation(0.70, 3)
+    arrival.observe((0.0, 0.0), (0.60, 0.0))
     harness = SimpleNamespace(
         _nav2_retry_count=1,
         _authorized_reference=None,
@@ -265,6 +344,8 @@ def test_lock_static_mission_freezes_reference_anchor_and_odom_goal():
         _pending_target_anchor_xy=(9.0, 9.0),
         _mission_goal=None,
         _pending_mission_goal='old-goal',
+        _mission_arrived=True,
+        _arrival_confirmation=arrival,
     )
 
     supervisor.SemanticNavigationSupervisorNode._lock_static_mission(
@@ -281,6 +362,47 @@ def test_lock_static_mission_freezes_reference_anchor_and_odom_goal():
     assert harness._pending_authorization is None
     assert harness._pending_target_anchor_xy is None
     assert harness._pending_mission_goal is None
+    assert harness._mission_arrived is False
+    assert math.isnan(harness._arrival_confirmation.last_distance_m)
+
+
+def test_clear_authorization_resets_arrival_latch_and_counter():
+    class Resettable:
+        def __init__(self):
+            self.calls = 0
+
+        def reset(self):
+            self.calls += 1
+
+    arrival = supervisor._TargetArrivalConfirmation(0.70, 3)
+    arrival.observe((0.0, 0.0), (0.60, 0.0))
+    grace = Resettable()
+    recovery = Resettable()
+    harness = SimpleNamespace(
+        _authorized_reference=(11, 22, 33, 44, 1),
+        _pending_authorization=None,
+        _authorized_target_anchor_xy=(0.60, 0.0),
+        _pending_target_anchor_xy=None,
+        _mission_goal='odom-goal',
+        _pending_mission_goal=None,
+        _mission_arrived=True,
+        _arrival_confirmation=arrival,
+        _nav2_retry_count=1,
+        _nav2_retry_not_before_s=2.0,
+        _target_grace=grace,
+        _physical_recovery=recovery,
+        get_logger=lambda: SimpleNamespace(warn=lambda _message: None),
+    )
+
+    supervisor.SemanticNavigationSupervisorNode._clear_authorization(
+        harness, 'operator_cancel')
+
+    assert harness._mission_arrived is False
+    assert math.isnan(harness._arrival_confirmation.last_distance_m)
+    assert harness._authorized_reference is None
+    assert harness._authorized_target_anchor_xy is None
+    assert grace.calls == 1
+    assert recovery.calls == 1
 
 
 def test_supervision_uses_locked_mission_before_live_semantic_snapshot():

@@ -34,6 +34,10 @@ semantic_navigation_supervisor:
     maximum_goal_age_sec: 0.5
     maximum_diagnostics_age_sec: 0.5
     maximum_odom_age_sec: 0.25
+    # Stop a static approach once the robot reference center remains strictly
+    # closer than 0.70 m to the frozen target for three 10 Hz supervisor ticks.
+    target_arrival_distance_m: 0.70
+    target_arrival_confirmation_cycles: 3
     # Do not re-dispatch while BT Navigator is still cleaning up an aborted
     # action. One operator authorization remains valid across retry cycles;
     # explicit cancel, RC override and E-stop still terminate immediately.

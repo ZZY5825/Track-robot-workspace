@@ -104,6 +104,7 @@ def _authorization_survives_interruption(reason):
         'safety_motion_not_permitted',
         'safety_obstacle_blocked',
         'target_position_invalid',
+        'target_reached',
         'target_reference_mismatch',
         'target_stale',
         'timestamp_regression',
@@ -226,6 +227,46 @@ def _same_static_target_location(
         float(current_xy[0]) - float(authorized_xy[0]),
         float(current_xy[1]) - float(authorized_xy[1]),
     ) <= float(maximum_distance_m)
+
+
+class _TargetArrivalConfirmation:
+    """Confirm a target-relative stop across consecutive valid samples."""
+
+    def __init__(self, distance_m, confirmation_cycles):
+        self.distance_m = float(distance_m)
+        self.confirmation_cycles = int(confirmation_cycles)
+        if (
+                not math.isfinite(self.distance_m)
+                or not 0.0 < self.distance_m <= 2.0):
+            raise ValueError('target arrival distance must be in (0, 2.0]')
+        if not 1 <= self.confirmation_cycles <= 20:
+            raise ValueError(
+                'target arrival confirmation cycles must be in [1, 20]')
+        self.reset()
+
+    def reset(self):
+        self._inside_count = 0
+        self.last_distance_m = float('nan')
+
+    def observe(self, robot_xy, target_xy):
+        if robot_xy is None or target_xy is None:
+            self.reset()
+            return False
+        values = tuple(robot_xy) + tuple(target_xy)
+        if (
+                len(values) != 4
+                or not all(math.isfinite(float(value)) for value in values)):
+            self.reset()
+            return False
+        self.last_distance_m = math.hypot(
+            float(target_xy[0]) - float(robot_xy[0]),
+            float(target_xy[1]) - float(robot_xy[1]),
+        )
+        if self.last_distance_m >= self.distance_m:
+            self._inside_count = 0
+            return False
+        self._inside_count += 1
+        return self._inside_count >= self.confirmation_cycles
 
 
 class _TransientTargetGrace:
@@ -401,6 +442,12 @@ class SemanticNavigationSupervisorNode(Node):
         maximum_odom_age_sec = float(self.declare_parameter(
             'maximum_odom_age_sec', 0.25).value)
         self._maximum_odom_age_sec = maximum_odom_age_sec
+        self._arrival_confirmation = _TargetArrivalConfirmation(
+            self.declare_parameter(
+                'target_arrival_distance_m', 0.70).value,
+            self.declare_parameter(
+                'target_arrival_confirmation_cycles', 3).value,
+        )
         self._policy = SemanticGoalPolicy(
             runtime_mode=mode.value,
             semantic_execution_enabled=self._semantic_execution_enabled,
@@ -443,6 +490,7 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = None
         self._pending_mission_goal = None
+        self._mission_arrived = False
 
         target_qos = QoSProfile(depth=1)
         target_qos.reliability = ReliabilityPolicy.RELIABLE
@@ -702,6 +750,8 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = None
         self._pending_mission_goal = None
+        self._mission_arrived = False
+        self._arrival_confirmation.reset()
         self._nav2_retry_count = 0
         self._nav2_retry_not_before_s = 0.0
         self._target_grace.reset()
@@ -718,6 +768,8 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = mission_goal
         self._pending_mission_goal = None
+        self._mission_arrived = False
+        self._arrival_confirmation.reset()
         if hasattr(self, '_physical_recovery'):
             self._physical_recovery.reset()
 
@@ -741,6 +793,22 @@ class SemanticNavigationSupervisorNode(Node):
         values = (
             float(transformed.pose.position.x),
             float(transformed.pose.position.y),
+        )
+        return values if all(math.isfinite(value) for value in values) else None
+
+    def _robot_xy_in_navigation_frame(self):
+        if (
+                self._odom is None
+                or str(self._odom.header.frame_id) != self._navigation_frame):
+            return None
+        if (
+                self._age_from_stamp(
+                    self._odom.header.stamp, self._odom_received_s)
+                > self._maximum_odom_age_sec):
+            return None
+        values = (
+            float(self._odom.pose.pose.position.x),
+            float(self._odom.pose.pose.position.y),
         )
         return values if all(math.isfinite(value) for value in values) else None
 
@@ -908,6 +976,22 @@ class SemanticNavigationSupervisorNode(Node):
         if mission_snapshot is None:
             return False
         decision = self._mission_policy.evaluate(mission_snapshot)
+        if self._mission_arrived:
+            if (
+                    decision.terminate_mission
+                    and decision.reason != 'safety_not_armed'):
+                self._publish_diagnostics(
+                    decision.action,
+                    decision.reason,
+                    mission_snapshot.key,
+                )
+                self._clear_authorization(decision.reason)
+                self._cancel_action(decision.reason)
+                self._request_safety_disarm()
+                return True
+            self._publish_diagnostics(
+                GoalAction.HOLD, 'target_reached', mission_snapshot.key)
+            return True
         if decision.terminate_mission:
             self._publish_diagnostics(
                 decision.action,
@@ -916,6 +1000,16 @@ class SemanticNavigationSupervisorNode(Node):
             )
             self._clear_authorization(decision.reason)
             self._cancel_action(decision.reason)
+            self._request_safety_disarm()
+            return True
+
+        if self._arrival_confirmation.observe(
+                self._robot_xy_in_navigation_frame(),
+                self._authorized_target_anchor_xy):
+            self._mission_arrived = True
+            self._publish_diagnostics(
+                GoalAction.HOLD, 'target_reached', mission_snapshot.key)
+            self._cancel_action('target_reached')
             self._request_safety_disarm()
             return True
 
@@ -1382,6 +1476,14 @@ class SemanticNavigationSupervisorNode(Node):
                 value=str(
                     self._mode is RuntimeMode.SEMANTIC_ACTIVE
                     and self._semantic_execution_enabled).lower()),
+            KeyValue(
+                key='target_distance_m',
+                value=(
+                    '{:.3f}'.format(
+                        self._arrival_confirmation.last_distance_m)
+                    if math.isfinite(
+                        self._arrival_confirmation.last_distance_m)
+                    else '')),
         ]
         status.values.extend(
             KeyValue(key=name, value=value)
