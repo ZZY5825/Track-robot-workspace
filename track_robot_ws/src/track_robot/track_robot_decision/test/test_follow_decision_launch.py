@@ -114,9 +114,21 @@ class TestFollowDecision(unittest.TestCase):
             SafetyState, prefix + '/safety_state' if prefix else
             '/safety/state', 10)
         self.decisions = []
+        self.decision_topic = prefix + '/decision' if prefix else \
+            '/follow/decision'
         self.decision_sub = self.node.create_subscription(
-            FollowDecision, prefix + '/decision' if prefix else
-            '/follow/decision', self.decisions.append, 10)
+            FollowDecision, self.decision_topic, self.decisions.append, 10)
+
+        # Every isolated test namespace is discovered independently by DDS.
+        # Do not publish scenario inputs until both directions of the test graph
+        # are connected and the decision node has produced its first tick.
+        self.spin_until(
+            lambda: bool(self.decisions) and
+            self.target_pub.get_subscription_count() > 0 and
+            self.avoidance_pub.get_subscription_count() > 0 and
+            self.safety_pub.get_subscription_count() > 0 and
+            self.node.count_publishers(self.decision_topic) > 0,
+            timeout=5.0)
 
     def tearDown(self):
         self.node.destroy_node()
