@@ -18,25 +18,49 @@ from track_robot_interfaces.msg import (
 )
 
 
-def generate_test_description():
-    decision = launch_ros.actions.Node(
+def decision_node(name='follow_behavior_tree_node', prefix=''):
+    parameters = {
+        'require_health_override': 'false',
+        'require_avoidance_feedback_override': 'false',
+        'require_safety_feedback_override': 'false',
+        'tick_rate': 30.0,
+        'confirmation_ticks': 3,
+        'uncertain_hold_sec': 0.25,
+        'search_entry_max_age_sec': 0.8,
+        'search_timeout_sec': 0.7,
+        'blocked_clear_ticks': 3,
+    }
+    if prefix:
+        parameters.update({
+            'target_topic': prefix + '/target_state',
+            'avoidance_topic': prefix + '/avoidance_state',
+            'safety_topic': prefix + '/safety_state',
+            'decision_topic': prefix + '/decision',
+            'debug_topic': prefix + '/decision_debug',
+            'marker_topic': prefix + '/decision_markers',
+            'reset_target_service': prefix + '/reset_target',
+        })
+    return launch_ros.actions.Node(
         package='track_robot_decision',
         executable='follow_behavior_tree_node',
-        parameters=[{
-            'require_health_override': 'false',
-            'require_avoidance_feedback_override': 'false',
-            'require_safety_feedback_override': 'false',
-            'tick_rate': 30.0,
-            'confirmation_ticks': 3,
-            'uncertain_hold_sec': 0.25,
-            'search_entry_max_age_sec': 0.8,
-            'search_timeout_sec': 0.7,
-            'blocked_clear_ticks': 3,
-        }],
+        name=name,
+        parameters=[parameters],
         output='screen',
     )
+
+
+def generate_test_description():
+    decision = decision_node()
+    relock_decision = decision_node('relock_decision', '/test/relock')
+    generation_decision = decision_node('generation_decision', '/test/generation')
+    delayed_decision = decision_node('delayed_decision', '/test/delayed')
+    unavailable_decision = decision_node('unavailable_decision', '/test/unavailable')
     return launch.LaunchDescription([
         decision,
+        relock_decision,
+        generation_decision,
+        delayed_decision,
+        unavailable_decision,
         launch_testing.actions.ReadyToTest(),
     ]), {'decision_process': decision}
 
@@ -53,26 +77,60 @@ class TestFollowDecision(unittest.TestCase):
 
     def setUp(self):
         self.node = rclpy.create_node('follow_decision_test_client')
+        prefixes = {
+            'test_rc_clear_requires_reset_and_no_target_before_relock':
+                '/test/relock',
+            'test_new_rc_generation_waits_for_own_reset_response':
+                '/test/generation',
+            'test_delayed_reset_response_keeps_one_request_in_flight':
+                '/test/delayed',
+            'test_reset_retries_when_service_appears_after_rc_transition':
+                '/test/unavailable',
+        }
+        prefix = prefixes.get(self._testMethodName, '')
         self.reset_target_calls = 0
         self.reset_target_successes = 0
         self.reset_target_failures_remaining = 0
-        self.reset_target_service = self.node.create_service(
-            Trigger, '/human_tracking/reset_target', self.on_reset_target)
+        self.transition_during_first_reset = False
+        self.reset_target_delay_sec = 0.0
+        self.reset_service_name = prefix + '/reset_target' if prefix else \
+            '/human_tracking/reset_target'
+        self.reset_target_service = None
+        if self._testMethodName != \
+                'test_reset_retries_when_service_appears_after_rc_transition':
+            self.reset_target_service = self.node.create_service(
+                Trigger, self.reset_service_name, self.on_reset_target)
         self.target_pub = self.node.create_publisher(
-            TargetState, '/human_tracking/target_state', 10)
+            TargetState, prefix + '/target_state' if prefix else
+            '/human_tracking/target_state', 10)
         self.avoidance_pub = self.node.create_publisher(
-            AvoidanceState, '/follow/avoidance_state', 10)
+            AvoidanceState, prefix + '/avoidance_state' if prefix else
+            '/follow/avoidance_state', 10)
         self.safety_pub = self.node.create_publisher(
-            SafetyState, '/safety/state', 10)
+            SafetyState, prefix + '/safety_state' if prefix else
+            '/safety/state', 10)
         self.decisions = []
         self.decision_sub = self.node.create_subscription(
-            FollowDecision, '/follow/decision', self.decisions.append, 10)
+            FollowDecision, prefix + '/decision' if prefix else
+            '/follow/decision', self.decisions.append, 10)
 
     def tearDown(self):
         self.node.destroy_node()
 
     def on_reset_target(self, _request, response):
         self.reset_target_calls += 1
+        if self.transition_during_first_reset and self.reset_target_calls == 1:
+            disarmed = SafetyState()
+            disarmed.state = SafetyState.STATE_DISARMED
+            self.safety_pub.publish(disarmed)
+            time.sleep(0.15)
+            rc = SafetyState()
+            rc.state = SafetyState.STATE_RC_OVERRIDE
+            rc.reason = 'test_new_rc_generation'
+            self.safety_pub.publish(rc)
+            time.sleep(0.3)
+        elif self.reset_target_delay_sec:
+            time.sleep(self.reset_target_delay_sec)
         if self.reset_target_failures_remaining:
             self.reset_target_failures_remaining -= 1
             response.success = False
@@ -235,3 +293,112 @@ class TestFollowDecision(unittest.TestCase):
         self.spin_for(0.3)
         self.assertEqual(self.reset_target_calls, reset_calls_before_rc + 2)
         self.assertEqual(self.reset_target_successes, reset_successes_before_rc + 1)
+
+    def test_rc_clear_requires_reset_and_no_target_before_relock(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+
+        stale_target = self.confirmed_target()
+        self.publish_repeated(self.target_pub, stale_target)
+        self.spin_until(
+            lambda: self.decisions and self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED)
+
+        rc = SafetyState()
+        rc.state = SafetyState.STATE_RC_OVERRIDE
+        rc.reason = 'test_rc_relock'
+        self.publish_repeated(self.safety_pub, rc, count=1)
+        self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.spin_until(lambda: self.reset_target_successes == 1)
+
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+        self.publish_repeated(self.target_pub, stale_target)
+        held = self.spin_until(
+            lambda: self.decisions[-1].behavior !=
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.assertNotIn(held.behavior, (
+            FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED,
+            FollowDecision.BEHAVIOR_FOLLOW_LIDAR_LIMITED,
+            FollowDecision.BEHAVIOR_SEARCH_ROTATE,
+        ))
+        self.assertFalse(held.motion_permitted)
+        self.assertFalse(held.automatic_resume_permitted)
+
+        no_target = TargetState()
+        no_target.target_id = -1
+        no_target.lock_state = TargetState.LOCK_NO_TARGET
+        no_target.track_state = TargetState.TRACK_NO_TARGET
+        self.publish_repeated(self.target_pub, no_target, count=1)
+
+        new_target = self.confirmed_target()
+        new_target.target_id = 8
+        self.publish_repeated(self.target_pub, new_target)
+        resumed = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED)
+        self.assertTrue(resumed.motion_permitted)
+        self.assertTrue(resumed.automatic_resume_permitted)
+
+    def test_new_rc_generation_waits_for_own_reset_response(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+
+        self.transition_during_first_reset = True
+        rc = SafetyState()
+        rc.state = SafetyState.STATE_RC_OVERRIDE
+        rc.reason = 'test_first_rc_generation'
+        self.publish_repeated(self.safety_pub, rc, count=1)
+        stopped = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.assertFalse(stopped.motion_permitted)
+
+        self.spin_until(lambda: self.reset_target_successes == 2, timeout=3.0)
+        self.spin_for(0.3)
+        self.assertEqual(self.reset_target_calls, 2)
+
+    def test_delayed_reset_response_keeps_one_request_in_flight(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+
+        self.reset_target_delay_sec = 0.45
+        rc = SafetyState()
+        rc.state = SafetyState.STATE_RC_OVERRIDE
+        rc.reason = 'test_delayed_reset'
+        self.publish_repeated(self.safety_pub, rc, count=1)
+        stopped = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.assertFalse(stopped.motion_permitted)
+        self.spin_until(lambda: self.reset_target_successes == 1)
+        self.assertEqual(self.reset_target_calls, 1)
+
+        self.spin_for(0.4)
+        self.assertEqual(self.reset_target_calls, 1)
+
+    def test_reset_retries_when_service_appears_after_rc_transition(self):
+        disarmed = SafetyState()
+        disarmed.state = SafetyState.STATE_DISARMED
+        self.publish_repeated(self.safety_pub, disarmed, count=1)
+
+        rc = SafetyState()
+        rc.state = SafetyState.STATE_RC_OVERRIDE
+        rc.reason = 'test_reset_service_unavailable'
+        self.publish_repeated(self.safety_pub, rc, count=1)
+        stopped = self.spin_until(
+            lambda: self.decisions[-1].behavior ==
+            FollowDecision.BEHAVIOR_RC_OVERRIDE)
+        self.assertFalse(stopped.motion_permitted)
+        self.spin_for(0.4)
+        self.assertEqual(self.reset_target_calls, 0)
+
+        self.reset_target_service = self.node.create_service(
+            Trigger, self.reset_service_name, self.on_reset_target)
+        self.spin_until(lambda: self.reset_target_successes == 1, timeout=3.0)
+        self.spin_for(0.3)
+        self.assertEqual(self.reset_target_calls, 1)
