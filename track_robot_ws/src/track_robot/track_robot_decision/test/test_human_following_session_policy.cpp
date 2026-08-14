@@ -421,6 +421,7 @@ TEST(HumanFollowingSessionPolicy, StaleArmSuccessCannotAuthorizeANewerRequest)
   EXPECT_EQ(stale_second.state, SessionState::Fault);
   EXPECT_FALSE(stale_second.target_authorized);
   EXPECT_TRUE(stale_second.request_disarm);
+  EXPECT_FALSE(stale_second.request_target_reset);
 }
 
 }  // namespace

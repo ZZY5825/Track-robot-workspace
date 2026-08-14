@@ -189,6 +189,7 @@ SessionDecision HumanFollowingSessionPolicy::acceptArmResult(
     // A stale success may have armed the safety supervisor after this session
     // was revoked or superseded. Invalidate any newer request and explicitly
     // disarm instead of allowing the callback to authorize the wrong target.
+    const bool entering_fault = state_ != SessionState::Fault;
     state_ = SessionState::Fault;
     pending_visual_track_id_ = -1;
     authorized_target_id_ = -1;
@@ -197,7 +198,7 @@ SessionDecision HumanFollowingSessionPolicy::acceptArmResult(
     pending_arm_request_generation_ = 0;
     blocked_active_ = false;
     uncertain_active_ = false;
-    return decision("stale_arm_success", false, true, true);
+    return decision("stale_arm_success", false, true, entering_fault);
   }
 
   arm_request_pending_ = false;
