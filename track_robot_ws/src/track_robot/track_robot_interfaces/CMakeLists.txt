@@ -54,6 +54,7 @@ set(msg_files
   "msg/AssociationTerm.msg"
   "msg/AssociationDebug.msg"
   "msg/SemanticMemoryEvent.msg"
+  "msg/HumanFollowingSession.msg"
 )
 
 set(srv_files

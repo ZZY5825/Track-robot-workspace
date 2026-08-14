@@ -83,3 +83,28 @@ def test_semantic_approach_authorization_carries_the_exact_target_reference():
     assert 'bool accepted' in service
     assert 'string<=256 reason' in service
     assert '"srv/AuthorizeSemanticApproach.srv"' in cmake
+
+
+from track_robot_interfaces.msg import HumanFollowingSession
+
+
+def test_human_following_session_exposes_motion_authorization_state():
+    session = HumanFollowingSession(
+        runtime_mode=HumanFollowingSession.MODE_ACTIVE,
+        state=HumanFollowingSession.STATE_FOLLOWING,
+        logical_target_id=17,
+        motion_session_enabled=True,
+        target_authorized=True,
+        arm_request_pending=False,
+        safety_armed=True,
+        rc_override_active=False,
+        target_confidence=0.82,
+        reason='confirmed_camera_lidar',
+    )
+
+    assert HumanFollowingSession.MODE_SHADOW == 0
+    assert HumanFollowingSession.MODE_ACTIVE == 1
+    assert HumanFollowingSession.STATE_WAITING_FOR_GESTURE == 1
+    assert HumanFollowingSession.STATE_RC_OVERRIDE == 6
+    assert session.logical_target_id == 17
+    assert session.target_authorized is True
