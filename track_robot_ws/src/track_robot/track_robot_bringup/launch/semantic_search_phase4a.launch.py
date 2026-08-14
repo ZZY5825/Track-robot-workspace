@@ -44,6 +44,11 @@ def _launch_runtime(context):
     ])
     actions = [
         _include(
+            'bunker_pro2',
+            'description.launch.py',
+            {},
+        ),
+        _include(
             'track_robot_bringup',
             'semantic_search_sensors.launch.py',
             {
@@ -59,10 +64,10 @@ def _launch_runtime(context):
                 'host_cidr': LaunchConfiguration('host_cidr'),
                 'driver_start_delay':
                     LaunchConfiguration('driver_start_delay'),
-                'publish_base_lidar_tf': 'true',
+                'publish_base_lidar_tf': 'false',
                 'lidar_config_path':
                     LaunchConfiguration('lidar_config_path'),
-                'extrinsic_mode': LaunchConfiguration('extrinsic_mode'),
+                'extrinsic_mode': 'robot_description',
                 'extrinsic_file': LaunchConfiguration('extrinsic_file'),
                 'allow_degraded': 'true',
                 'camera_depth_mode': 'PERFORMANCE',
@@ -108,23 +113,12 @@ def _launch_runtime(context):
             parameters=[search_config],
         ),
         _include(
-            'track_robot_lidar_tracking',
-            'semantic_memory_lidar_tracklets.launch.py',
-            {
-                'config_file': PathJoinSubstitution([
-                    FindPackageShare('track_robot_lidar_tracking'),
-                    'config',
-                    'semantic_memory_lidar_tracklets.yaml',
-                ]),
-            },
-        ),
-        _include(
             'track_robot_semantic_memory',
             'semantic_memory_phase2.launch.py',
             {
                 'config_file': memory_config,
-                'enable_test_camera_attachment': 'true',
-                'allow_degraded_calibration': 'true',
+                'enable_test_camera_attachment': 'false',
+                'allow_degraded_calibration': 'false',
                 # Phase 4B only visualizes the selected target and approach;
                 # drawing every memory object creates irrelevant box clutter.
                 'start_visualizer': 'false',
@@ -185,7 +179,8 @@ def generate_launch_description():
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
         DeclareLaunchArgument('host_cidr', default_value='24'),
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
-        DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
+        DeclareLaunchArgument(
+            'extrinsic_mode', default_value='robot_description'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('dino_enabled', default_value='false'),
         DeclareLaunchArgument(

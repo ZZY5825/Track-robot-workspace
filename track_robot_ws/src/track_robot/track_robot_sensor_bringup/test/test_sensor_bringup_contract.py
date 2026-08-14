@@ -165,6 +165,7 @@ def test_sensor_package_owns_motion_free_lidar_behavior():
     assert 'base_link' in source
     assert 'rslidar' in source
     assert 'host_address: 192.168.1.102' in config
+    assert 'ros_frame_id: lidar_link' in config
     assert 'track_robot_bringup' not in source
     assert 'track_robot_perception' not in source
     for forbidden in ('controller', '/cmd_vel'):

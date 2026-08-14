@@ -29,6 +29,8 @@ def _runtime_nodes(context):
         LaunchConfiguration('runtime_mode').perform(context))
     semantic_enabled = _as_bool(
         LaunchConfiguration('enable_semantic_execution').perform(context))
+    physical_recovery_enabled = _as_bool(
+        LaunchConfiguration('physical_recovery_enabled').perform(context))
     start_obstacle_map = _as_bool(
         LaunchConfiguration('start_obstacle_map').perform(context))
     validate_mode_request(mode, semantic_enabled)
@@ -51,6 +53,8 @@ def _runtime_nodes(context):
             'runtime_mode': mode.value,
             'semantic_execution_enabled':
                 'true' if semantic_enabled else 'false',
+            'physical_recovery_enabled': (
+                'true' if physical_recovery_enabled else 'false'),
         },
         convert_types=True,
     )
@@ -170,6 +174,10 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             'enable_semantic_execution',
+            default_value='false',
+        ),
+        DeclareLaunchArgument(
+            'physical_recovery_enabled',
             default_value='false',
         ),
         DeclareLaunchArgument('use_sim_time', default_value='false'),

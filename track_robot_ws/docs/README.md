@@ -7,13 +7,15 @@ Package-only documentation remains beside its package under `src/`.
 
 - [Phase 0–4 planning-only integration test](guides/semantic-search/phase0-4-planning-only-test.md)
 - [Phase 0–4A fixed-base minimal-system test](guides/semantic-search/phase4a-fixed-base-test.md)
-- [Phase 4B/5A supervised Nav2 semantic approach test](guides/semantic-search/phase4b-nav2-supervised-test.md)
+- [Phase 4B supervised Nav2 semantic approach test](guides/semantic-search/phase4b-nav2-supervised-test.md)
+- [Phase 5A bounded active-search test](guides/semantic-search/phase5a-bounded-active-search-test.md)
 - [Phase 0–3 YOLO-World test procedure](guides/semantic-search/phase0-3-yolo-world-test.md)
 - [R0C Orin YOLO-World zero-shot candidate](guides/semantic-search/r0c-orin-yolo-world.md)
 - [R0B zero-shot Grounding DINO desktop teacher](guides/semantic-search/r0b-zero-shot-teacher.md)
 - [Grounding model evaluation and selection](guides/semantic-search/grounding-model-evaluation.md)
 - [Semantic-search Phase 1 and Phase 2 live testing and recording](guides/semantic-search/phase2-recording-and-evaluation.md)
 - [Semantic-search rosbag workflow](guides/semantic-search/rosbag-workflow.md)
+- [YOLO-World 绿色瓶子置信度受控实验](guides/semantic-search/yolo-world-confidence-benchmark.md)
 - [Human-tracking rosbag replay](guides/human-tracking/rosbag-replay.md)
 
 Commands in these guides describe current workspace behaviour. Read their
@@ -28,6 +30,7 @@ safety and calibration sections before starting hardware.
 
 ## Development History
 
+- [Open live-development issue log](development/issue-log.md)
 - [Semantic-search implementation plans and checkpoints](development/plans/semantic-search/)
 - [R0A grounding benchmark contracts plan](development/plans/semantic-search/2026-07-25-semantic-search-r0a-grounding-benchmark-contracts.md)
 - [Workspace organization implementation plan](development/plans/workspace/2026-07-23-workspace-organization.md)

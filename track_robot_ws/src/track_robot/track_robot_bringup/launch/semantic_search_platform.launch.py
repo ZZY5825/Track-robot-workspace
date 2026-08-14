@@ -13,6 +13,9 @@ def generate_launch_description():
             'launch',
             'bunker_base.launch.py',
         ])),
+        launch_arguments={
+            'base_frame': LaunchConfiguration('base_frame'),
+        }.items(),
         condition=IfCondition(LaunchConfiguration('start_base')),
     )
     phidget_imu = IncludeLaunchDescription(
@@ -34,6 +37,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument('start_base', default_value='true'),
         DeclareLaunchArgument('start_imu', default_value='true'),
+        DeclareLaunchArgument('base_frame', default_value='base_link'),
         bunker_base,
         phidget_imu,
     ])

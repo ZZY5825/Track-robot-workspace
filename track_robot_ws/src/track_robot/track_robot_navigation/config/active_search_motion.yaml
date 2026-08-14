@@ -1,0 +1,18 @@
+search_motion_adapter:
+  ros__parameters:
+    intent_topic: /semantic_search/search_motion_intent
+    motion_status_topic: /semantic_search/active_search/motion_status
+    odometry_topic: /odom
+    safety_state_topic: /safety/state
+    spin_action: /spin
+    authorize_service: /semantic_search/active_search/authorize_rotation
+    cancel_service: /semantic_search/active_search/cancel
+    safety_arm_service: /safety/arm
+    safety_disarm_service: /safety/disarm
+    maximum_individual_rotation_deg: 90.0
+    maximum_angular_speed_rad_s: 0.30
+    odometry_timeout_sec: 0.25
+    safety_timeout_sec: 0.25
+    intent_timeout_sec: 0.50
+    service_timeout_sec: 1.0
+    watchdog_rate_hz: 20.0

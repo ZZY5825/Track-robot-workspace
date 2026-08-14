@@ -29,19 +29,19 @@ def test_position_valid_camera_object_is_camera_depth_without_lidar():
     ) == 'other'
 
 
-def test_selector_never_overwrites_canonical_phase2_position_with_fallback():
+def test_selector_consumes_only_canonical_semantic_memory_geometry():
     source = (
         PACKAGE_ROOT
         / 'track_robot_semantic_search'
         / 'phase4a_selector_node.py'
     ).read_text()
 
-    geometry_body = source.split(
-        '    def _geometry(self, message, now_ns):', 1)[1].split(
-        '    def _candidate(', 1)[0]
-    assert 'if message.position_valid:' in geometry_body
-    assert geometry_body.index('if message.position_valid:') < (
-        geometry_body.index('self._depth_geometry.get'))
+    assert 'CvBridge' not in source
+    assert 'TransformListener' not in source
+    assert 'SemanticObservationArray' not in source
+    assert 'estimate_depth_point' not in source
+    assert '_depth_geometry' not in source
+    assert 'fallback_depth_available=False' in source
 
 
 def candidate(**overrides):

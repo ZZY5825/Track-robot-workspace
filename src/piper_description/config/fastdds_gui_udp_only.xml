@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dds xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+<profiles>
+  <!--
+    ROS 2 Foxy on this workstation can retain stale shared-memory transport
+    state after crashed participants.  Keep the feedback-only RViz launch on
+    the same loopback UDPv4 transport as the PiPER driver and GUI.
+  -->
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>piper_gui_udp_v4</transport_id>
+      <type>UDPv4</type>
+      <interfaceWhiteList>
+        <address>127.0.0.1</address>
+      </interfaceWhiteList>
+    </transport_descriptor>
+  </transport_descriptors>
+
+  <participant profile_name="piper_gui_udp_only" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>piper_gui_udp_v4</transport_id>
+      </userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>
+</dds>

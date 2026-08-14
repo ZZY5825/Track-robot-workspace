@@ -12,8 +12,12 @@ semantic_depth_enricher:
     depth_topic: /zed/zed_node/depth/depth_registered
     camera_info_topic: /zed/zed_node/left/camera_info
     localization_topic: /semantic_search/phase4a/localization_state
+    diagnostics_topic: /semantic_search/spatial_observation_diagnostics
     frame_id: base_link
-    maximum_depth_delta_sec: 0.5
+    depth_buffer_frames: 16
+    depth_buffer_max_age_sec: 2.0
+    depth_processing_rate_hz: 5.0
+    maximum_depth_delta_sec: 0.20
     minimum_depth_samples: 20
     minimum_depth_m: 0.3
     maximum_depth_m: 8.0
@@ -24,9 +28,6 @@ phase4a_target_selector:
   ros__parameters:
     ranking_topic: /semantic_memory/diagnostic_ranking
     tasks_topic: /semantic_memory/tasks
-    observations_topic: /semantic_memory/observations
-    depth_topic: /zed/zed_node/depth/depth_registered
-    camera_info_topic: /zed/zed_node/left/camera_info
     localization_topic: /semantic_search/phase4a/localization_state
     selected_target_topic: /semantic_search/phase4a/selected_target
     spatial_objects_topic: /semantic_search/phase4a/spatial_objects
@@ -39,11 +40,6 @@ phase4a_target_selector:
     position_window: 5
     maximum_xy_spread_m: 0.35
     maximum_age_sec: 4.0
-    maximum_depth_age_sec: 0.5
-    minimum_depth_samples: 20
-    minimum_depth_m: 0.3
-    maximum_depth_m: 8.0
-    depth_inner_fraction: 0.5
     frame_id: base_link
 
 phase4_approach_planner:

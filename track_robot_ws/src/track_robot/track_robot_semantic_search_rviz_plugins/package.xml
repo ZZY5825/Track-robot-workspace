@@ -14,7 +14,9 @@
   <build_depend>qtbase5-dev</build_depend>
 
   <depend>pluginlib</depend>
+  <depend>diagnostic_msgs</depend>
   <depend>rclcpp</depend>
+  <depend>rclcpp_action</depend>
   <depend>rviz_common</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>

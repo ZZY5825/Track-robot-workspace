@@ -146,7 +146,7 @@ def test_phase2_checks_required_topics_and_tf_paths(paths, fake_probe):
         'tf_camera_optical', 'tf_lidar', 'cmd_vel')
     assert ('tf_camera_optical', 'base_link',
             'zed_left_camera_optical_frame') in fake_probe.tf_calls
-    assert ('tf_lidar', 'base_link', 'rslidar') in fake_probe.tf_calls
+    assert ('tf_lidar', 'base_link', 'lidar_link') in fake_probe.tf_calls
 
 
 def test_phase0_checks_no_sensor_model_or_tf(paths, fake_probe):
@@ -303,10 +303,10 @@ def test_ros_cli_tf_startup_without_transform_is_not_ready():
         return subprocess.CompletedProcess(argv, 0, 'Waiting for transform\n', '')
 
     result = RosCliProbe(runner=runner, tf_timeout=0.2).transform(
-        'tf_lidar', 'base_link', 'rslidar')
+        'tf_lidar', 'base_link', 'lidar_link')
 
     assert result.status is CheckStatus.NOT_READY
-    assert result.detail == 'timeout waiting for transform base_link -> rslidar'
+    assert result.detail == 'timeout waiting for transform base_link -> lidar_link'
 
 
 def test_cmd_vel_absent_or_zero_publishers_passes_and_any_publisher_fails():

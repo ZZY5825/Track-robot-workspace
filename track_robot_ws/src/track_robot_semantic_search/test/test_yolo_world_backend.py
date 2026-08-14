@@ -150,3 +150,55 @@ def test_active_text_descriptor_rejects_invalid_model_features(values):
 
     with pytest.raises(ValueError, match='text descriptor'):
         backend.active_text_descriptor()
+
+
+def test_vocabulary_update_error_exposes_underlying_failure():
+    def fail_set_classes(_classes):
+        raise RuntimeError('CLIP text encoder is on the wrong device')
+
+    backend = object.__new__(YoloWorldBackend)
+    backend.model = SimpleNamespace(set_classes=fail_set_classes)
+    backend._dependencies = SimpleNamespace(
+        clip=SimpleNamespace(load=lambda *_args, **_kwargs: None),
+    )
+    backend._clip_checkpoint = 'clip.pt'
+    backend._cuda_device = 'cuda:0'
+    backend._active_query = None
+
+    with pytest.raises(
+            RuntimeError,
+            match='CLIP text encoder is on the wrong device'):
+        backend._set_query('green bottle')
+
+
+def test_query_switch_restores_cached_clip_precision_before_encoding():
+    class CachedClip:
+        def __init__(self):
+            self.dtype = 'float16'
+
+        def float(self):
+            self.dtype = 'float32'
+            return self
+
+    cached_clip = CachedClip()
+
+    def set_classes(_classes):
+        if cached_clip.dtype != 'float32':
+            raise RuntimeError('expected scalar type Float but found Half')
+
+    backend = object.__new__(YoloWorldBackend)
+    backend.model = SimpleNamespace(
+        model=SimpleNamespace(clip_model=cached_clip),
+        set_classes=set_classes,
+    )
+    backend._dependencies = SimpleNamespace(
+        clip=SimpleNamespace(load=lambda *_args, **_kwargs: None),
+    )
+    backend._clip_checkpoint = 'clip.pt'
+    backend._cuda_device = 'cuda:0'
+    backend._active_query = 'green bottle'
+
+    backend._set_query('yellow cylinder')
+
+    assert cached_clip.dtype == 'float32'
+    assert backend._active_query == 'yellow cylinder'

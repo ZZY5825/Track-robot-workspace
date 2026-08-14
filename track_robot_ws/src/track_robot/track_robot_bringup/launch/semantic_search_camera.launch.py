@@ -61,6 +61,12 @@ def _launch_extrinsic(context):
     extrinsic_file = Path(
         LaunchConfiguration('extrinsic_file').perform(context))
 
+    if mode not in ('none', 'prototype', 'measured', 'robot_description'):
+        raise RuntimeError(
+            'unknown camera extrinsic mode {!r}; expected none, prototype, '
+            'measured, or robot_description'.format(mode))
+    if mode in ('none', 'robot_description'):
+        return []
     if mode == 'prototype' and not allow_degraded:
         raise RuntimeError(
             'prototype camera extrinsic requires allow_degraded:=true')
@@ -68,13 +74,6 @@ def _launch_extrinsic(context):
         raise RuntimeError(
             'measured camera extrinsic file does not exist: {}'.format(
                 extrinsic_file))
-    if mode not in ('none', 'prototype', 'measured'):
-        raise RuntimeError(
-            'unknown camera extrinsic mode {!r}; expected none, prototype, '
-            'or measured'.format(mode))
-    if mode == 'none':
-        return []
-
     if mode == 'measured':
         transform = _measured_extrinsic(extrinsic_file)
     else:

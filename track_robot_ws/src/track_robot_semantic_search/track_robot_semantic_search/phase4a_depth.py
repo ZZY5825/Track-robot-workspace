@@ -22,6 +22,13 @@ class CameraIntrinsics:
             raise ValueError('camera intrinsics are invalid')
 
 
+class DepthEstimationError(ValueError):
+    def __init__(self, reason, valid_samples=0):
+        super().__init__(reason)
+        self.reason = str(reason)
+        self.valid_samples = int(valid_samples)
+
+
 @dataclass(frozen=True)
 class DepthEstimate:
     x: float
@@ -29,6 +36,8 @@ class DepthEstimate:
     z: float
     depth_m: float
     quality: float
+    valid_samples: int
+    total_samples: int
 
 
 def estimate_depth_point(
@@ -63,15 +72,19 @@ def estimate_depth_point(
     if right <= left or bottom <= top:
         raise ValueError('ROI lies outside depth image')
     sample = image[top:bottom, left:right].astype(np.float64, copy=False)
-    valid = (
-        np.isfinite(sample)
-        & (sample >= minimum_depth_m)
-        & (sample <= maximum_depth_m)
-    )
-    valid_values = sample[valid]
-    if valid_values.size < minimum_samples:
-        raise ValueError('insufficient valid depth samples')
-    depth_m = float(np.median(valid_values))
+    finite_values = sample[np.isfinite(sample)]
+    if finite_values.size == 0:
+        raise DepthEstimationError('insufficient_depth_samples', 0)
+    in_range = finite_values[
+        (finite_values >= minimum_depth_m)
+        & (finite_values <= maximum_depth_m)
+    ]
+    if in_range.size == 0:
+        raise DepthEstimationError('depth_out_of_range', 0)
+    if in_range.size < minimum_samples:
+        raise DepthEstimationError(
+            'insufficient_depth_samples', in_range.size)
+    depth_m = float(np.median(in_range))
     # The robust median determines range; the target ROI center determines
     # the viewing ray.
     pixel_u = x + 0.5 * (width - 1)
@@ -81,7 +94,9 @@ def estimate_depth_point(
         y=(pixel_v - intrinsics.cy) * depth_m / intrinsics.fy,
         z=depth_m,
         depth_m=depth_m,
-        quality=float(valid_values.size) / float(sample.size),
+        quality=float(in_range.size) / float(sample.size),
+        valid_samples=int(in_range.size),
+        total_samples=int(sample.size),
     )
 
 

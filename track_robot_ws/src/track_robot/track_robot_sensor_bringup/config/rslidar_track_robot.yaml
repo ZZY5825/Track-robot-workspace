@@ -33,7 +33,7 @@ lidar:
       pcap_path: /home/robosense/lidar.pcap
 
     ros:
-      ros_frame_id: rslidar
+      ros_frame_id: lidar_link
       ros_recv_packet_topic: /rslidar_packets
       ros_send_packet_topic: /rslidar_packets
       ros_send_imu_data_topic: /rslidar_imu_data

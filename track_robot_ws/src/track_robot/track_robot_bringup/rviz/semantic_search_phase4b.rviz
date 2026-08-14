@@ -24,12 +24,35 @@ Visualization Manager:
       Plane: XY
       Value: true
     - Class: rviz_default_plugins/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Name: TF
-      Show Axes: true
-      Show Names: true
+      Show Axes: false
+      Show Names: false
+      Value: false
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+      Link Tree Style: Links in Alphabetic Order
+      Name: Bunker Pro 2
+      TF Prefix: ""
+      Update Interval: 0
       Value: true
+      Visual Enabled: true
     - Alpha: 0.45
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
@@ -112,7 +135,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 32; 34; 38
-    Fixed Frame: odom
+    Fixed Frame: robot_bottom
     Frame Rate: 30
   Name: root
   Tools:

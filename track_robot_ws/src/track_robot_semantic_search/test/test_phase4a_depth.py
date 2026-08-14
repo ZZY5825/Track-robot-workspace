@@ -5,6 +5,7 @@ import pytest
 
 from track_robot_semantic_search.phase4a_depth import (
     CameraIntrinsics,
+    DepthEstimationError,
     estimate_depth_point,
     transform_point,
 )
@@ -26,13 +27,15 @@ def test_estimate_depth_point_uses_inner_roi_median_and_camera_intrinsics():
     assert estimate.y == pytest.approx(-0.01)
     assert estimate.z == pytest.approx(2.0)
     assert estimate.quality == pytest.approx(4.0 / 9.0)
+    assert estimate.valid_samples == 4
+    assert estimate.total_samples == 9
 
 
 def test_estimate_depth_point_rejects_sparse_or_out_of_range_depth():
     depth = np.full((6, 6), np.nan, dtype=np.float32)
     depth[2, 2] = 20.0
 
-    with pytest.raises(ValueError, match='insufficient valid depth'):
+    with pytest.raises(DepthEstimationError) as caught:
         estimate_depth_point(
             depth,
             roi=(1, 1, 4, 4),
@@ -41,6 +44,21 @@ def test_estimate_depth_point_rejects_sparse_or_out_of_range_depth():
             minimum_samples=2,
             maximum_depth_m=10.0,
         )
+    assert caught.value.reason == 'depth_out_of_range'
+
+
+def test_estimate_depth_point_reports_insufficient_depth_samples():
+    with pytest.raises(DepthEstimationError) as caught:
+        estimate_depth_point(
+            np.full((4, 4), np.nan),
+            roi=(0, 0, 4, 4),
+            intrinsics=CameraIntrinsics(
+                fx=100.0, fy=100.0, cx=1.5, cy=1.5),
+            minimum_samples=4,
+        )
+
+    assert caught.value.reason == 'insufficient_depth_samples'
+    assert caught.value.valid_samples == 0
 
 
 def test_transform_point_applies_normalized_quaternion_and_translation():

@@ -26,6 +26,7 @@ add_library(semantic_memory_primitives
   src/cross_modal_associator.cpp
   src/deterministic_replay.cpp
   src/hungarian_assignment.cpp
+  src/input_policy.cpp
   src/lifecycle_policy.cpp
   src/memory_core.cpp
   src/memory_clock.cpp
@@ -113,6 +114,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_lifecycle_policy test/test_lifecycle_policy.cpp)
   target_include_directories(test_lifecycle_policy PRIVATE include)
   target_link_libraries(test_lifecycle_policy semantic_memory_primitives)
+
+  ament_add_gtest(test_input_policy test/test_input_policy.cpp)
+  target_include_directories(test_input_policy PRIVATE include)
+  target_link_libraries(test_input_policy semantic_memory_primitives)
 
   ament_add_gtest(test_motion_classifier test/test_motion_classifier.cpp)
   target_include_directories(test_motion_classifier PRIVATE include)

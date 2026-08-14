@@ -44,7 +44,8 @@ controller_server:
       rotate_to_heading_angular_vel: 0.40
       transform_tolerance: 0.20
       use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.03
+      # Bunker needs at least 0.10 m/s to overcome measured static resistance.
+      min_approach_linear_velocity: 0.10
       use_approach_linear_velocity_scaling: true
       max_allowed_time_to_collision: 1.5
       use_regulated_linear_velocity_scaling: true
@@ -53,7 +54,7 @@ controller_server:
       cost_scaling_gain: 1.0
       inflation_cost_scaling_factor: 12.0
       regulated_linear_scaling_min_radius: 0.90
-      regulated_linear_scaling_min_speed: 0.03
+      regulated_linear_scaling_min_speed: 0.10
       use_rotate_to_heading: true
       # The tracked base must overcome static resistance immediately.  At the
       # 10 Hz controller rate, 1.5 m/s^2 permits the first commanded sample to
@@ -81,9 +82,17 @@ recoveries_server:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
-    recovery_plugins: [wait]
+    recovery_plugins: [wait, spin, back_up]
     wait:
       plugin: nav2_recoveries/Wait
+    spin:
+      plugin: nav2_recoveries/Spin
+      simulate_ahead_time: 1.5
+      max_rotational_vel: 0.30
+      min_rotational_vel: 0.08
+      rotational_acc_lim: 0.50
+    back_up:
+      plugin: nav2_recoveries/BackUp
     global_frame: odom
     robot_base_frame: base_link
     transform_timeout: 0.20
@@ -113,7 +122,9 @@ local_costmap:
         z_resolution: 0.12
         z_voxels: 16
         max_obstacle_height: 1.80
-        mark_threshold: 0
+        # A lone uncleared height voxel must not keep a one-cell pedestrian
+        # trail marked after the rest of the column has been ray-cleared.
+        mark_threshold: 1
         observation_sources: raw_clear filtered_mark
         raw_clear:
           topic: /rslidar_points

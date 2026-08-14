@@ -76,6 +76,26 @@ def test_semantic_execution_remains_disabled_by_default():
     assert "default_value='false'" in source
 
 
+def test_physical_recovery_is_explicitly_disabled_and_rewritten_by_default():
+    source = (
+        PACKAGE_ROOT / 'launch' / 'phase4b_navigation.launch.py'
+    ).read_text()
+
+    assert "'physical_recovery_enabled'" in source
+    assert "LaunchConfiguration('physical_recovery_enabled')" in source
+    assert "'physical_recovery_enabled':" in source
+    assert source.count("default_value='false'") >= 2
+
+
+def test_target_arrival_stop_has_conservative_fixed_defaults():
+    config = (
+        PACKAGE_ROOT / 'config' / 'semantic_navigation.yaml'
+    ).read_text()
+
+    assert 'target_arrival_distance_m: 0.70' in config
+    assert 'target_arrival_confirmation_cycles: 3' in config
+
+
 def test_operator_authorization_is_reference_bound_and_uses_safety_services():
     source = (
         PACKAGE_ROOT
@@ -131,14 +151,21 @@ def test_bt_navigator_receives_supervised_tree_as_an_explicit_parameter():
     )
 
 
-def test_phase5a_freezes_an_odom_goal_before_motion_authorization():
+def test_phase4b_freezes_an_odom_goal_before_motion_authorization():
     source = (
         PACKAGE_ROOT
         / 'track_robot_navigation'
         / 'semantic_navigation_supervisor_node.py'
+    ).read_text()
+    mission_source = (
+        PACKAGE_ROOT
+        / 'track_robot_navigation'
+        / 'static_target_mission.py'
     ).read_text()
 
     assert 'mission_goal = self._goal_in_navigation_frame()' in source
     assert 'self._pending_mission_goal = mission_goal' in source
     assert 'self._lock_static_mission(' in source
     assert 'if self._supervise_static_mission():' in source
+    assert 'Phase 4B static-target mission continuity' in mission_source
+    assert 'Phase 5A execution policy' not in mission_source

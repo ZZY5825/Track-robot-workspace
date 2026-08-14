@@ -52,6 +52,7 @@ def generate_launch_description():
         {
             'start_base': LaunchConfiguration('start_base'),
             'start_imu': 'false',
+            'base_frame': 'robot_bottom',
         },
     )
     navigation = _include(
@@ -61,6 +62,8 @@ def generate_launch_description():
             'runtime_mode': LaunchConfiguration('runtime_mode'),
             'enable_semantic_execution':
                 LaunchConfiguration('enable_semantic_execution'),
+            'physical_recovery_enabled':
+                LaunchConfiguration('physical_recovery_enabled'),
             'use_sim_time': LaunchConfiguration('use_sim_time'),
             'autostart': LaunchConfiguration('autostart'),
             # Phase 4A already owns this independent safety map instance.
@@ -94,6 +97,8 @@ def generate_launch_description():
             'runtime_mode', default_value='SEMANTIC_SHADOW'),
         DeclareLaunchArgument(
             'enable_semantic_execution', default_value='false'),
+        DeclareLaunchArgument(
+            'physical_recovery_enabled', default_value='false'),
         DeclareLaunchArgument('start_base', default_value='false'),
         # This name must remain distinct from Phase 4A's start_rviz argument.
         # Foxy include arguments share launch context and Phase 4A is
@@ -106,7 +111,8 @@ def generate_launch_description():
         DeclareLaunchArgument('host_ip', default_value='192.168.1.102'),
         DeclareLaunchArgument('host_cidr', default_value='24'),
         DeclareLaunchArgument('driver_start_delay', default_value='1.0'),
-        DeclareLaunchArgument('extrinsic_mode', default_value='prototype'),
+        DeclareLaunchArgument(
+            'extrinsic_mode', default_value='robot_description'),
         DeclareLaunchArgument('extrinsic_file', default_value=''),
         DeclareLaunchArgument('dino_enabled', default_value='true'),
         DeclareLaunchArgument(

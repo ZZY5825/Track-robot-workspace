@@ -6,7 +6,7 @@ import time
 from action_msgs.msg import GoalStatus
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseStamped
-from nav2_msgs.action import ComputePathToPose, NavigateToPose
+from nav2_msgs.action import BackUp, ComputePathToPose, NavigateToPose, Spin
 from nav_msgs.msg import Odometry, Path
 import rclpy
 from rclpy.action import ActionClient
@@ -25,6 +25,10 @@ from track_robot_interfaces.msg import (
 from track_robot_interfaces.srv import AuthorizeSemanticApproach
 
 from .runtime_modes import RuntimeMode
+from .physical_recovery import (
+    PhysicalRecoveryPolicy,
+    RecoveryCommand,
+)
 from .semantic_goal_policy import (
     GoalAction,
     SemanticGoalPolicy,
@@ -91,15 +95,93 @@ def _authorization_survives_interruption(reason):
         'confirming_target_reference',
         'goal_stale',
         'odometry_stale',
+        'recovery_base_status_stale',
+        'recovery_cloud_stale',
+        'recovery_odometry_stale',
+        'recovery_safety_not_ready',
         'planner_diagnostics_stale',
         'planner_not_ready',
         'safety_motion_not_permitted',
         'safety_obstacle_blocked',
         'target_position_invalid',
+        'target_reached',
         'target_reference_mismatch',
         'target_stale',
         'timestamp_regression',
         'waiting_for_correlated_inputs',
+    }
+
+
+def _physical_recovery_preflight_failure(
+        safety, odom_age_sec, maximum_odom_age_sec=0.25):
+    """Return why a Nav2 physical recovery must not be submitted.
+
+    A fresh ``STATE_BLOCKED`` is intentionally accepted here. The recovery
+    server predicts the requested footprint motion, and the existing safety
+    supervisor and velocity gate still evaluate every resulting command.
+    """
+
+    if safety is None:
+        return 'recovery_safety_unavailable'
+    state = int(getattr(safety, 'state', SafetyState.STATE_WAITING_FOR_DATA))
+    if (
+            bool(getattr(safety, 'rc_override_active', False))
+            or state == SafetyState.STATE_RC_OVERRIDE):
+        return 'recovery_rc_override'
+    if (
+            bool(getattr(safety, 'emergency_stop_latched', False))
+            or state == SafetyState.STATE_EMERGENCY_STOP):
+        return 'recovery_emergency_stop'
+    if (
+            not bool(getattr(safety, 'base_status_ok', False))
+            or state == SafetyState.STATE_BASE_FAULT):
+        return 'recovery_base_fault'
+    if not bool(getattr(safety, 'base_status_fresh', False)):
+        return 'recovery_base_status_stale'
+    if (
+            not bool(getattr(safety, 'cloud_fresh', False))
+            or state == SafetyState.STATE_SENSOR_STALE):
+        return 'recovery_cloud_stale'
+    if not bool(getattr(safety, 'armed', False)):
+        return 'recovery_safety_not_armed'
+    if (
+            not math.isfinite(float(odom_age_sec))
+            or float(odom_age_sec) > float(maximum_odom_age_sec)):
+        return 'recovery_odometry_stale'
+    if state not in (
+            SafetyState.STATE_CLEAR,
+            SafetyState.STATE_SLOWDOWN,
+            SafetyState.STATE_BLOCKED,
+            SafetyState.STATE_AVOIDING):
+        return 'recovery_safety_not_ready'
+    return None
+
+
+def _recovery_diagnostic_values(
+        recovery, mission_reference, mission_anchor_xy, backup_permitted):
+    """Format recovery evidence without consulting a live target candidate."""
+
+    has_mission = mission_reference is not None
+    object_id = int(mission_reference[1]) if has_mission else 0
+    anchor_valid = bool(
+        has_mission
+        and mission_anchor_xy is not None
+        and len(mission_anchor_xy) == 2
+        and all(math.isfinite(float(value)) for value in mission_anchor_xy))
+    return {
+        'recovery_stage': recovery.stage.value,
+        'recovery_cycle': str(recovery.cycle),
+        'recovery_attempt': str(recovery.attempt),
+        'recovery_last_failure': recovery.last_failure,
+        'mission_target_global_id': str(object_id),
+        'mission_target_anchor_x': (
+            '{:.3f}'.format(float(mission_anchor_xy[0]))
+            if anchor_valid else ''),
+        'mission_target_anchor_y': (
+            '{:.3f}'.format(float(mission_anchor_xy[1]))
+            if anchor_valid else ''),
+        'mission_authorization_preserved': str(has_mission).lower(),
+        'backup_permitted': str(bool(backup_permitted)).lower(),
     }
 
 
@@ -145,6 +227,46 @@ def _same_static_target_location(
         float(current_xy[0]) - float(authorized_xy[0]),
         float(current_xy[1]) - float(authorized_xy[1]),
     ) <= float(maximum_distance_m)
+
+
+class _TargetArrivalConfirmation:
+    """Confirm a target-relative stop across consecutive valid samples."""
+
+    def __init__(self, distance_m, confirmation_cycles):
+        self.distance_m = float(distance_m)
+        self.confirmation_cycles = int(confirmation_cycles)
+        if (
+                not math.isfinite(self.distance_m)
+                or not 0.0 < self.distance_m <= 2.0):
+            raise ValueError('target arrival distance must be in (0, 2.0]')
+        if not 1 <= self.confirmation_cycles <= 20:
+            raise ValueError(
+                'target arrival confirmation cycles must be in [1, 20]')
+        self.reset()
+
+    def reset(self):
+        self._inside_count = 0
+        self.last_distance_m = float('nan')
+
+    def observe(self, robot_xy, target_xy):
+        if robot_xy is None or target_xy is None:
+            self.reset()
+            return False
+        values = tuple(robot_xy) + tuple(target_xy)
+        if (
+                len(values) != 4
+                or not all(math.isfinite(float(value)) for value in values)):
+            self.reset()
+            return False
+        self.last_distance_m = math.hypot(
+            float(target_xy[0]) - float(robot_xy[0]),
+            float(target_xy[1]) - float(robot_xy[1]),
+        )
+        if self.last_distance_m >= self.distance_m:
+            self._inside_count = 0
+            return False
+        self._inside_count += 1
+        return self._inside_count >= self.confirmation_cycles
 
 
 class _TransientTargetGrace:
@@ -247,6 +369,44 @@ class SemanticNavigationSupervisorNode(Node):
             self.declare_parameter(
                 'preserve_authorization_after_retry_exhaustion',
                 False).value)
+        physical_recovery_requested = bool(self.declare_parameter(
+            'physical_recovery_enabled', False).value)
+        self._physical_recovery_enabled = bool(
+            physical_recovery_requested
+            and mode is RuntimeMode.SEMANTIC_ACTIVE
+            and self._semantic_execution_enabled)
+        self._recovery_spin_angle_rad = float(self.declare_parameter(
+            'recovery_spin_angle_rad', 0.523599).value)
+        if (
+                not math.isfinite(self._recovery_spin_angle_rad)
+                or not 0.0 < self._recovery_spin_angle_rad <= math.pi / 2.0):
+            raise ValueError('recovery_spin_angle_rad must be in (0, pi/2]')
+        recovery_spin_clockwise = bool(self.declare_parameter(
+            'recovery_spin_clockwise', False).value)
+        self._recovery_backup_distance_m = float(self.declare_parameter(
+            'recovery_backup_distance_m', 0.25).value)
+        if (
+                not math.isfinite(self._recovery_backup_distance_m)
+                or not 0.20 <= self._recovery_backup_distance_m <= 0.30):
+            raise ValueError(
+                'recovery_backup_distance_m must be in [0.20, 0.30]')
+        self._recovery_backup_speed_mps = float(self.declare_parameter(
+            'recovery_backup_speed_mps', 0.10).value)
+        if (
+                not math.isfinite(self._recovery_backup_speed_mps)
+                or not 0.10 <= self._recovery_backup_speed_mps <= 0.15):
+            raise ValueError(
+                'recovery_backup_speed_mps must be in [0.10, 0.15]')
+        recovery_cooldown_sec = float(self.declare_parameter(
+            'recovery_cooldown_sec', 2.0).value)
+        maximum_physical_recovery_cycles = int(self.declare_parameter(
+            'maximum_physical_recovery_cycles', 2).value)
+        self._physical_recovery = PhysicalRecoveryPolicy(
+            enabled=self._physical_recovery_enabled,
+            cooldown_sec=recovery_cooldown_sec,
+            maximum_cycles=maximum_physical_recovery_cycles,
+            spin_sign=-1 if recovery_spin_clockwise else 1,
+        )
         supervision_rate_hz = float(self.declare_parameter(
             'supervision_rate_hz', 10.0).value)
         static_target_mode = bool(self.declare_parameter(
@@ -281,6 +441,13 @@ class SemanticNavigationSupervisorNode(Node):
 
         maximum_odom_age_sec = float(self.declare_parameter(
             'maximum_odom_age_sec', 0.25).value)
+        self._maximum_odom_age_sec = maximum_odom_age_sec
+        self._arrival_confirmation = _TargetArrivalConfirmation(
+            self.declare_parameter(
+                'target_arrival_distance_m', 0.70).value,
+            self.declare_parameter(
+                'target_arrival_confirmation_cycles', 3).value,
+        )
         self._policy = SemanticGoalPolicy(
             runtime_mode=mode.value,
             semantic_execution_enabled=self._semantic_execution_enabled,
@@ -323,6 +490,7 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = None
         self._pending_mission_goal = None
+        self._mission_arrived = False
 
         target_qos = QoSProfile(depth=1)
         target_qos.reliability = ReliabilityPolicy.RELIABLE
@@ -369,14 +537,18 @@ class SemanticNavigationSupervisorNode(Node):
             self, ComputePathToPose, 'compute_path_to_pose')
         self._navigate_client = ActionClient(
             self, NavigateToPose, 'navigate_to_pose')
+        self._spin_client = ActionClient(self, Spin, 'spin')
+        self._back_up_client = ActionClient(self, BackUp, 'back_up')
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
         self._timer = self.create_timer(
             1.0 / max(1.0, supervision_rate_hz), self._supervise)
         self.get_logger().warn(
-            'Semantic navigation mode={} execution_enabled={}'.format(
+            'Semantic navigation mode={} execution_enabled={} '
+            'physical_recovery_enabled={}'.format(
                 mode.value,
-                str(self._semantic_execution_enabled).lower()))
+                str(self._semantic_execution_enabled).lower(),
+                str(self._physical_recovery_enabled).lower()))
 
     def _on_target(self, message):
         previous_reference = (
@@ -463,6 +635,8 @@ class SemanticNavigationSupervisorNode(Node):
                 SafetyState.STATE_EMERGENCY_STOP))
         if hard_stop:
             self._clear_authorization('safety_hard_stop')
+            self._cancel_action('safety_hard_stop')
+            self._request_safety_disarm()
         elif message.armed and self._pending_authorization is not None:
             pending_reference, _pending_sequence = (
                 self._pending_authorization)
@@ -576,9 +750,13 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = None
         self._pending_mission_goal = None
+        self._mission_arrived = False
+        self._arrival_confirmation.reset()
         self._nav2_retry_count = 0
         self._nav2_retry_not_before_s = 0.0
         self._target_grace.reset()
+        if hasattr(self, '_physical_recovery'):
+            self._physical_recovery.reset()
 
     def _lock_static_mission(
             self, reference, target_anchor_xy, mission_goal):
@@ -590,6 +768,10 @@ class SemanticNavigationSupervisorNode(Node):
         self._pending_target_anchor_xy = None
         self._mission_goal = mission_goal
         self._pending_mission_goal = None
+        self._mission_arrived = False
+        self._arrival_confirmation.reset()
+        if hasattr(self, '_physical_recovery'):
+            self._physical_recovery.reset()
 
     def _target_anchor_in_navigation_frame(self, target):
         if (
@@ -611,6 +793,22 @@ class SemanticNavigationSupervisorNode(Node):
         values = (
             float(transformed.pose.position.x),
             float(transformed.pose.position.y),
+        )
+        return values if all(math.isfinite(value) for value in values) else None
+
+    def _robot_xy_in_navigation_frame(self):
+        if (
+                self._odom is None
+                or str(self._odom.header.frame_id) != self._navigation_frame):
+            return None
+        if (
+                self._age_from_stamp(
+                    self._odom.header.stamp, self._odom_received_s)
+                > self._maximum_odom_age_sec):
+            return None
+        values = (
+            float(self._odom.pose.pose.position.x),
+            float(self._odom.pose.pose.position.y),
         )
         return values if all(math.isfinite(value) for value in values) else None
 
@@ -778,16 +976,109 @@ class SemanticNavigationSupervisorNode(Node):
         if mission_snapshot is None:
             return False
         decision = self._mission_policy.evaluate(mission_snapshot)
+        if self._mission_arrived:
+            if (
+                    decision.terminate_mission
+                    and decision.reason != 'safety_not_armed'):
+                self._publish_diagnostics(
+                    decision.action,
+                    decision.reason,
+                    mission_snapshot.key,
+                )
+                self._clear_authorization(decision.reason)
+                self._cancel_action(decision.reason)
+                self._request_safety_disarm()
+                return True
+            self._publish_diagnostics(
+                GoalAction.HOLD, 'target_reached', mission_snapshot.key)
+            return True
+        if decision.terminate_mission:
+            self._publish_diagnostics(
+                decision.action,
+                decision.reason,
+                mission_snapshot.key,
+            )
+            self._clear_authorization(decision.reason)
+            self._cancel_action(decision.reason)
+            self._request_safety_disarm()
+            return True
+
+        if self._arrival_confirmation.observe(
+                self._robot_xy_in_navigation_frame(),
+                self._authorized_target_anchor_xy):
+            self._mission_arrived = True
+            self._publish_diagnostics(
+                GoalAction.HOLD, 'target_reached', mission_snapshot.key)
+            self._cancel_action('target_reached')
+            self._request_safety_disarm()
+            return True
+
+        if getattr(self, '_physical_recovery_enabled', False):
+            active_recovery = self._pending_goal_kind in (
+                RecoveryCommand.SPIN, RecoveryCommand.BACK_UP)
+            recovery = (
+                None
+                if mission_snapshot.goal_in_flight
+                else self._physical_recovery.next_command(time.monotonic()))
+            recovery_command_pending = bool(
+                active_recovery
+                or (
+                    recovery is not None
+                    and recovery.command in (
+                        RecoveryCommand.SPIN, RecoveryCommand.BACK_UP)))
+            if recovery_command_pending:
+                preflight_failure = _physical_recovery_preflight_failure(
+                    self._safety,
+                    mission_snapshot.odom_age_sec,
+                    self._maximum_odom_age_sec,
+                )
+                if preflight_failure is not None:
+                    self._publish_diagnostics(
+                        GoalAction.HOLD,
+                        preflight_failure,
+                        mission_snapshot.key,
+                    )
+                    if preflight_failure in {
+                            'recovery_rc_override',
+                            'recovery_emergency_stop',
+                            'recovery_base_fault',
+                            'recovery_safety_not_armed'}:
+                        self._clear_authorization(preflight_failure)
+                        self._cancel_action(preflight_failure)
+                        self._request_safety_disarm()
+                    else:
+                        self._cancel_action(preflight_failure)
+                    return True
+                if active_recovery:
+                    self._publish_diagnostics(
+                        GoalAction.HOLD,
+                        'physical_recovery_active',
+                        mission_snapshot.key,
+                    )
+                    return True
+                self._publish_diagnostics(
+                    GoalAction.HOLD,
+                    recovery.reason,
+                    mission_snapshot.key,
+                )
+                self._dispatch_recovery(recovery.command)
+                return True
+            if (
+                    recovery is not None
+                    and recovery.command is RecoveryCommand.HOLD):
+                self._publish_diagnostics(
+                    GoalAction.HOLD,
+                    recovery.reason,
+                    mission_snapshot.key,
+                )
+                return True
+
         self._publish_diagnostics(
             decision.action,
             decision.reason,
             mission_snapshot.key,
         )
-        if decision.terminate_mission:
-            self._clear_authorization(decision.reason)
-            self._cancel_action(decision.reason)
-            self._request_safety_disarm()
-        elif decision.action is GoalAction.CANCEL:
+        if decision.action is GoalAction.CANCEL:
             self._cancel_action(decision.reason)
         elif decision.action is GoalAction.NAVIGATE:
             self._dispatch(decision.action)
@@ -947,7 +1238,43 @@ class SemanticNavigationSupervisorNode(Node):
             self._pending_goal_kind = GoalAction.NAVIGATE
         future.add_done_callback(self._on_goal_response)
 
+    def _dispatch_recovery(self, command):
+        if command not in (RecoveryCommand.SPIN, RecoveryCommand.BACK_UP):
+            raise ValueError('physical recovery command must be SPIN or BACK_UP')
+        if (
+                self._pending_goal_kind is not None
+                or self._active_goal_handle is not None):
+            self._policy.mark_dispatch_failed()
+            return
+
+        if command is RecoveryCommand.SPIN:
+            if not self._spin_client.server_is_ready():
+                self._policy.mark_dispatch_failed()
+                self.get_logger().warn('spin action server is unavailable')
+                return
+            request = Spin.Goal()
+            request.target_yaw = (
+                self._physical_recovery.spin_sign
+                * self._recovery_spin_angle_rad)
+            client = self._spin_client
+        else:
+            if not self._back_up_client.server_is_ready():
+                self._policy.mark_dispatch_failed()
+                self.get_logger().warn('back_up action server is unavailable')
+                return
+            request = BackUp.Goal()
+            request.target.x = -self._recovery_backup_distance_m
+            request.target.y = 0.0
+            request.target.z = 0.0
+            request.speed = self._recovery_backup_speed_mps
+            client = self._back_up_client
+
+        future = client.send_goal_async(request)
+        self._pending_goal_kind = command
+        future.add_done_callback(self._on_goal_response)
+
     def _on_goal_response(self, future):
+        action = self._pending_goal_kind
         try:
             handle = future.result()
         except Exception as error:  # action transport failure
@@ -956,12 +1283,23 @@ class SemanticNavigationSupervisorNode(Node):
             self._pending_goal_kind = None
             self._cancel_when_accepted = False
             self._policy.mark_dispatch_failed()
+            if (
+                    action in (RecoveryCommand.SPIN, RecoveryCommand.BACK_UP)
+                    and self._authorized_reference is not None):
+                self._physical_recovery.recovery_finished(
+                    action, False, time.monotonic())
             return
         if not handle.accepted:
             self.get_logger().warn('Nav2 rejected the supervised goal')
             self._pending_goal_kind = None
             self._cancel_when_accepted = False
             self._policy.mark_dispatch_failed()
+            if (
+                    action in (RecoveryCommand.SPIN, RecoveryCommand.BACK_UP)
+                    and self._authorized_reference is not None):
+                self._physical_recovery.recovery_finished(
+                    action, False, time.monotonic())
+                return
             self._clear_authorization('nav2_goal_rejected')
             self._request_safety_disarm()
             return
@@ -981,6 +1319,13 @@ class SemanticNavigationSupervisorNode(Node):
         except Exception as error:
             self.get_logger().error(
                 'Nav2 action result failed: {}'.format(error))
+            if (
+                    action in (RecoveryCommand.SPIN, RecoveryCommand.BACK_UP)
+                    and self._authorized_reference is not None):
+                self._physical_recovery.recovery_finished(
+                    action, False, time.monotonic())
+                self._policy.mark_dispatch_failed()
+                return
             self._clear_authorization('nav2_action_result_failed')
             self._request_safety_disarm()
             return
@@ -990,18 +1335,43 @@ class SemanticNavigationSupervisorNode(Node):
                 and wrapped.result is not None):
             self._shadow_path_publisher.publish(wrapped.result.path)
         if (
-                action is GoalAction.NAVIGATE
-                and self._cancel_preserves_authorization
+                self._cancel_preserves_authorization
                 and self._authorized_reference is not None):
             self._cancel_preserves_authorization = False
             self._policy.mark_dispatch_failed()
             return
         self._cancel_preserves_authorization = False
+        if action in (RecoveryCommand.SPIN, RecoveryCommand.BACK_UP):
+            if self._authorized_reference is None:
+                return
+            status = (
+                int(wrapped.status)
+                if wrapped is not None
+                else GoalStatus.STATUS_UNKNOWN)
+            self._physical_recovery.recovery_finished(
+                action,
+                status == GoalStatus.STATUS_SUCCEEDED,
+                time.monotonic(),
+            )
+            self._policy.mark_dispatch_failed()
+            return
         if action is GoalAction.NAVIGATE:
             status = (
                 int(wrapped.status)
                 if wrapped is not None
                 else GoalStatus.STATUS_UNKNOWN)
+            if (
+                    getattr(self, '_physical_recovery_enabled', False)
+                    and status == GoalStatus.STATUS_ABORTED
+                    and self._authorized_reference is not None):
+                self._physical_recovery.navigation_aborted(time.monotonic())
+                self._nav2_retry_count = 0
+                self._nav2_retry_not_before_s = 0.0
+                self._policy.mark_dispatch_failed()
+                self.get_logger().warn(
+                    'Nav2 aborted; preserving the frozen semantic mission '
+                    'and starting bounded physical recovery')
+                return
             disposition = _classify_nav2_result(
                 status,
                 self._nav2_retry_count,
@@ -1057,6 +1427,25 @@ class SemanticNavigationSupervisorNode(Node):
             self._cancel_when_accepted = True
 
     def _publish_diagnostics(self, action, reason, key):
+        backup_permitted = False
+        if (
+                self._physical_recovery_enabled
+                and self._authorized_reference is not None
+                and self._mission_goal is not None):
+            mission_snapshot = self._static_mission_snapshot()
+            backup_permitted = bool(
+                mission_snapshot is not None
+                and _physical_recovery_preflight_failure(
+                    self._safety,
+                    mission_snapshot.odom_age_sec,
+                    self._maximum_odom_age_sec,
+                ) is None)
+        recovery_values = _recovery_diagnostic_values(
+            self._physical_recovery,
+            self._authorized_reference,
+            self._authorized_target_anchor_xy,
+            backup_permitted,
+        )
         output = DiagnosticArray()
         output.header.stamp = self.get_clock().now().to_msg()
         status = DiagnosticStatus()
@@ -1087,7 +1476,18 @@ class SemanticNavigationSupervisorNode(Node):
                 value=str(
                     self._mode is RuntimeMode.SEMANTIC_ACTIVE
                     and self._semantic_execution_enabled).lower()),
+            KeyValue(
+                key='target_distance_m',
+                value=(
+                    '{:.3f}'.format(
+                        self._arrival_confirmation.last_distance_m)
+                    if math.isfinite(
+                        self._arrival_confirmation.last_distance_m)
+                    else '')),
         ]
+        status.values.extend(
+            KeyValue(key=name, value=value)
+            for name, value in recovery_values.items())
         output.status.append(status)
         self._diagnostic_publisher.publish(output)
         if reason != self._last_reason:
@@ -1100,6 +1500,8 @@ class SemanticNavigationSupervisorNode(Node):
         # Foxy ActionClient must be released before its owning node handle.
         self._compute_path_client.destroy()
         self._navigate_client.destroy()
+        self._spin_client.destroy()
+        self._back_up_client.destroy()
         return super().destroy_node()
 
 

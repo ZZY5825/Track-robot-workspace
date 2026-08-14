@@ -8,6 +8,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <map>
 #include <string>
 
 #include <QFormLayout>
@@ -37,10 +38,19 @@ constexpr const char * kSelectedTargetTopic =
   "/semantic_search/phase4a/selected_target";
 constexpr const char * kDiagnosticRankingTopic =
   "/semantic_memory/diagnostic_ranking";
+constexpr const char * kNavigationDiagnosticsTopic =
+  "/semantic_navigation/diagnostics";
 constexpr const char * kAuthorizeService =
   "/semantic_navigation/authorize_approach";
 constexpr const char * kCancelDisarmService =
   "/semantic_navigation/cancel_and_disarm";
+constexpr const char * kSearchAction =
+  "/semantic_search/search_for_object";
+constexpr const char * kCancelSearchService =
+  "/semantic_search/active_search/cancel";
+constexpr std::int32_t kSearchTimeoutSec = 60;
+constexpr float kMaximumSearchAngleRad = 1.5708F;
+constexpr int kMaximumResultReasonCharacters = 256;
 
 QString compact_reason(const std::string & reason)
 {
@@ -65,6 +75,59 @@ QString support_name(std::uint8_t support)
   }
 }
 
+QString active_search_result_text(const SearchForObject::Result & result)
+{
+  QString status;
+  switch (result.status) {
+    case SearchForObject::Result::CONFIRMED:
+      status = QStringLiteral("confirmed");
+      break;
+    case SearchForObject::Result::NOT_FOUND:
+      status = QStringLiteral("not found");
+      break;
+    case SearchForObject::Result::UNCERTAIN:
+      status = QStringLiteral("uncertain");
+      break;
+    case SearchForObject::Result::CANCELLED:
+      status = QStringLiteral("cancelled");
+      break;
+    case SearchForObject::Result::TIMEOUT:
+      status = QStringLiteral("timed out");
+      break;
+    case SearchForObject::Result::SAFETY_REJECTED:
+      status = QStringLiteral("safety rejected");
+      break;
+    case SearchForObject::Result::SENSOR_UNAVAILABLE:
+      status = QStringLiteral("sensor unavailable");
+      break;
+    case SearchForObject::Result::MODEL_UNAVAILABLE:
+      status = QStringLiteral("model unavailable");
+      break;
+    case SearchForObject::Result::LOCALIZATION_UNAVAILABLE:
+      status = QStringLiteral("localization unavailable");
+      break;
+    case SearchForObject::Result::SEARCH_SPACE_EXHAUSTED:
+      status = QStringLiteral("search space exhausted");
+      break;
+    case SearchForObject::Result::INTERNAL_FAULT:
+      status = QStringLiteral("internal fault");
+      break;
+    default:
+      status = QStringLiteral("unknown result (%1)").arg(result.status);
+      break;
+  }
+  if (result.selected_object_valid) {
+    status += QStringLiteral("; object %1").arg(
+      result.selected_global_object_id);
+  }
+  const auto evidence = QString::fromStdString(result.evidence_summary);
+  if (!evidence.isEmpty()) {
+    status += QStringLiteral(": %1").arg(
+      evidence.left(kMaximumResultReasonCharacters));
+  }
+  return status;
+}
+
 }  // namespace
 
 SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
@@ -76,20 +139,21 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   best_candidate_topic_(kBestCandidateTopic),
   selected_target_topic_(kSelectedTargetTopic),
   diagnostic_ranking_topic_(kDiagnosticRankingTopic),
+  navigation_diagnostics_topic_(kNavigationDiagnosticsTopic),
   authorize_service_(kAuthorizeService),
-  cancel_disarm_service_(kCancelDisarmService)
+  cancel_disarm_service_(kCancelDisarmService),
+  search_action_(kSearchAction),
+  cancel_search_service_(kCancelSearchService)
 {
   auto * safety = new QLabel(
-    tr("SUPERVISED SEMANTIC APPROACH — motion starts only after an exact "
-      "target is selected and Start Approach is clicked."),
+    tr("SUPERVISED SEMANTIC CONTROL — translation/approach starts only after Start Approach."),
     this);
   safety->setWordWrap(true);
   safety->setStyleSheet(
     "QLabel { color: #ffcc66; font-weight: bold; padding: 6px; "
     "background: #3b2f16; }");
   auto * calibration_warning = new QLabel(
-    tr("RC override and E-stop remain authoritative. Cancel & Disarm "
-      "requests an immediate Nav2 cancel and safety disarm."), this);
+    tr("Start Finding may initiate bounded in-place rotation; RC override and E-stop remain authoritative. Cancel & Disarm requests an immediate Nav2 cancel and safety disarm."), this);
   calibration_warning->setWordWrap(true);
   calibration_warning->setStyleSheet(
     "QLabel { color: #ffffff; font-weight: bold; padding: 7px; "
@@ -100,6 +164,7 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
     tr("English object description, e.g. blue chair"));
   new_button_ = new QPushButton(tr("New Query"), this);
   revise_button_ = new QPushButton(tr("Revise"), this);
+  finding_button_ = new QPushButton(tr("Start Finding"), this);
   start_approach_button_ = new QPushButton(tr("Start Approach"), this);
   start_approach_button_->setEnabled(false);
   cancel_disarm_button_ = new QPushButton(tr("Cancel & Disarm"), this);
@@ -119,14 +184,16 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   object_status_ = new QLabel(tr("waiting"), this);
   best_status_ = new QLabel(tr("unavailable"), this);
   diagnostic_ranking_status_ = new QLabel(tr("waiting"), this);
+  finding_status_ = new QLabel(tr("idle"), this);
   motion_status_ = new QLabel(
     tr("selected target is not ready"), this);
+  recovery_status_ = new QLabel(tr("waiting for navigation diagnostics"), this);
   diagnostic_ranking_status_->setStyleSheet(
     "QLabel { color: #d8b4fe; font-weight: bold; }");
   for (auto * label : {
       query_status_, model_status_, acknowledgement_status_,
       region_status_, object_status_, diagnostic_ranking_status_,
-      best_status_, motion_status_})
+      best_status_, finding_status_, motion_status_, recovery_status_})
   {
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -140,13 +207,16 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
   form->addRow(tr("3D objects"), object_status_);
   form->addRow(tr("Diagnostic ranking"), diagnostic_ranking_status_);
   form->addRow(tr("Best candidate"), best_status_);
+  form->addRow(tr("Active search"), finding_status_);
   form->addRow(tr("Motion authorization"), motion_status_);
+  form->addRow(tr("Navigation recovery"), recovery_status_);
 
   auto * layout = new QVBoxLayout();
   layout->addWidget(safety);
   layout->addWidget(calibration_warning);
   layout->addWidget(query_input_);
   layout->addLayout(buttons);
+  layout->addWidget(finding_button_);
   layout->addLayout(motion_buttons);
   layout->addLayout(form);
   layout->addStretch();
@@ -162,11 +232,31 @@ SemanticSearchPanel::SemanticSearchPanel(QWidget * parent)
     query_input_, &QLineEdit::returnPressed,
     this, &SemanticSearchPanel::submit_new_query);
   connect(
+    finding_button_, &QPushButton::clicked,
+    this, &SemanticSearchPanel::toggle_finding);
+  connect(
     start_approach_button_, &QPushButton::clicked,
     this, &SemanticSearchPanel::start_approach);
   connect(
     cancel_disarm_button_, &QPushButton::clicked,
     this, &SemanticSearchPanel::cancel_and_disarm);
+}
+
+SemanticSearchPanel::~SemanticSearchPanel()
+{
+  const auto lifetime = callback_lifetime_;
+  if (lifetime) {
+    std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+    lifetime->alive = false;
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(finding_mutex_);
+    search_goal_handle_.reset();
+  }
+  search_client_.reset();
+  cancel_search_client_.reset();
+  callback_lifetime_.reset();
 }
 
 bool SemanticSearchPanel::TargetReference::same_identity(
@@ -261,11 +351,22 @@ void SemanticSearchPanel::onInitialize()
     std::bind(
       &SemanticSearchPanel::on_diagnostic_ranking, this,
       std::placeholders::_1));
+  navigation_diagnostics_subscription_ = node_->create_subscription<
+    diagnostic_msgs::msg::DiagnosticArray>(
+    navigation_diagnostics_topic_,
+    reliable,
+    std::bind(
+      &SemanticSearchPanel::on_navigation_diagnostics, this,
+      std::placeholders::_1));
   authorize_client_ = node_->create_client<
     track_robot_interfaces::srv::AuthorizeSemanticApproach>(
     authorize_service_);
   cancel_disarm_client_ = node_->create_client<std_srvs::srv::Trigger>(
     cancel_disarm_service_);
+  search_client_ = rclcpp_action::create_client<SearchForObject>(
+    node_, search_action_);
+  cancel_search_client_ = node_->create_client<std_srvs::srv::Trigger>(
+    cancel_search_service_);
 }
 
 void SemanticSearchPanel::submit_new_query()
@@ -276,6 +377,478 @@ void SemanticSearchPanel::submit_new_query()
 void SemanticSearchPanel::submit_revision()
 {
   publish_query(true);
+}
+
+void SemanticSearchPanel::toggle_finding()
+{
+  bool active = false;
+  {
+    std::lock_guard<std::mutex> lock(finding_mutex_);
+    active = finding_session_.active();
+  }
+  if (active) {
+    stop_finding();
+  } else {
+    start_finding();
+  }
+}
+
+void SemanticSearchPanel::start_finding()
+{
+  std::string normalized_text;
+  try {
+    normalized_text = QuerySession::normalize_query(query_input_->text());
+  } catch (const std::exception & error) {
+    render_finding_state(
+      tr("active-search query rejected: %1").arg(error.what()));
+    return;
+  }
+  if (!search_client_ || !search_client_->action_server_is_ready()) {
+    render_finding_state(tr("active-search action server is unavailable"));
+    return;
+  }
+
+  std::optional<std::uint64_t> generation;
+  {
+    std::lock_guard<std::mutex> lock(finding_mutex_);
+    generation = finding_session_.begin();
+  }
+  if (!generation.has_value()) {
+    return;
+  }
+
+  finding_button_->setEnabled(true);
+  finding_button_->setText(tr("Stop Finding"));
+  finding_status_->setText(tr("starting active search"));
+  set_query_controls_enabled(false);
+
+  SearchForObject::Goal goal;
+  goal.query_text = normalized_text;
+  goal.timeout.sec = kSearchTimeoutSec;
+  goal.timeout.nanosec = 0U;
+  goal.allow_rotation = true;
+  goal.maximum_rotation_angle = kMaximumSearchAngleRad;
+  goal.client_request_id =
+    "rviz-phase5a-" + std::to_string(*generation);
+
+  rclcpp_action::Client<SearchForObject>::SendGoalOptions options;
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  options.goal_response_callback =
+    [this, weak_lifetime, generation = *generation](
+      std::shared_future<SearchGoalHandle::SharedPtr> future)
+    {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      try {
+        const auto handle = future.get();
+        bool cancel_after_acceptance = false;
+        {
+          std::lock_guard<std::mutex> lock(finding_mutex_);
+          if (finding_session_.generation() != generation ||
+            !finding_session_.on_goal_response(generation, handle != nullptr))
+          {
+            return;
+          }
+          if (handle) {
+            search_goal_handle_ = handle;
+            cancel_after_acceptance =
+              finding_session_.state() == ActiveSearchState::CANCEL_PENDING;
+          }
+        }
+        if (!handle) {
+          QMetaObject::invokeMethod(
+            this,
+            [this, weak_lifetime, generation]() {
+              const auto lifetime = weak_lifetime.lock();
+              if (!lifetime) {
+                return;
+              }
+              std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+              if (!lifetime->alive) {
+                return;
+              }
+              std::lock_guard<std::mutex> lock(finding_mutex_);
+              if (finding_session_.generation() != generation ||
+                finding_session_.active())
+              {
+                return;
+              }
+              search_goal_handle_.reset();
+              finding_button_->setText(tr("Start Finding"));
+              finding_button_->setEnabled(true);
+              finding_status_->setText(tr("active-search goal was rejected"));
+              set_query_controls_enabled(true);
+            },
+            Qt::QueuedConnection);
+          return;
+        }
+        if (cancel_after_acceptance) {
+          send_action_cancel(generation, handle);
+        } else {
+          QMetaObject::invokeMethod(
+            this,
+            [this, weak_lifetime, generation]() {
+              const auto lifetime = weak_lifetime.lock();
+              if (!lifetime) {
+                return;
+              }
+              std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+              if (!lifetime->alive) {
+                return;
+              }
+              std::lock_guard<std::mutex> lock(finding_mutex_);
+              if (finding_session_.generation() != generation ||
+                !finding_session_.active())
+              {
+                return;
+              }
+              finding_button_->setEnabled(true);
+              finding_status_->setText(tr("searching"));
+            },
+            Qt::QueuedConnection);
+        }
+      } catch (const std::exception & error) {
+        const auto status =
+          tr("active-search goal response failed: %1").arg(error.what());
+        QMetaObject::invokeMethod(
+          this,
+          [this, weak_lifetime, generation, status]() {
+            const auto lifetime = weak_lifetime.lock();
+            if (!lifetime) {
+              return;
+            }
+            std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+            if (!lifetime->alive) {
+              return;
+            }
+            {
+              std::lock_guard<std::mutex> lock(finding_mutex_);
+              if (finding_session_.generation() != generation ||
+                !finding_session_.active())
+              {
+                return;
+              }
+            }
+            stop_finding();
+            finding_status_->setText(status);
+          },
+          Qt::QueuedConnection);
+      }
+    };
+  options.feedback_callback =
+    [this, weak_lifetime, generation = *generation, normalized_text](
+      SearchGoalHandle::SharedPtr,
+      const std::shared_ptr<const SearchForObject::Feedback> feedback)
+    {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      ActiveSearchFeedbackDecision decision;
+      {
+        std::lock_guard<std::mutex> lock(finding_mutex_);
+        if (finding_session_.generation() != generation) {
+          return;
+        }
+        decision = finding_session_.on_feedback(
+          generation, feedback->query_id, feedback->current_reason);
+        if (!decision.accepted) {
+          return;
+        }
+        if (decision.adopt_query) {
+          try {
+            std::lock_guard<std::mutex> session_lock(session_mutex_);
+            if (finding_session_.generation() != generation ||
+              !finding_session_.active())
+            {
+              return;
+            }
+            const auto query = session_.adopt_query(
+              QString::fromStdString(normalized_text), decision.query_id, 1U);
+            const auto status = tr("%1  [id=%2 version=%3]")
+              .arg(QString::fromStdString(query.normalized_text))
+              .arg(query.query_id)
+              .arg(query.query_version);
+            QMetaObject::invokeMethod(
+              this,
+              [this, weak_lifetime, generation, status]() {
+                const auto lifetime = weak_lifetime.lock();
+                if (!lifetime) {
+                  return;
+                }
+                std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+                if (!lifetime->alive) {
+                  return;
+                }
+                std::lock_guard<std::mutex> lock(finding_mutex_);
+                if (finding_session_.generation() == generation &&
+                  finding_session_.active())
+                {
+                  query_status_->setText(status);
+                }
+              },
+              Qt::QueuedConnection);
+          } catch (const std::exception & error) {
+            const auto status =
+              tr("active-search query adoption failed: %1").arg(error.what());
+            QMetaObject::invokeMethod(
+              this,
+              [this, weak_lifetime, generation, status]() {
+                const auto lifetime = weak_lifetime.lock();
+                if (!lifetime) {
+                  return;
+                }
+                std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+                if (!lifetime->alive) {
+                  return;
+                }
+                std::lock_guard<std::mutex> lock(finding_mutex_);
+                if (finding_session_.generation() == generation &&
+                  finding_session_.active())
+                {
+                  finding_status_->setText(status);
+                }
+              },
+              Qt::QueuedConnection);
+            return;
+          }
+        }
+      }
+      render_finding_state(
+        generation,
+        QString::fromStdString(
+          active_search_feedback_status(feedback->current_reason)));
+    };
+  options.result_callback =
+    [this, weak_lifetime, generation = *generation](
+      const SearchGoalHandle::WrappedResult & result)
+    {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      if (result.result) {
+        finish_finding(generation, active_search_result_text(*result.result));
+      } else {
+        finish_finding(generation, tr("active-search result is unavailable"));
+      }
+    };
+
+  try {
+    search_client_->async_send_goal(goal, options);
+  } catch (const std::exception & error) {
+    finish_finding(
+      *generation,
+      tr("active-search goal submission failed: %1").arg(error.what()));
+  }
+}
+
+void SemanticSearchPanel::stop_finding()
+{
+  SearchGoalHandle::SharedPtr handle;
+  std::uint64_t generation = 0U;
+  {
+    std::lock_guard<std::mutex> lock(finding_mutex_);
+    if (!finding_session_.request_stop()) {
+      return;
+    }
+    handle = search_goal_handle_;
+    generation = finding_session_.generation();
+  }
+  finding_button_->setEnabled(false);
+  finding_status_->setText(tr("cancelling search"));
+
+  if (handle) {
+    send_action_cancel(generation, handle);
+  }
+  send_explicit_cancel(generation);
+}
+
+void SemanticSearchPanel::send_action_cancel(
+  const std::uint64_t generation,
+  const SearchGoalHandle::SharedPtr & handle)
+{
+  if (!search_client_ || !handle) {
+    render_finding_state(
+      generation, tr("action cancellation unavailable"));
+    return;
+  }
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  try {
+    search_client_->async_cancel_goal(
+      handle,
+      [this, weak_lifetime, generation](
+        rclcpp_action::Client<SearchForObject>::CancelResponse::SharedPtr response)
+      {
+        const auto lifetime = weak_lifetime.lock();
+        if (!lifetime) {
+          return;
+        }
+        std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+        if (!lifetime->alive) {
+          return;
+        }
+        const bool accepted = response &&
+          response->return_code == response->ERROR_NONE &&
+          !response->goals_canceling.empty();
+        render_finding_state(
+          generation,
+          accepted ?
+          tr("action cancellation accepted") :
+          tr("action cancellation rejected"));
+      });
+  } catch (const std::exception & error) {
+    render_finding_state(
+      generation,
+      tr("action cancellation request failed: %1")
+      .arg(error.what()));
+  }
+}
+
+void SemanticSearchPanel::send_explicit_cancel(const std::uint64_t generation)
+{
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  if (!cancel_search_client_ || !cancel_search_client_->service_is_ready()) {
+    render_finding_state(
+      generation,
+      tr("active-search cancellation service unavailable"));
+    return;
+  }
+  try {
+    cancel_search_client_->async_send_request(
+      std::make_shared<std_srvs::srv::Trigger::Request>(),
+      [this, weak_lifetime, generation](
+        rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future)
+      {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      try {
+        const auto response = future.get();
+        render_finding_state(
+          generation,
+          response->success ?
+          tr("explicit cancellation accepted") :
+          tr("active-search cancellation service rejected: %1").arg(
+              QString::fromStdString(response->message)));
+      } catch (const std::exception & error) {
+        render_finding_state(
+          generation,
+          tr("active-search cancellation service failed: %1")
+          .arg(error.what()));
+      }
+      });
+  } catch (const std::exception & error) {
+    render_finding_state(
+      generation,
+      tr("active-search cancellation service send failed: %1")
+      .arg(error.what()));
+  }
+}
+
+void SemanticSearchPanel::render_finding_state(const QString & status)
+{
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  QMetaObject::invokeMethod(
+    this,
+    [this, weak_lifetime, status]() {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (lifetime->alive) {
+        finding_status_->setText(status);
+      }
+    },
+    Qt::QueuedConnection);
+}
+
+void SemanticSearchPanel::render_finding_state(
+  const std::uint64_t generation,
+  const QString & status)
+{
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  QMetaObject::invokeMethod(
+    this,
+    [this, weak_lifetime, generation, status]() {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      std::lock_guard<std::mutex> lock(finding_mutex_);
+      if (finding_session_.generation() == generation &&
+        finding_session_.active())
+      {
+        finding_status_->setText(status);
+      }
+    },
+    Qt::QueuedConnection);
+}
+
+void SemanticSearchPanel::finish_finding(
+  const std::uint64_t generation,
+  const QString & status)
+{
+  const auto weak_lifetime =
+    std::weak_ptr<CallbackLifetime>(callback_lifetime_);
+  QMetaObject::invokeMethod(
+    this,
+    [this, weak_lifetime, generation, status]() {
+      const auto lifetime = weak_lifetime.lock();
+      if (!lifetime) {
+        return;
+      }
+      std::lock_guard<std::mutex> callback_lock(lifetime->mutex);
+      if (!lifetime->alive) {
+        return;
+      }
+      std::lock_guard<std::mutex> lock(finding_mutex_);
+      if (!finding_session_.finish(generation)) {
+        return;
+      }
+      search_goal_handle_.reset();
+      finding_button_->setText(tr("Start Finding"));
+      finding_button_->setEnabled(true);
+      finding_status_->setText(status);
+      set_query_controls_enabled(true);
+    },
+    Qt::QueuedConnection);
+}
+
+void SemanticSearchPanel::set_query_controls_enabled(const bool enabled)
+{
+  query_input_->setEnabled(enabled);
+  new_button_->setEnabled(enabled);
+  revise_button_->setEnabled(enabled);
 }
 
 void SemanticSearchPanel::start_approach()
@@ -377,20 +950,31 @@ void SemanticSearchPanel::cancel_and_disarm()
 
 void SemanticSearchPanel::publish_query(bool revision)
 {
+  {
+    std::lock_guard<std::mutex> lock(finding_mutex_);
+    if (!finding_session_.manual_query_allowed()) {
+      acknowledgement_status_->setText(
+        tr("not sent: active search owns the current query"));
+      return;
+    }
+  }
   if (!query_publisher_) {
     acknowledgement_status_->setText(tr("query publisher is unavailable"));
     return;
   }
   try {
     QueryCommand command;
-    if (revision) {
-      command = session_.revise(query_input_->text());
-    } else {
-      const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
-      const auto seed = now > 0 ?
-        static_cast<std::uint64_t>(now) : std::uint64_t{1U};
-      command = session_.new_query(query_input_->text(), seed);
+    {
+      std::lock_guard<std::mutex> session_lock(session_mutex_);
+      if (revision) {
+        command = session_.revise(query_input_->text());
+      } else {
+        const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count();
+        const auto seed = now > 0 ?
+          static_cast<std::uint64_t>(now) : std::uint64_t{1U};
+        command = session_.new_query(query_input_->text(), seed);
+      }
     }
     std_msgs::msg::String message;
     message.data = command.payload;
@@ -422,7 +1006,11 @@ void SemanticSearchPanel::publish_query(bool revision)
 void SemanticSearchPanel::on_diagnostic(
   const std_msgs::msg::String::SharedPtr message)
 {
-  const auto matched = session_.correlate_diagnostic(message->data);
+  std::optional<DiagnosticMatch> matched;
+  {
+    std::lock_guard<std::mutex> session_lock(session_mutex_);
+    matched = session_.correlate_diagnostic(message->data);
+  }
   if (!matched.has_value()) {
     return;
   }
@@ -439,7 +1027,11 @@ void SemanticSearchPanel::on_diagnostic(
 void SemanticSearchPanel::on_regions(
   const track_robot_interfaces::msg::SemanticRegionArray::SharedPtr message)
 {
-  const auto current = session_.current();
+  std::optional<QueryCommand> current;
+  {
+    std::lock_guard<std::mutex> session_lock(session_mutex_);
+    current = session_.current();
+  }
   if (!current.has_value() ||
     message->query_id != current->query_id ||
     message->query_version != current->query_version)
@@ -554,6 +1146,43 @@ void SemanticSearchPanel::on_diagnostic_ranking(
     .arg(message->objects.size()));
 }
 
+void SemanticSearchPanel::on_navigation_diagnostics(
+  const diagnostic_msgs::msg::DiagnosticArray::SharedPtr message)
+{
+  for (const auto & status : message->status) {
+    if (status.name != "semantic_navigation/supervisor") {
+      continue;
+    }
+    std::map<std::string, std::string> values;
+    for (const auto & item : status.values) {
+      values[item.key] = item.value;
+    }
+    const auto read = [&values](
+      const std::string & key, const std::string & fallback)
+      {
+        const auto found = values.find(key);
+        return found == values.end() || found->second.empty() ?
+               fallback : found->second;
+      };
+    const auto stage = read("recovery_stage", "unknown");
+    const auto cycle = read("recovery_cycle", "0");
+    const auto attempt = read("recovery_attempt", "0");
+    const auto failure = read("recovery_last_failure", "no failure");
+    const auto target = read("mission_target_global_id", "0");
+    const auto backup = read("backup_permitted", "false");
+    queue_label(
+      recovery_status_,
+      tr("%1; cycle %2; attempt %3; %4; target %5; backup %6")
+      .arg(QString::fromStdString(stage))
+      .arg(QString::fromStdString(cycle))
+      .arg(QString::fromStdString(attempt))
+      .arg(QString::fromStdString(failure))
+      .arg(QString::fromStdString(target))
+      .arg(QString::fromStdString(backup)));
+    return;
+  }
+}
+
 void SemanticSearchPanel::queue_label(
   QLabel * label,
   const QString & value)
@@ -591,11 +1220,20 @@ void SemanticSearchPanel::load(const rviz_common::Config & config)
   if (config.mapGetString("diagnostic_ranking_topic", &value)) {
     diagnostic_ranking_topic_ = value.toStdString();
   }
+  if (config.mapGetString("navigation_diagnostics_topic", &value)) {
+    navigation_diagnostics_topic_ = value.toStdString();
+  }
   if (config.mapGetString("authorize_service", &value)) {
     authorize_service_ = value.toStdString();
   }
   if (config.mapGetString("cancel_disarm_service", &value)) {
     cancel_disarm_service_ = value.toStdString();
+  }
+  if (config.mapGetString("search_action", &value)) {
+    search_action_ = value.toStdString();
+  }
+  if (config.mapGetString("cancel_search_service", &value)) {
+    cancel_search_service_ = value.toStdString();
   }
 }
 
@@ -616,9 +1254,15 @@ void SemanticSearchPanel::save(rviz_common::Config config) const
     "diagnostic_ranking_topic",
     QString::fromStdString(diagnostic_ranking_topic_));
   config.mapSetValue(
+    "navigation_diagnostics_topic",
+    QString::fromStdString(navigation_diagnostics_topic_));
+  config.mapSetValue(
     "authorize_service", QString::fromStdString(authorize_service_));
   config.mapSetValue(
     "cancel_disarm_service", QString::fromStdString(cancel_disarm_service_));
+  config.mapSetValue("search_action", QString::fromStdString(search_action_));
+  config.mapSetValue(
+    "cancel_search_service", QString::fromStdString(cancel_search_service_));
 }
 
 }  // namespace track_robot_semantic_search_rviz_plugins

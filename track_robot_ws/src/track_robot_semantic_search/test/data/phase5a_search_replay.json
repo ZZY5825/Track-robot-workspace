@@ -1,0 +1,195 @@
+{
+  "schema_version": "phase5a_search_replay/1.0.0",
+  "cases": [
+    {
+      "name": "visible_initially",
+      "scenario": "evidence",
+      "rotations": 0,
+      "selected_ids": [701, 701, 701],
+      "expected": "CONFIRMED",
+      "expected_global_object_id": 701,
+      "expected_motion_intents": 0
+    },
+    {
+      "name": "found_after_one_rotation",
+      "scenario": "evidence",
+      "rotations": 1,
+      "selected_ids": [701, 701, 701],
+      "expected": "CONFIRMED",
+      "expected_global_object_id": 701,
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "found_after_several_headings",
+      "scenario": "evidence",
+      "rotations": 3,
+      "selected_ids": [701, 701, 701],
+      "candidate_ids": [702],
+      "expected": "CONFIRMED",
+      "expected_global_object_id": 701,
+      "expected_motion_intents": 3
+    },
+    {
+      "name": "ambiguous_then_resolved",
+      "scenario": "evidence",
+      "rotations": 2,
+      "selected_ids": [701, 702, 701, 701],
+      "expected": "CONFIRMED",
+      "expected_global_object_id": 701,
+      "expected_motion_intents": 2
+    },
+    {
+      "name": "lost_static_target_reacquired_same_id",
+      "scenario": "evidence",
+      "rotations": 2,
+      "selected_ids": [701, 701, 701],
+      "expected": "CONFIRMED",
+      "expected_global_object_id": 701,
+      "expected_motion_intents": 2
+    },
+    {
+      "name": "absent_complete_range",
+      "scenario": "evidence",
+      "rotations": 5,
+      "search_exhausted": true,
+      "expected": "NOT_FOUND",
+      "expected_motion_intents": 5
+    },
+    {
+      "name": "persistent_ambiguity",
+      "scenario": "evidence",
+      "rotations": 5,
+      "candidate_ids": [701, 702, 701, 702],
+      "search_exhausted": true,
+      "expected": "UNCERTAIN",
+      "expected_motion_intents": 5
+    },
+    {
+      "name": "contradictory_views",
+      "scenario": "evidence",
+      "rotations": 5,
+      "selected_ids": [701, 701, 701, 702, 702, 702],
+      "search_exhausted": true,
+      "expected": "UNCERTAIN",
+      "expected_motion_intents": 5
+    },
+    {
+      "name": "repeated_identical_view",
+      "scenario": "repeated_identical_view",
+      "rotations": 1,
+      "candidate_ids": [701],
+      "expected": "SEARCH_SPACE_EXHAUSTED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "action_timeout",
+      "scenario": "timeout",
+      "rotations": 1,
+      "expected": "TIMEOUT",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "action_cancelled",
+      "scenario": "cancel",
+      "rotations": 1,
+      "expected": "CANCELLED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "sensor_unavailable",
+      "scenario": "sensor_unavailable",
+      "rotations": 0,
+      "expected": "SENSOR_UNAVAILABLE",
+      "expected_motion_intents": 0
+    },
+    {
+      "name": "model_unavailable",
+      "scenario": "model_unavailable",
+      "rotations": 0,
+      "expected": "MODEL_UNAVAILABLE",
+      "expected_motion_intents": 0
+    },
+    {
+      "name": "odometry_stale",
+      "scenario": "odometry_stale",
+      "rotations": 1,
+      "expected": "LOCALIZATION_UNAVAILABLE",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "tf_failure",
+      "scenario": "tf_failure",
+      "rotations": 1,
+      "expected": "LOCALIZATION_UNAVAILABLE",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "safety_rejected",
+      "scenario": "safety_rejected",
+      "rotations": 1,
+      "expected": "SAFETY_REJECTED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "rc_takeover",
+      "scenario": "rc_takeover",
+      "rotations": 1,
+      "expected": "SAFETY_REJECTED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "estop",
+      "scenario": "estop",
+      "rotations": 1,
+      "expected": "SAFETY_REJECTED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "base_fault",
+      "scenario": "base_fault",
+      "rotations": 1,
+      "expected": "SAFETY_REJECTED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "nav2_spin_failed",
+      "scenario": "nav2_spin_failed",
+      "rotations": 1,
+      "expected": "INTERNAL_FAULT",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "query_changed",
+      "scenario": "query_changed",
+      "rotations": 1,
+      "expected": "CANCELLED",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "memory_epoch_changed",
+      "scenario": "memory_epoch_changed",
+      "rotations": 1,
+      "selected_ids": [701],
+      "key_overrides": {"memory_epoch_id": 12},
+      "expected": "UNCERTAIN",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "localization_epoch_changed",
+      "scenario": "localization_epoch_changed",
+      "rotations": 1,
+      "selected_ids": [701],
+      "key_overrides": {"localization_epoch_id": 8},
+      "expected": "UNCERTAIN",
+      "expected_motion_intents": 1
+    },
+    {
+      "name": "handoff_key_changed",
+      "scenario": "handoff_key_changed",
+      "rotations": 2,
+      "selected_ids": [701, 702],
+      "expected": "UNCERTAIN",
+      "expected_motion_intents": 2
+    }
+  ]
+}

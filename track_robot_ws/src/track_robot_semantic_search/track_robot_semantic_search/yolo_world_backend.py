@@ -299,10 +299,15 @@ class YoloWorldBackend:
 
         self._dependencies.clip.load = load_local
         try:
+            world_model = getattr(self.model, 'model', None)
+            cached_clip = getattr(world_model, 'clip_model', None)
+            if cached_clip is not None:
+                cached_clip.float()
             self.model.set_classes([query])
         except Exception as error:
             raise RuntimeError(
-                'YOLO-World vocabulary update failed') from error
+                'YOLO-World vocabulary update failed: {}: {}'.format(
+                    type(error).__name__, str(error))) from error
         finally:
             self._dependencies.clip.load = original_load
         self._active_query = query

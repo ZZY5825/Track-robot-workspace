@@ -30,22 +30,52 @@ Nav2 controller 和 recovery server 都重映射到 `/nav2/cmd_vel_raw`。最终
 ## 3. 标准重复测试流程（首选）
 
 ```bash
-cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
-
 source /opt/ros/foxy/setup.bash
-source install/setup.bash
+source ~/track_robot_ws/install/setup.bash
+# Robot model/TF package from the active worktree must precede the ROS overlay.
+source ~/track_robot_ws/.worktrees/main-test/install/local_setup.bash
+source ~/track_robot_ws/.worktrees/main-test/track_robot_ws/install/setup.bash
+cd ~/track_robot_ws/.worktrees/main-test/track_robot_ws
 
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
 export ROS_LOCALHOST_ONLY=0
-export FASTRTPS_DEFAULT_PROFILES_FILE=~/track_robot_ws/src/track_robot/track_robot_bringup/config/fastdds_semantic_search.xml
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+sudo -v
+sudo ip addr replace 192.168.1.102/24 dev eth0
+sudo ip link set eth0 up
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000
+sudo ip link set can0 up
 
 ros2 run track_robot_bringup semantic_search_ctl run phase4b
 ```
 
-这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS`、模型文件
-和 Fast DDS 配置继续指向主工作区。不要把 DDS 配置改成 worktree 内的路径；当前
-实机重复测试验证的是上面这组环境。
+上面的标准命令保持已测试基线：`physical_recovery_enabled=false`。它不会在
+Nav2 失败后自动执行 Spin 或 BackUp。只有完成默认回归、机器人后方和旋转范围
+均已清空且操作员持续在场时，才使用显式 opt-in：
+
+```bash
+ros2 run track_robot_bringup semantic_search_ctl run phase4b \
+  --physical-recovery
+```
+
+该标志不会跳过 Start Approach、RC、E-stop、base health、odom/cloud freshness、
+Nav2 footprint 碰撞预测、motion safety supervisor 或 cmd_vel gate。
+
+这里有意从当前 `main-test` worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
+文件继续指向主工作区。LiDAR 网卡必须在 ROS 节点启动前一次配置完成；受管
+launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=0`。Foxy 在
+`ROS_LOCALHOST_ONLY=1` 下会使多进程 `/tf_static` 发现不完整，导致 RViz 无法取得
+完整机器人 TF。本机 RViz 测试不加载旧远程面板
+Fast DDS profile，控制 CLI 也会移除 shell 中遗留的该环境变量。
+
+不要交换上面两个 worktree overlay 的顺序，也不要省略
+`main-test/install/local_setup.bash`。该层提供当前 `bunker_pro2` 模型中的
+`camera_mount_link -> zed_camera_link`；若误加载主工作区旧安装包，ZED optical
+frames 会与 `base_link` 分成两棵 TF 树，深度增强诊断将持续报告
+`tf_unavailable`，RViz 也不会显示目标三维位置。
 
 该命令固定执行以下策略，不再逐个手工启动节点：
 
@@ -96,13 +126,138 @@ ros2 run track_robot_bringup semantic_search_ctl run phase4b --no-dino
 当前整机测试使用显式 `static_target_profile`。实测语义输出最大间隔为
 3.51 s，因此 Phase 2、Phase 3、Phase 4A 和 Phase 4B 的目标证据有效期统一为
 4.0 s；该模式仅用于静态目标且有硬上限，不代表支持移动目标。
-目标尚未授权时，仍使用 4.0 s 的新鲜度边界。目标授权并冻结为 5A 静态
-任务后，不再依赖持续的相机目标心跳；odom、RC、E-stop、底盘健康和安全
+目标尚未授权时，仍使用 4.0 s 的新鲜度边界。目标授权并冻结为 Phase 4B
+静态目标任务后，不再依赖持续的相机目标心跳；odom、RC、E-stop、底盘健康和安全
 状态始终使用各自的实时门控，不使用目标宽限。
 
 Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 `/semantic_memory/markers`。Phase 2 的对象记忆仍用于目标评分和 ID 管理，
 但不会再把 LiDAR-only 或其他未选对象画成“语义盒”。
+
+### 3.1 Phase 4B 前置 Gate：ZED-only 语义三维定位（固定底盘）
+
+这个 gate 必须先使用 Phase 4A 固定底盘 launch 通过，才允许继续调查 Nav2。
+它只做 observation 和 planning，launch 合同固定 `start_base=false`；不要调用
+`start_approach`、`start_finding`，也不要向任何速度 topic 发布消息。
+
+本 profile 的数据所有权是单一且不可混用的：
+
+- Semantic 3D owner: ZED `depth_registered` ->
+  `semantic_depth_enricher` -> `semantic_memory`；
+- LiDAR role: obstacle grid, Nav2 costmaps, and motion safety only；
+- Semantic LiDAR tracklets/attachment: disabled in this profile；
+- Depth diagnostic: `/semantic_search/spatial_observation_diagnostics`。
+
+换言之，`/semantic_memory/spatial_observations` 的三维位置只能来自 ZED 注册
+深度。`/rslidar_points` 仍必须存活并更新障碍图，但不得通过 LiDAR tracklet 或
+attachment 改写语义对象的位置或身份。Nav2 planner 参数调优推迟到本 gate
+通过之后；不得用修改 planner/costmap 参数来掩盖深度、ID 或诊断失败。
+
+在 LiDAR 网口已经由操作员预先配置好的前提下，使用以下准确命令。这里显式
+关闭 launch 内网络配置，避免测试期间提权或更改接口：
+
+```bash
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+
+export TRACK_ROBOT_WS=~/track_robot_ws
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+ros2 launch track_robot_bringup semantic_search_phase4a.launch.py \
+  configure_network:=false \
+  start_rviz:=true
+```
+
+另开终端提交一次固定查询；整个采集窗口保持瓶子和机器人静止：
+
+```bash
+cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
+source /opt/ros/foxy/setup.bash
+source install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+ros2 run track_robot_semantic_search semantic_search_query \
+  "green bottle" \
+  --query-id 2026081101 \
+  --query-version 1 \
+  --timeout 20 \
+  --subscriber-timeout 10
+```
+
+在独立终端用一个 Domain 20 rosbag 同步采集原始证据。启动命令后保持目标和
+机器人静止 30–60 秒，再按 `Ctrl-C` 结束录制；不要在这个终端依次运行多个
+持续阻塞的 `topic hz`/`topic echo`：
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /home/track-robot/track_robot_ws/.worktrees/main-integration/track_robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+BAG_DIR="$HOME/zed_depth_gate_domain20_$(date +%Y%m%d_%H%M%S)"
+ros2 bag record -o "$BAG_DIR" \
+  /zed/zed_node/depth/depth_registered \
+  /semantic_memory/spatial_observations \
+  /semantic_search/spatial_observation_diagnostics \
+  /semantic_memory/diagnostic_ranking \
+  /semantic_search/phase4a/selected_target \
+  /rslidar_points \
+  /safety/local_obstacle_grid
+```
+
+这个 bag 是位置跳变调查的首要原始证据。它同时保留 registered-depth Image 和
+spatial observation 的 ROS 时间戳，因此每个 `position_valid=true` 样本及其
+相邻位置跳变都能对应到实际深度帧，而不是只保留汇总频率或手抄位置。
+
+rosbag 停止后，可在同一终端顺序执行下列有时限的快速检查；每条命令会自行
+结束，不会阻塞后续检查：
+
+```bash
+timeout 15s ros2 topic hz /zed/zed_node/depth/depth_registered
+timeout 15s ros2 topic hz /semantic_memory/spatial_observations
+timeout 10s ros2 topic echo /semantic_search/spatial_observation_diagnostics
+timeout 10s ros2 topic echo /semantic_memory/spatial_observations
+timeout 10s ros2 topic echo /semantic_memory/diagnostic_ranking
+timeout 10s ros2 topic echo /semantic_search/phase4a/selected_target
+timeout 15s ros2 topic hz /rslidar_points
+timeout 15s ros2 topic hz /safety/local_obstacle_grid
+```
+
+深度诊断必须显示 `depth_delta_valid`；当其为 `true` 时，`depth_delta_ms`
+必须是有限真实值。诊断还必须显示 `valid_depth_samples`、`depth_quality`，并为
+下列固定 counters 给出原始整数值：`matched_depth`、
+`no_matching_depth`、`depth_delta_exceeded`、`insufficient_depth_samples`、
+`depth_out_of_range`、`tf_unavailable`、`invalid_transformed_position`、
+`camera_info_unavailable`、`localization_unavailable`。
+
+每个拒绝必须落入一个明确原因，不能只记为无输出。
+
+同时确认无任何可执行运动发布者：
+
+```bash
+source /opt/ros/foxy/setup.bash
+source /home/track-robot/track_robot_ws/.worktrees/main-integration/track_robot_ws/install/setup.bash
+export ROS_DOMAIN_ID=20
+export ROS_LOCALHOST_ONLY=0
+unset FASTRTPS_DEFAULT_PROFILES_FILE
+
+ros2 topic info /cmd_vel --verbose
+ros2 topic info /nav2/cmd_vel_raw --verbose
+ros2 topic info /nav2/cmd_vel_safe --verbose
+```
+
+任一 topic 出现运动 publisher、任一 `position_valid=true` 样本含非有限坐标或
+`0 m` 距离、单帧无解释的数米跳变、短暂 depth-only dropout 后 global ID
+变化、诊断理由缺失、或 LiDAR/障碍图不再存活，都判为 FAIL。硬件、网络、模型
+或 ROS graph 无法提供证据时写 `NOT MEASURED` / `NOT EVALUATED`，不得估算或
+用启动底盘补齐。结束时只停止本次 launch 启动的进程，再核对 ZED、LiDAR、
+RViz 和 semantic 节点均已退出。
 
 ## 4. RViz 蓝色/粉色区域是什么
 
@@ -113,9 +268,9 @@ Phase 4B 不启动 `semantic_memory_visualizer_node`，RViz 也不订阅
 - `/safety/filtered_obstacle_points` 同时用于 raytracing clearing 和 marking；
 - 两个 observation source 的 persistence 均为 `0`；
 - 人离开后，来自同一过滤点源的后续射线应清除旧代价，不应永久留下脚印；
-- 当前测试配置的 local/global costmap `inflation_radius=0.0`、
-  `footprint_padding=0.0`；碰撞体仍保留实物矩形 footprint
-  `0.88 x 0.80 m`，并没有把机器人当成一个点。
+- 当前测试配置的 local/global costmap `inflation_radius=0.60 m`、
+  `cost_scaling_factor=12.0`、`footprint_padding=0.0`；碰撞体仍保留
+  `0.88 x 0.80 m` 实物矩形 footprint，并没有把机器人当成一个点。
 
 若痕迹持续不清除，先检查原始点云和 costmap 更新率；这属于
 Phase 4B 动态障碍清除失败，不能靠解锁绕过。
@@ -237,10 +392,51 @@ ros2 launch track_robot_bringup semantic_search_phase4b.launch.py \
 
 授权前的目标输入短暂中断仍受新鲜度门控。授权后使用冻结的 `odom` 接近
 位姿，不因暂时看不见目标而取消。odom 陈旧和普通安全暂停会取消当前 Nav2
-action，但保留任务并在状态恢复后重新派发。Nav2 `ABORTED` 最多自动重试
-2 次；每次使用有界的 local/global costmap clear、等待 1 秒和重新规划，
-不执行自动旋转或倒车。重试耗尽后才终止任务并解除武装。该恢复逻辑已通过
-离线状态机与 launch 合同测试，仍需实机确认真实障碍清除和底盘连续运动。
+action，但保留任务并在状态恢复后重新派发。默认命令继续使用原有有界 Nav2
+重试，不执行自动旋转或倒车。
+
+### 7.1 目标到达停止
+
+已授权静态任务使用冻结的目标 `odom` 锚点判断最终距离，不依赖实时视觉
+confidence、depth 或 LiDAR。机器人参考中心到目标的平面距离严格小于
+`0.70 m`，并连续满足 3 个 10 Hz 监督周期（约 `0.3 s`）后：
+
+- `/semantic_navigation/diagnostics` 持续报告 `reason=target_reached`，并在
+  `target_distance_m` 中给出最后距离；
+- supervisor 取消当前 Nav2 action，并通过现有 `/safety/disarm` 链停止；
+- 已锁定 global ID、目标 `odom` 锚点和语义记忆继续保留；
+- 不再自动重新规划或进入 physical recovery，避免近距离左右摇摆。
+
+查看状态：
+
+```bash
+ros2 topic echo /semantic_navigation/diagnostics
+```
+
+若需要重新开始，先使用现有 RViz `Cancel & Disarm`，或提交新的 query 建立新
+mission。该阈值测量的是机器人参考中心到目标，不是机器人外壳到目标的净空。
+
+实机验收时先在 `0.70 m` 之外确认 Nav2 仍正常执行，再让机器人进入阈值；只有
+连续约 `0.3 s` 后停止、路径取消且不再左右修正，才能记录为 PASS。
+
+显式添加 `--physical-recovery` 后，`NavigateToPose` abort 才进入有界恢复序列：
+
+```text
+Spin 30 deg -> 对同一冻结 odom goal 重新规划
+-> BackUp 0.25 m @ 0.10 m/s -> 再次对同一 goal 重新规划
+-> 2.0 s Hold -> 下一有限循环
+```
+
+最多执行 2 个物理恢复循环；之后仅做 cooldown/replan，不再继续 Spin/BackUp。
+整个过程中不重新选择 live candidate，也不清除已冻结的 target global ID、odom
+锚点、goal 或 operator authorization。任务成功、人工 Cancel & Disarm、RC、
+E-stop、base fault 或 localization/query 域改变才终止相应任务。RViz 面板的
+`Navigation recovery` 行和 `/semantic_navigation/diagnostics` 会显示 stage、cycle、
+attempt、最近失败和冻结目标 ID。`backup_permitted=true` 仅表示前置 freshness/
+health 门通过，真实后退走廊仍由 Nav2 footprint 与下游安全链判断。
+
+该恢复逻辑已通过离线状态机、配置和 launch 合同测试，仍需按下方分级流程完成
+实机 Spin/BackUp、后方障碍、RC 和 E-stop 验收。
 SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav2。
 
 ## 8. 失败测试
@@ -257,6 +453,15 @@ SLOWDOWN 和 AVOIDING 保留安全监督器的限速控制，不直接绕开 Nav
 6. 调用 E-stop：立即锁存零速度并取消；
 7. 改变 localization epoch 或 TF：旧目标引用不得继续执行。
 
+物理恢复 opt-in 另按以下顺序测试，并在第一项异常运动时立即停止：
+
+1. 空旷区域触发一次 abort，确认只执行同一方向 `30 deg` Spin；
+2. 后方至少有 `1.0 m` 已观测净空，确认最多后退 `0.25 m`；
+3. 后方放置可见障碍，确认 BackUp 被 Nav2/安全链拒绝且 `/cmd_vel` 为零；
+4. Spin 和 BackUp 中分别触发 RC override 与 E-stop，确认立即取消；
+5. 同一静态目标连续触发恢复，确认无需再次点击 Start Approach，且诊断中的
+   global ID 与 anchor 不变。
+
 每次测试结束按 `Ctrl-C`，再确认：
 
 ```bash
@@ -271,6 +476,11 @@ ps -eo pid,ppid,stat,cmd | grep -E \
 - `PLANNING_ONLY` 运行时启动：PASS；
 - `MANUAL_NAV2_ACTIVE` ROS 图安全链：PASS；
 - `SEMANTIC_SHADOW` 运行时零运动图验证：PASS；
+- 目标保持物理恢复的软件状态机、Nav2 配置、CLI 和 RViz 诊断：PASS；
+- `physical_recovery_enabled` 默认关闭及 no-motion 模式合同：PASS；
+- `< 0.70 m` 连续三周期目标到达停止的软件单元/配置合同：PASS；实机近距离
+  停止与防摇摆验收：NOT EVALUATED；
+- 实机 Spin/BackUp、后方障碍、RC/E-stop 恢复验收：NOT EVALUATED；
 - 本次 Camera+Stereo Phase 2、costmap 清除和 RViz 授权改动：离线回归通过后仍需按本页流程做一次实机验收，不能仅凭代码宣称实机通过。
 
 当前 footprint `0.88 x 0.80 m` 来自本轮明确的测试假设，不替代实物复测。
