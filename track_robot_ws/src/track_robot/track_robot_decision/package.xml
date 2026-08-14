@@ -17,6 +17,7 @@
   <depend>std_srvs</depend>
   <depend>visualization_msgs</depend>
   <depend>track_robot_interfaces</depend>
+  <depend>bunker_msgs</depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <test_depend>ament_cmake_gtest</test_depend>
