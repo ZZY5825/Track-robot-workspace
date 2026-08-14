@@ -30,10 +30,12 @@ Nav2 controller 和 recovery server 都重映射到 `/nav2/cmd_vel_raw`。最终
 ## 3. 标准重复测试流程（首选）
 
 ```bash
-cd ~/track_robot_ws/.worktrees/main-integration/track_robot_ws
-
 source /opt/ros/foxy/setup.bash
-source install/setup.bash
+source ~/track_robot_ws/install/setup.bash
+# Robot model/TF package from the active worktree must precede the ROS overlay.
+source ~/track_robot_ws/.worktrees/main-test/install/local_setup.bash
+source ~/track_robot_ws/.worktrees/main-test/track_robot_ws/install/setup.bash
+cd ~/track_robot_ws/.worktrees/main-test/track_robot_ws
 
 export TRACK_ROBOT_WS=~/track_robot_ws
 export ROS_DOMAIN_ID=20
@@ -62,12 +64,18 @@ ros2 run track_robot_bringup semantic_search_ctl run phase4b \
 该标志不会跳过 Start Approach、RC、E-stop、base health、odom/cloud freshness、
 Nav2 footprint 碰撞预测、motion safety supervisor 或 cmd_vel gate。
 
-这里有意从 Phase 4B worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
+这里有意从当前 `main-test` worktree 加载已构建代码，但让 `TRACK_ROBOT_WS` 和模型
 文件继续指向主工作区。LiDAR 网卡必须在 ROS 节点启动前一次配置完成；受管
 launch 固定使用 `configure_network:=false` 和 `ROS_LOCALHOST_ONLY=0`。Foxy 在
 `ROS_LOCALHOST_ONLY=1` 下会使多进程 `/tf_static` 发现不完整，导致 RViz 无法取得
 完整机器人 TF。本机 RViz 测试不加载旧远程面板
 Fast DDS profile，控制 CLI 也会移除 shell 中遗留的该环境变量。
+
+不要交换上面两个 worktree overlay 的顺序，也不要省略
+`main-test/install/local_setup.bash`。该层提供当前 `bunker_pro2` 模型中的
+`camera_mount_link -> zed_camera_link`；若误加载主工作区旧安装包，ZED optical
+frames 会与 `base_link` 分成两棵 TF 树，深度增强诊断将持续报告
+`tf_unavailable`，RViz 也不会显示目标三维位置。
 
 该命令固定执行以下策略，不再逐个手工启动节点：
 

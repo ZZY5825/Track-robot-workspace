@@ -87,6 +87,7 @@ def test_description_launch_starts_joint_aggregator_and_one_state_publisher():
     assert "'robot_description': robot_description" in source
     assert "package='joint_state_publisher'" in source
     assert "executable='joint_state_publisher'" in source
+    assert "arguments=[str(urdf_path)]" in source
     assert "'source_list': ['/joint_states_single']" in source
     assert "'publish_default_positions': True" in source
     assert "package='rviz2'" not in source

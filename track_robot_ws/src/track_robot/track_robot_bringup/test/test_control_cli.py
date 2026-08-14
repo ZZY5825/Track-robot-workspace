@@ -78,6 +78,21 @@ def test_phase4b_run_builds_the_single_supervised_command_without_imu(tmp_path):
     assert not any('imu' in value.lower() for value in command)
 
 
+@pytest.mark.parametrize('stage,builder', [
+    ('phase4b', control_cli.build_phase4b_launch_argv),
+    ('phase5a', control_cli.build_phase5a_launch_argv),
+])
+def test_supervised_run_defaults_to_robot_description_tf(stage, builder, tmp_path):
+    args = control_cli.build_parser().parse_args([
+        'run', stage, '--workspace-root', str(tmp_path),
+    ])
+
+    command = builder(args, control_cli.default_workspace_paths(tmp_path))
+
+    assert args.extrinsic_mode == 'robot_description'
+    assert 'extrinsic_mode:=robot_description' in command
+
+
 def test_phase4b_physical_recovery_requires_an_explicit_cli_flag(tmp_path):
     args = control_cli.build_parser().parse_args([
         'run', 'phase4b', '--physical-recovery',

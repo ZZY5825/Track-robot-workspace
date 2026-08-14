@@ -16,6 +16,7 @@ def generate_launch_description():
             executable='joint_state_publisher',
             name='bunker_pro2_joint_state_publisher',
             output='screen',
+            arguments=[str(urdf_path)],
             parameters=[{
                 'robot_description': robot_description,
                 'source_list': ['/joint_states_single'],

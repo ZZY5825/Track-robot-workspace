@@ -140,8 +140,8 @@ def build_parser():
         '--workspace-root', default=_default_workspace_root())
     run.add_argument(
         '--extrinsic-mode',
-        choices=('prototype', 'measured'),
-        default='prototype',
+        choices=('robot_description', 'prototype', 'measured'),
+        default='robot_description',
     )
     run.add_argument('--extrinsic-file', default='')
     dino = run.add_mutually_exclusive_group()
