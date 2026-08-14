@@ -28,6 +28,14 @@ SessionInputs validInputs()
   return inputs;
 }
 
+SessionDecision acceptInitialArm(HumanFollowingSessionPolicy & policy)
+{
+  const auto request = policy.update(validInputs());
+  EXPECT_TRUE(request.request_arm);
+  EXPECT_GT(request.arm_request_generation, 0U);
+  return policy.acceptArmResult(request.arm_request_generation, true, "armed");
+}
+
 TEST(HumanFollowingSessionPolicy, ShadowNeverRequestsArm)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Shadow, false, 10.0, 1.0);
@@ -84,8 +92,7 @@ TEST(HumanFollowingSessionPolicy, LidarOnlyCannotInitiallyArm)
 TEST(HumanFollowingSessionPolicy, StopGestureDisarmsAndResets)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  const auto armed = policy.acceptArmResult(true, "armed");
+  const auto armed = acceptInitialArm(policy);
   ASSERT_EQ(armed.state, SessionState::Following);
   ASSERT_TRUE(armed.target_authorized);
 
@@ -109,8 +116,7 @@ TEST(HumanFollowingSessionPolicy, StopGestureDisarmsAndResets)
 TEST(HumanFollowingSessionPolicy, RcTakeoverRevokesAndCanReturnDoesNotResume)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.now_sec = 2.0;
@@ -143,8 +149,7 @@ TEST(HumanFollowingSessionPolicy, RcTakeoverRevokesAndCanReturnDoesNotResume)
 TEST(HumanFollowingSessionPolicy, TargetMismatchDisarms)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.now_sec = 2.0;
@@ -169,10 +174,7 @@ TEST(HumanFollowingSessionPolicy, TargetMismatchDisarms)
 
   HumanFollowingSessionPolicy hard_fault_policy(
     RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(hard_fault_policy.update(validInputs()).request_arm);
-  ASSERT_EQ(
-    hard_fault_policy.acceptArmResult(true, "armed").state,
-    SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(hard_fault_policy).state, SessionState::Following);
   inputs.health_hard_fault = true;
   const auto hard_fault = hard_fault_policy.update(inputs);
   EXPECT_EQ(hard_fault.state, SessionState::Fault);
@@ -181,8 +183,7 @@ TEST(HumanFollowingSessionPolicy, TargetMismatchDisarms)
   EXPECT_TRUE(hard_fault.request_target_reset);
 
   HumanFollowingSessionPolicy stale_policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(stale_policy.update(validInputs()).request_arm);
-  ASSERT_EQ(stale_policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(stale_policy).state, SessionState::Following);
   inputs.health_hard_fault = false;
   inputs.required_inputs_fresh = false;
   const auto stale = stale_policy.update(inputs);
@@ -192,8 +193,7 @@ TEST(HumanFollowingSessionPolicy, TargetMismatchDisarms)
   EXPECT_TRUE(stale.request_target_reset);
 
   HumanFollowingSessionPolicy can_policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(can_policy.update(validInputs()).request_arm);
-  ASSERT_EQ(can_policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(can_policy).state, SessionState::Following);
   inputs.required_inputs_fresh = true;
   inputs.bunker_can_healthy = false;
   const auto can_fault = can_policy.update(inputs);
@@ -206,8 +206,7 @@ TEST(HumanFollowingSessionPolicy, TargetMismatchDisarms)
 TEST(HumanFollowingSessionPolicy, ShortBlockRetainsAuthorization)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.start_gesture_event = false;
@@ -234,8 +233,7 @@ TEST(HumanFollowingSessionPolicy, ShortBlockRetainsAuthorization)
 TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 3.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.start_gesture_event = false;
@@ -267,10 +265,7 @@ TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
   EXPECT_TRUE(policy.update(inputs).request_arm);
 
   HumanFollowingSessionPolicy overlap_policy(RuntimeMode::Active, true, 3.0, 10.0);
-  ASSERT_TRUE(overlap_policy.update(validInputs()).request_arm);
-  ASSERT_EQ(
-    overlap_policy.acceptArmResult(true, "armed").state,
-    SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(overlap_policy).state, SessionState::Following);
   inputs.start_gesture_event = false;
   inputs.planner_blocked = true;
   inputs.now_sec = 2.0;
@@ -291,8 +286,7 @@ TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
 TEST(HumanFollowingSessionPolicy, UncertaintyTimeoutRevokesAuthorization)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.start_gesture_event = false;
@@ -329,8 +323,7 @@ TEST(HumanFollowingSessionPolicy, UncertaintyTimeoutRevokesAuthorization)
 TEST(HumanFollowingSessionPolicy, SearchRotateRevokesAuthorization)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
-  ASSERT_EQ(policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
   inputs.start_gesture_event = false;
@@ -355,8 +348,7 @@ TEST(HumanFollowingSessionPolicy, SearchRotateRevokesAuthorization)
   EXPECT_TRUE(policy.update(inputs).request_arm);
 
   HumanFollowingSessionPolicy lost_policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(lost_policy.update(validInputs()).request_arm);
-  ASSERT_EQ(lost_policy.acceptArmResult(true, "armed").state, SessionState::Following);
+  ASSERT_EQ(acceptInitialArm(lost_policy).state, SessionState::Following);
   inputs.start_gesture_event = false;
   inputs.decision_target_lost = true;
   const auto lost = lost_policy.update(inputs);
@@ -369,14 +361,17 @@ TEST(HumanFollowingSessionPolicy, SearchRotateRevokesAuthorization)
 TEST(HumanFollowingSessionPolicy, ArmRejectionRequiresANewGesture)
 {
   HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
-  ASSERT_TRUE(policy.update(validInputs()).request_arm);
+  const auto arm_request = policy.update(validInputs());
+  ASSERT_TRUE(arm_request.request_arm);
   auto inputs = validInputs();
   inputs.start_gesture_event = false;
   inputs.now_sec = 1.5;
   ASSERT_EQ(policy.update(inputs).state, SessionState::Arming);
 
-  const auto rejected = policy.acceptArmResult(false, "arm denied");
-  const auto repeated_result = policy.acceptArmResult(false, "arm denied");
+  const auto rejected = policy.acceptArmResult(
+    arm_request.arm_request_generation, false, "arm denied");
+  const auto repeated_result = policy.acceptArmResult(
+    arm_request.arm_request_generation, false, "arm denied");
   EXPECT_EQ(rejected.state, SessionState::Fault);
   EXPECT_EQ(rejected.reason, "arm denied");
   EXPECT_FALSE(rejected.target_authorized);
@@ -391,6 +386,41 @@ TEST(HumanFollowingSessionPolicy, ArmRejectionRequiresANewGesture)
   const auto new_gesture = policy.update(inputs);
   EXPECT_EQ(new_gesture.state, SessionState::Arming);
   EXPECT_TRUE(new_gesture.request_arm);
+}
+
+TEST(HumanFollowingSessionPolicy, StaleArmSuccessCannotAuthorizeANewerRequest)
+{
+  HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
+  const auto first_request = policy.update(validInputs());
+  ASSERT_TRUE(first_request.request_arm);
+  ASSERT_GT(first_request.arm_request_generation, 0U);
+
+  auto inputs = validInputs();
+  inputs.start_gesture_event = false;
+  inputs.rc_override = true;
+  ASSERT_EQ(policy.update(inputs).state, SessionState::RcOverride);
+
+  inputs.rc_override = false;
+  ASSERT_EQ(policy.update(inputs).state, SessionState::WaitingForGesture);
+  inputs.start_gesture_event = true;
+  const auto second_request = policy.update(inputs);
+  ASSERT_TRUE(second_request.request_arm);
+  ASSERT_GT(second_request.arm_request_generation, first_request.arm_request_generation);
+
+  const auto stale_first = policy.acceptArmResult(
+    first_request.arm_request_generation, true, "old arm accepted");
+  EXPECT_EQ(stale_first.state, SessionState::Fault);
+  EXPECT_EQ(stale_first.reason, "stale_arm_success");
+  EXPECT_FALSE(stale_first.target_authorized);
+  EXPECT_FALSE(stale_first.arm_request_pending);
+  EXPECT_TRUE(stale_first.request_disarm);
+  EXPECT_TRUE(stale_first.request_target_reset);
+
+  const auto stale_second = policy.acceptArmResult(
+    second_request.arm_request_generation, true, "new arm accepted after revoke");
+  EXPECT_EQ(stale_second.state, SessionState::Fault);
+  EXPECT_FALSE(stale_second.target_authorized);
+  EXPECT_TRUE(stale_second.request_disarm);
 }
 
 }  // namespace

@@ -35,10 +35,15 @@ ament_target_dependencies(follow_behavior_tree_node
 install(TARGETS perception_health_monitor_node follow_behavior_tree_node
   DESTINATION lib/${PROJECT_NAME})
 install(TARGETS human_following_session_policy
+  EXPORT export_human_following_session_policy
   ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib)
+  LIBRARY DESTINATION lib
+  INCLUDES DESTINATION include)
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch config docs DESTINATION share/${PROJECT_NAME})
+
+ament_export_targets(export_human_following_session_policy HAS_LIBRARY_TARGET)
+ament_export_include_directories(include)
 
 if(BUILD_TESTING)
   set(CMAKE_POLICY_VERSION_MINIMUM 3.5)

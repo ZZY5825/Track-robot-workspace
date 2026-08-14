@@ -130,6 +130,7 @@ SessionDecision HumanFollowingSessionPolicy::update(const SessionInputs & inputs
     authorized_target_id_ = inputs.decision_logical_target_id;
     authorized_ = true;
     arm_request_pending_ = true;
+    pending_arm_request_generation_ = ++next_arm_request_generation_;
     state_ = SessionState::Arming;
     return decision("arm_requested", true);
   }
@@ -154,6 +155,7 @@ SessionDecision HumanFollowingSessionPolicy::decision(
   decision.request_arm = request_arm;
   decision.request_disarm = request_disarm;
   decision.request_target_reset = request_target_reset;
+  decision.arm_request_generation = pending_arm_request_generation_;
   decision.reason = reason;
   return decision;
 }
@@ -167,19 +169,39 @@ SessionDecision HumanFollowingSessionPolicy::revoke(
   authorized_target_id_ = -1;
   authorized_ = false;
   arm_request_pending_ = false;
+  pending_arm_request_generation_ = 0;
   blocked_active_ = false;
   uncertain_active_ = false;
   return decision(reason, false, entering_state, entering_state && request_target_reset);
 }
 
 SessionDecision HumanFollowingSessionPolicy::acceptArmResult(
-  bool success, const std::string & message)
+  uint64_t generation, bool success, const std::string & message)
 {
-  if (!arm_request_pending_) {
-    return decision("no_arm_request_pending");
+  if (
+    !arm_request_pending_ || generation == 0 ||
+    generation != pending_arm_request_generation_)
+  {
+    if (!success) {
+      return decision("stale_arm_result");
+    }
+
+    // A stale success may have armed the safety supervisor after this session
+    // was revoked or superseded. Invalidate any newer request and explicitly
+    // disarm instead of allowing the callback to authorize the wrong target.
+    state_ = SessionState::Fault;
+    pending_visual_track_id_ = -1;
+    authorized_target_id_ = -1;
+    authorized_ = false;
+    arm_request_pending_ = false;
+    pending_arm_request_generation_ = 0;
+    blocked_active_ = false;
+    uncertain_active_ = false;
+    return decision("stale_arm_success", false, true, true);
   }
 
   arm_request_pending_ = false;
+  pending_arm_request_generation_ = 0;
   if (success) {
     pending_visual_track_id_ = -1;
     state_ = SessionState::Following;

@@ -52,6 +52,7 @@ struct SessionDecision
   bool request_arm{false};
   bool request_disarm{false};
   bool request_target_reset{false};
+  uint64_t arm_request_generation{0};
   std::string reason;
 };
 
@@ -62,7 +63,8 @@ public:
     RuntimeMode mode, bool motion_confirmed,
     double blocked_timeout_sec, double uncertain_timeout_sec);
   SessionDecision update(const SessionInputs & inputs);
-  SessionDecision acceptArmResult(bool success, const std::string & message);
+  SessionDecision acceptArmResult(
+    uint64_t generation, bool success, const std::string & message);
 
 private:
   SessionDecision decision(
@@ -85,6 +87,8 @@ private:
   double blocked_since_sec_{0.0};
   bool uncertain_active_{false};
   double uncertain_since_sec_{0.0};
+  uint64_t next_arm_request_generation_{0};
+  uint64_t pending_arm_request_generation_{0};
 };
 
 }  // namespace track_robot_decision
