@@ -1,6 +1,9 @@
 import ast
+import importlib.util
 from pathlib import Path
 
+from launch import LaunchContext
+from launch_ros.utilities import evaluate_parameters
 import yaml
 
 
@@ -115,6 +118,36 @@ def _source(path):
     return path.read_text(encoding='utf-8')
 
 
+def _load_launch_module(name):
+    spec = importlib.util.spec_from_file_location(
+        'test_human_following_{}_launch'.format(name), LAUNCHES[name])
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _configured_controller_context(module, **explicit_arguments):
+    context = LaunchContext()
+    context.launch_configurations.update(explicit_arguments)
+    module._capture_explicit_launch_arguments(context)
+    for argument in module.generate_launch_description().get_launch_arguments():
+        argument.execute(context)
+    return context
+
+
+def _effective_node_parameters(context, node, node_name):
+    effective = {}
+    for source in evaluate_parameters(context, node._Node__parameters):
+        if isinstance(source, Path):
+            document = yaml.safe_load(source.read_text(encoding='utf-8'))
+            for scope in ('/**', node_name, '/{}'.format(node_name)):
+                if scope in document:
+                    effective.update(document[scope]['ros__parameters'])
+        else:
+            effective.update(source)
+    return effective
+
+
 def _declared_arguments(tree):
     return {
         call.args[0].value
@@ -151,13 +184,118 @@ def _parameter_helper_calls(tree):
     ]
 
 
-def test_leaf_launches_omit_empty_profiles_and_apply_nonempty_profiles_before_overrides():
+def test_controller_profile_only_keeps_profile_owned_values_effective():
+    controller_launch = _load_launch_module('controller')
+    profile = CONFIG / 'human_following_supervised_test.yaml'
+    context = _configured_controller_context(
+        controller_launch, profile_config=str(profile))
+
+    controller = controller_launch._launch_nodes(context)[0]
+    effective = _effective_node_parameters(
+        context, controller, 'target_follow_controller_node')
+
+    assert {
+        key: effective[key]
+        for key in (
+            'follow_distance',
+            'max_linear_x',
+            'max_angular_z',
+            'linear_accel_limit',
+            'angular_accel_limit',
+            'allow_lidar_only_forward_motion',
+        )
+    } == {
+        'follow_distance': 2.0,
+        'max_linear_x': 0.05,
+        'max_angular_z': 0.15,
+        'linear_accel_limit': 0.05,
+        'angular_accel_limit': 0.15,
+        'allow_lidar_only_forward_motion': False,
+    }
+    assert effective['decision_topic'] == '/follow/decision'
+    assert effective['enable_service'] == '/follow/enable_cmd_vel'
+    assert effective['deadband_distance'] == 0.25
+
+
+def test_controller_explicit_profile_owned_argument_wins_after_profile():
+    controller_launch = _load_launch_module('controller')
+    profile = CONFIG / 'human_following_supervised_test.yaml'
+    context = _configured_controller_context(
+        controller_launch,
+        profile_config=str(profile),
+        max_linear_x='0.08',
+    )
+
+    controller = controller_launch._launch_nodes(context)[0]
+    effective = _effective_node_parameters(
+        context, controller, 'target_follow_controller_node')
+
+    assert effective['max_linear_x'] == 0.08
+    assert effective['follow_distance'] == 2.0
+
+
+def test_controller_without_profile_keeps_standalone_defaults():
+    controller_launch = _load_launch_module('controller')
+    context = _configured_controller_context(controller_launch)
+
+    controller = controller_launch._launch_nodes(context)[0]
+    effective = _effective_node_parameters(
+        context, controller, 'target_follow_controller_node')
+
+    assert {
+        key: effective[key]
+        for key in (
+            'follow_distance',
+            'max_linear_x',
+            'max_angular_z',
+            'linear_accel_limit',
+            'angular_accel_limit',
+            'allow_lidar_only_forward_motion',
+        )
+    } == {
+        'follow_distance': 1.8,
+        'max_linear_x': 0.15,
+        'max_angular_z': 0.35,
+        'linear_accel_limit': 0.10,
+        'angular_accel_limit': 0.25,
+        'allow_lidar_only_forward_motion': False,
+    }
+
+
+def test_decision_and_safety_helpers_order_base_profile_then_overrides():
+    profile = str(CONFIG / 'human_following_shadow.yaml')
+    overrides = {'topic': 'explicit'}
+
+    for name in ('decision', 'safety'):
+        launch_module = _load_launch_module(name)
+        context = LaunchContext()
+        context.launch_configurations['profile_config'] = profile
+
+        assert launch_module._profile_parameters(
+            context, 'base.yaml', overrides
+        ) == ['base.yaml', profile, overrides]
+
+        context.launch_configurations['profile_config'] = ''
+        assert launch_module._profile_parameters(
+            context, 'base.yaml', overrides
+        ) == ['base.yaml', overrides]
+
+
+def test_leaf_launches_capture_explicit_arguments_before_defaults_in_private_scope():
     for launch in LAUNCHES.values():
         source = _source(launch)
         tree = ast.parse(source)
 
         assert 'profile_config' in _declared_arguments(tree)
-        assert _opaque_functions(tree)
+        assert len(_opaque_functions(tree)) == 2
+        assert 'GroupAction' in source
+        assert 'scoped=True' in source
+        assert '_EXPLICIT_ARGUMENT_NAMES' in source
+        assert source.index(
+            'OpaqueFunction(function=_capture_explicit_launch_arguments)'
+        ) < source.index('DeclareLaunchArgument(')
+        assert source.rindex('DeclareLaunchArgument(') < source.index(
+            'OpaqueFunction(function=_launch_nodes)')
         assert '_profile_parameters' in source
         assert "LaunchConfiguration('profile_config').perform(context)" in source
         assert 'if profile_config:' in source
@@ -165,4 +303,11 @@ def test_leaf_launches_omit_empty_profiles_and_apply_nonempty_profiles_before_ov
         assert source.index('parameters.append(profile_config)') < source.index(
             'parameters.append(overrides)')
 
-        assert _parameter_helper_calls(tree)
+        node_count = sum(
+            1 for call in ast.walk(tree)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == 'Node'
+        )
+        assert len(_parameter_helper_calls(tree)) == node_count
+        assert node_count > 0
