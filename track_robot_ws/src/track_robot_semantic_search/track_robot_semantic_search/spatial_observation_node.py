@@ -1,11 +1,14 @@
 """Enrich semantic observations with registered ZED depth."""
 
 import copy
+import threading
 
 from cv_bridge import CvBridge, CvBridgeError
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 import rclpy
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
@@ -50,6 +53,9 @@ class SpatialObservationNode(Node):
         self._tf_listener = TransformListener(self._tf_buffer, self)
         self._intrinsics = None
         self._localization_epoch_id = 0
+        self._depth_callback_group = MutuallyExclusiveCallbackGroup()
+        self._observation_callback_group = MutuallyExclusiveCallbackGroup()
+        self._depth_buffer_lock = threading.Lock()
 
         input_topic = self.declare_parameter(
             'input_observations_topic',
@@ -77,6 +83,13 @@ class SpatialObservationNode(Node):
         )
         self._maximum_depth_delta_ns = int(float(self.declare_parameter(
             'maximum_depth_delta_sec', 0.20).value) * 1_000_000_000)
+        depth_processing_rate_hz = float(self.declare_parameter(
+            'depth_processing_rate_hz', 5.0).value)
+        if depth_processing_rate_hz <= 0.0:
+            raise ValueError('depth_processing_rate_hz must be positive')
+        self._minimum_depth_interval_ns = int(
+            1_000_000_000 / depth_processing_rate_hz)
+        self._latest_depth_stamp_ns = 0
         self._tf_timeout_sec = float(self.declare_parameter(
             'tf_timeout_sec', 0.05).value)
         self._config = SpatialObservationConfig(
@@ -99,19 +112,29 @@ class SpatialObservationNode(Node):
         self._diagnostics_publisher = self.create_publisher(
             DiagnosticArray, diagnostics_topic, 10)
         self._observation_subscription = self.create_subscription(
-            SemanticObservationArray, input_topic, self._on_observations, 10)
+            SemanticObservationArray,
+            input_topic,
+            self._on_observations,
+            10,
+            callback_group=self._observation_callback_group)
         self._depth_subscription = self.create_subscription(
-            Image, depth_topic, self._on_depth, qos_profile_sensor_data)
+            Image,
+            depth_topic,
+            self._on_depth,
+            qos_profile_sensor_data,
+            callback_group=self._depth_callback_group)
         self._camera_info_subscription = self.create_subscription(
             CameraInfo,
             camera_info_topic,
             self._on_camera_info,
-            qos_profile_sensor_data)
+            qos_profile_sensor_data,
+            callback_group=self._observation_callback_group)
         self._localization_subscription = self.create_subscription(
             SemanticLocalizationState,
             localization_topic,
             self._on_localization,
-            10)
+            10,
+            callback_group=self._observation_callback_group)
 
     def _on_localization(self, message):
         self._localization_epoch_id = 0
@@ -135,16 +158,25 @@ class SpatialObservationNode(Node):
             self._intrinsics = None
 
     def _on_depth(self, message):
+        stamp_ns = _stamp_ns(message.header.stamp)
+        if (
+                self._latest_depth_stamp_ns > 0
+                and stamp_ns >= self._latest_depth_stamp_ns
+                and stamp_ns - self._latest_depth_stamp_ns
+                < self._minimum_depth_interval_ns):
+            return
         try:
             depth = self._bridge.imgmsg_to_cv2(
                 message, desired_encoding='32FC1')
             if depth.ndim != 2:
                 raise ValueError('depth image is not two-dimensional')
-            self._depth_buffer.push(DepthFrame(
-                stamp_ns=_stamp_ns(message.header.stamp),
-                frame_id=str(message.header.frame_id),
-                image=depth,
-            ))
+            with self._depth_buffer_lock:
+                self._depth_buffer.push(DepthFrame(
+                    stamp_ns=stamp_ns,
+                    frame_id=str(message.header.frame_id),
+                    image=depth,
+                ))
+            self._latest_depth_stamp_ns = stamp_ns
         except (CvBridgeError, TypeError, ValueError):
             pass
 
@@ -177,7 +209,8 @@ class SpatialObservationNode(Node):
                 continue
 
             source_stamp_ns = self._observation_stamp_ns(message, observation)
-            match = self._depth_buffer.closest(source_stamp_ns)
+            with self._depth_buffer_lock:
+                match = self._depth_buffer.closest(source_stamp_ns)
             if match is None:
                 latest_reason = 'no_matching_depth'
                 self._counters[latest_reason] += 1
@@ -288,11 +321,14 @@ class SpatialObservationNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = SpatialObservationNode()
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
+        executor.shutdown()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

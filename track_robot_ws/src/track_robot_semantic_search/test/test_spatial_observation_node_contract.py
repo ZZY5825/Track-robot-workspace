@@ -1,4 +1,5 @@
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 
 from builtin_interfaces.msg import Time as TimeMessage
@@ -46,6 +47,15 @@ class FakeTransformBuffer:
         ))
 
 
+class FakeBridge:
+    def __init__(self):
+        self.calls = []
+
+    def imgmsg_to_cv2(self, message, desired_encoding):
+        self.calls.append((message, desired_encoding))
+        return np.full((4, 4), 2.0, dtype=np.float32)
+
+
 def observation(observation_id, stamp_ns):
     return SimpleNamespace(
         observation_id=observation_id,
@@ -78,6 +88,7 @@ def observation_array(*observations):
 def make_node(depth_buffer, *, failing_tf_stamps=()):
     node = SpatialObservationNode.__new__(SpatialObservationNode)
     node._depth_buffer = depth_buffer
+    node._depth_buffer_lock = threading.Lock()
     node._maximum_depth_delta_ns = 50
     node._tf_timeout_sec = 0.05
     node._config = SpatialObservationConfig(
@@ -98,6 +109,17 @@ def depth_frame(stamp_ns):
         stamp_ns=stamp_ns,
         frame_id='zed_left_camera_optical_frame',
         image=np.full((4, 4), 2.0, dtype=np.float32),
+    )
+
+
+def depth_message(stamp_ns):
+    return SimpleNamespace(
+        header=SimpleNamespace(
+            stamp=TimeMessage(
+                sec=stamp_ns // 1_000_000_000,
+                nanosec=stamp_ns % 1_000_000_000),
+            frame_id='zed_left_camera_optical_frame',
+        ),
     )
 
 
@@ -124,6 +146,22 @@ def test_enricher_matches_observation_stamp_and_uses_exact_depth_tf():
     assert 'Time(nanoseconds=match.frame.stamp_ns)' in source
     assert 'Time()' not in source
     assert 'DiagnosticArray' in source
+
+
+def test_depth_and_observation_callbacks_use_independent_executor_workers():
+    source = (
+        Path(__file__).resolve().parents[1]
+        / 'track_robot_semantic_search'
+        / 'spatial_observation_node.py'
+    ).read_text()
+
+    assert 'MutuallyExclusiveCallbackGroup' in source
+    assert 'self._depth_callback_group' in source
+    assert 'self._observation_callback_group' in source
+    assert 'MultiThreadedExecutor(num_threads=2)' in source
+    assert 'callback_group=self._depth_callback_group' in source
+    assert 'callback_group=self._observation_callback_group' in source
+    assert 'with self._depth_buffer_lock:' in source
 
 
 def test_enricher_diagnostics_use_only_fixed_reason_counters():
@@ -161,7 +199,26 @@ def test_enricher_configures_bounded_depth_matching():
             '/semantic_search/spatial_observation_diagnostics') in config
     assert 'depth_buffer_frames: 16' in config
     assert 'depth_buffer_max_age_sec: 2.0' in config
+    assert 'depth_processing_rate_hz: 5.0' in config
     assert 'maximum_depth_delta_sec: 0.20' in config
+
+
+def test_depth_callback_drops_dense_frames_before_cv_bridge_conversion():
+    node = SpatialObservationNode.__new__(SpatialObservationNode)
+    node._bridge = FakeBridge()
+    node._depth_buffer = DepthFrameBuffer(
+        max_frames=4, max_age_ns=1_000_000_000)
+    node._depth_buffer_lock = threading.Lock()
+    node._minimum_depth_interval_ns = 200_000_000
+    node._latest_depth_stamp_ns = 0
+
+    node._on_depth(depth_message(1_000_000_000))
+    node._on_depth(depth_message(1_050_000_000))
+    node._on_depth(depth_message(1_200_000_000))
+
+    assert len(node._bridge.calls) == 2
+    assert node._depth_buffer.size == 2
+    assert node._latest_depth_stamp_ns == 1_200_000_000
 
 
 def test_unhealthy_localization_clears_previously_accepted_epoch():
