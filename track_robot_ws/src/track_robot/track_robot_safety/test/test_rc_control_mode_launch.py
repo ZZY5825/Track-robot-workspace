@@ -79,11 +79,13 @@ class TestRcControlMode(unittest.TestCase):
             for state in self.states[-8:]
         ]))
 
-    def publish_inputs(self, control_mode, count=5):
+    def publish_inputs(self, control_mode, rc_state=None, count=5):
         status = BunkerStatus()
         status.vehicle_state = 0
         status.error_code = 0
         status.control_mode = control_mode
+        if rc_state is None:
+            rc_state = BunkerRCState()
         cloud = PointCloud2()
         cloud.header.frame_id = 'base_link'
         cloud.height = 1
@@ -97,7 +99,7 @@ class TestRcControlMode(unittest.TestCase):
             self.command_pub.publish(Twist())
             self.cloud_pub.publish(cloud)
             self.status_pub.publish(status)
-            self.rc_pub.publish(BunkerRCState())
+            self.rc_pub.publish(rc_state)
             rclpy.spin_once(self.node, timeout_sec=0.05)
             time.sleep(0.02)
 
@@ -110,6 +112,31 @@ class TestRcControlMode(unittest.TestCase):
         self.spin_until(lambda: self.states and self.states[-1].armed)
 
         self.publish_inputs(control_mode=3)
+        self.spin_until(
+            lambda: self.states
+            and self.states[-1].state == SafetyState.STATE_RC_OVERRIDE)
+        self.assertFalse(self.states[-1].armed)
+        self.assertTrue(self.states[-1].rc_override_active)
+        self.assertEqual(self.states[-1].safe_cmd.linear.x, 0.0)
+        self.assertEqual(self.states[-1].safe_cmd.angular.z, 0.0)
+
+        self.publish_inputs(control_mode=1)
+        self.spin_until(
+            lambda: self.states
+            and self.states[-1].state == SafetyState.STATE_DISARMED)
+        self.assertFalse(self.states[-1].armed)
+
+    def test_rc_stick_override_in_can_mode_disarms_without_automatic_rearm(self):
+        self.publish_inputs(control_mode=1)
+        self.assertTrue(self.arm_client.wait_for_service(timeout_sec=2.0))
+        future = self.arm_client.call_async(Trigger.Request())
+        self.spin_until(lambda: future.done())
+        self.assertTrue(future.result().success)
+        self.spin_until(lambda: self.states and self.states[-1].armed)
+
+        rc_state = BunkerRCState()
+        rc_state.stick_left_h = 11
+        self.publish_inputs(control_mode=1, rc_state=rc_state)
         self.spin_until(
             lambda: self.states
             and self.states[-1].state == SafetyState.STATE_RC_OVERRIDE)
