@@ -1,5 +1,12 @@
 import ast
+import importlib.util
+from collections import Counter
 from pathlib import Path
+
+from launch import LaunchContext
+from launch.actions import IncludeLaunchDescription, OpaqueFunction
+from launch.utilities import normalize_to_list_of_substitutions
+from launch.utilities import perform_substitutions
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
@@ -8,6 +15,9 @@ HARDWARE_LAUNCH = LAUNCH_ROOT / 'track_robot_hardware.launch.py'
 SENSORS_LAUNCH = LAUNCH_ROOT / 'semantic_search_sensors.launch.py'
 PLATFORM_LAUNCH = LAUNCH_ROOT / 'semantic_search_platform.launch.py'
 LIVE_LAUNCH = LAUNCH_ROOT / 'semantic_search_live.launch.py'
+PHASE4A_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase4a.launch.py'
+PHASE4B_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase4b.launch.py'
+PHASE5A_LAUNCH = LAUNCH_ROOT / 'semantic_search_phase5a.launch.py'
 
 PHYSICAL_INCLUDES = (
     ('bunker_pro2', 'description.launch.py', 'start_description'),
@@ -135,6 +145,106 @@ def _assert_if_condition(call, launch_argument):
     assert isinstance(condition.func, ast.Name)
     assert condition.func.id == 'IfCondition'
     assert _contains_string(condition, launch_argument)
+
+
+def _load_launch_module(path):
+    module_name = 'shared_hardware_contract_{}'.format(
+        path.stem.replace('.', '_').replace('-', '_'))
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def _launch_actions(path, overrides=None):
+    module = _load_launch_module(path)
+    launch_description = module.generate_launch_description()
+    context = LaunchContext()
+    values = {
+        argument: default
+        for argument, default in _argument_defaults(path).items()
+    }
+    values.update(overrides or {})
+    for argument in _declared_arguments(path):
+        context.launch_configurations[argument] = values.get(
+            argument, '__unused_contract_value__')
+
+    actions = []
+    for entity in launch_description.entities:
+        if isinstance(entity, IncludeLaunchDescription):
+            actions.append(entity)
+        elif isinstance(entity, OpaqueFunction):
+            actions.extend(entity.execute(context))
+    return context, actions
+
+
+def _perform(context, value):
+    return perform_substitutions(
+        context, normalize_to_list_of_substitutions(value))
+
+
+def _include_identity(include, context):
+    source = include.launch_description_source
+    location = source.__dict__['_LaunchDescriptionSource__location']
+    assert len(location) == 1
+    path_join = location[0]
+    parts = path_join.__dict__['_PathJoinSubstitution__substitutions']
+    package_substitution = parts[0]
+    package = _perform(
+        context, package_substitution.__dict__['_FindPackage__package'])
+    launch_file = _perform(context, parts[-1])
+    return package, launch_file
+
+
+def _effective_launch_arguments(include, context):
+    return {
+        name: _perform(context, value)
+        for name, value in include.launch_arguments
+    }
+
+
+def _active_physical_includes(path, overrides=None):
+    active = []
+
+    def walk(launch_path, launch_overrides):
+        context, actions = _launch_actions(launch_path, launch_overrides)
+        for action in actions:
+            if not isinstance(action, IncludeLaunchDescription):
+                continue
+            if action.condition is not None and not action.condition.evaluate(
+                    context):
+                continue
+
+            identity = _include_identity(action, context)
+            if identity in {
+                    (package, launch_file)
+                    for package, launch_file, _ in PHYSICAL_INCLUDES}:
+                active.append(identity)
+                continue
+
+            package, launch_file = identity
+            if package != 'track_robot_bringup':
+                continue
+            child_launch = LAUNCH_ROOT / launch_file
+            if child_launch.is_file():
+                walk(child_launch, _effective_launch_arguments(action, context))
+
+    walk(path, overrides or {})
+    return Counter(active)
+
+
+def _active_include_arguments(path, overrides=None, identities=None):
+    context, actions = _launch_actions(path, overrides)
+    return {
+        _include_identity(action, context): _effective_launch_arguments(
+            action, context)
+        for action in actions
+        if isinstance(action, IncludeLaunchDescription)
+        and (action.condition is None or action.condition.evaluate(context))
+        and (identities is None
+             or _include_identity(action, context) in identities)
+    }
 
 
 def test_neutral_hardware_launch_has_one_conditional_include_per_module():
@@ -290,19 +400,112 @@ def test_platform_wrapper_preserves_public_contract_and_selects_base_imu_only():
         _assert_launch_configuration(arguments[argument], argument)
 
 
-def test_wrappers_do_not_duplicate_physical_drivers_in_the_composed_ast():
-    physical_launch_files = {
-        launch_file for _, launch_file, _ in PHYSICAL_INCLUDES
-    }
+def test_hardware_tf_ownership_expressions_resolve_for_both_description_modes():
+    camera = (
+        'track_robot_bringup', 'semantic_search_camera.launch.py')
+    lidar = ('track_robot_bringup', 'rslidar_with_tf.launch.py')
 
-    for wrapper in (SENSORS_LAUNCH, PLATFORM_LAUNCH):
-        source = _source(wrapper)
-        assert source.count('track_robot_hardware.launch.py') == 1
-        for launch_file in physical_launch_files:
-            assert launch_file not in source
+    description_owned = _active_include_arguments(HARDWARE_LAUNCH, {
+        'start_description': 'true',
+        'extrinsic_mode': 'measured',
+        'publish_base_lidar_tf': 'true',
+    }, {camera, lidar})
+    assert description_owned[camera]['extrinsic_mode'] == 'robot_description'
+    assert description_owned[lidar]['publish_base_lidar_tf'] == 'false'
 
-    live_source = _source(LIVE_LAUNCH)
-    assert live_source.count("'description.launch.py'") == 1
-    sensors_include = _calls(SENSORS_LAUNCH, 'IncludeLaunchDescription')[0]
-    assert _launch_arguments(sensors_include)['start_description'].value == (
-        'false')
+    standalone_sensors = _active_include_arguments(HARDWARE_LAUNCH, {
+        'start_description': 'false',
+        'extrinsic_mode': 'measured',
+        'publish_base_lidar_tf': 'true',
+    }, {camera, lidar})
+    assert standalone_sensors[camera]['extrinsic_mode'] == 'measured'
+    assert standalone_sensors[lidar]['publish_base_lidar_tf'] == 'true'
+
+
+def test_composed_entrypoints_activate_each_physical_driver_once_when_enabled():
+    expected_physical_topologies = (
+        (
+            LIVE_LAUNCH,
+            {},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 0,
+                ('bunker_base', 'bunker_base.launch.py'): 0,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+        (
+            LIVE_LAUNCH,
+            {'stage': 'sensors'},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 1,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 1,
+            },
+        ),
+        (
+            PHASE4A_LAUNCH,
+            {},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 0,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+        (
+            PHASE4B_LAUNCH,
+            {},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 0,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+        (
+            PHASE5A_LAUNCH,
+            {},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 0,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+        (
+            PHASE4B_LAUNCH,
+            {'start_base': 'true'},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 1,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+        (
+            PHASE5A_LAUNCH,
+            {'start_base': 'true'},
+            {
+                ('bunker_pro2', 'description.launch.py'): 1,
+                ('track_robot_bringup', 'semantic_search_camera.launch.py'): 1,
+                ('track_robot_bringup', 'rslidar_with_tf.launch.py'): 1,
+                ('bunker_base', 'bunker_base.launch.py'): 1,
+                ('track_robot_perception', 'phidget_imu.launch.py'): 0,
+            },
+        ),
+    )
+
+    for launch, overrides, expected in expected_physical_topologies:
+        active = _active_physical_includes(launch, overrides)
+        assert {
+            (package, launch_file): active[(package, launch_file)]
+            for package, launch_file, _ in PHYSICAL_INCLUDES
+        } == expected
