@@ -1,135 +1,213 @@
+<div align="center">
+
 # Track Robot Workspace
 
-ROS 2 Foxy workspace for the tracked robot platform. The current workspace
-focuses on Jetson-side robot bringup, RoboSense LiDAR support, Bunker base
-interfaces, ZED2i perception, LiDAR-camera fusion, and experimental pretrained
-vision/LiDAR perception pipelines.
+**A ROS 2 autonomy stack for language-guided object search, gesture-authorized human following, and LiDAR-inertial localization on Bunker Pro 2.**
 
-## Workspace Layout
+<img src="docs/assets/readme/track-robot-hero.png" alt="Bunker Pro 2 Track Robot sensor-station model in RViz" width="720">
 
-```text
-track_robot_ws/
-  src/
-    track_robot/                 Core bringup, control, drivers, interfaces
-    track_robot_core/            Shared C++ nodes, ZED configs, model configs
-    track_robot_perception/      LiDAR, camera, fusion, IMU, and ML perception
-    lidar_mos_filter/            Range-image moving-object segmentation filter
-    third_party_ros/             FAST-LIO, RoboSense, Bunker, ZED dependencies
-  tools/                         Utility scripts
+![ROS 2 Foxy](https://img.shields.io/badge/ROS_2-Foxy-22314E?logo=ros&logoColor=white)
+![Ubuntu 20.04](https://img.shields.io/badge/Ubuntu-20.04-E95420?logo=ubuntu&logoColor=white)
+![Jetson AGX Orin](https://img.shields.io/badge/Compute-Jetson_AGX_Orin-76B900?logo=nvidia&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Bunker_Pro_2-2F3437)
+
+</div>
+
+## Core Capabilities
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>Find → Remember → Approach</h3>
+      <p>Search for objects in natural language, ground detections in 3D, maintain bounded semantic memory, and hand an approved target to supervised navigation.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>Gesture → Lock → Follow</h3>
+      <p>Use pose gestures to authorize a logical person lock, combine camera identity with LiDAR geometry, and maintain a guarded target state for following.</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>Sense → Estimate → Map</h3>
+      <p>Fuse RoboSense Helios-32 clouds with Phidget IMU measurements through the ROS 2 Point-LIO port for odometry, path, and registered-cloud output.</p>
+    </td>
+  </tr>
+</table>
+
+## System Architecture
+
+The capabilities share sensors and safety infrastructure, but each pipeline can be launched and validated independently.
+
+```mermaid
+flowchart TB
+  subgraph Semantic["Language-Conditioned Semantic Search"]
+    S_RGB["ZED2i RGB"] --> S_YOLO["YOLO-World"]
+    S_YOLO --> S_DEPTH["ZED registered depth"]
+    S_DEPTH --> S_MEMORY["Semantic memory and target selection"]
+    S_DINO["DINOv3 short-term identity"] -.-> S_MEMORY
+    S_MEMORY --> S_NAV["Bounded search / supervised Nav2"]
+  end
+
+  subgraph Human["Gesture-Triggered Human Following"]
+    H_RGB["ZED2i RGB"] --> H_POSE["YOLO pose + ByteTrack"]
+    H_POSE --> H_LOCK["Gesture trigger + logical target lock"]
+    H_LIDAR["Helios-32 geometry"] --> H_TRACK["C++ LiDAR tracklets"]
+    H_LOCK --> H_ASSOC["Camera-guided association"]
+    H_TRACK --> H_ASSOC
+    H_ASSOC --> H_IMM["Three-model IMM target state"]
+    H_IMM --> H_FOLLOW["Guarded follow decision"]
+  end
+
+  subgraph LIO["Point-LIO Localization"]
+    L_LIDAR["Helios-32 point cloud"] --> L_POINT["ROS 2 Point-LIO"]
+    L_IMU["Phidget Spatial IMU"] --> L_ADAPTER["IMU frame + time adapter"]
+    L_ADAPTER --> L_POINT
+    L_POINT --> L_OUTPUT["Odometry + path + registered cloud"]
+  end
+
+  S_NAV --> SAFETY["Motion safety supervisor"]
+  H_FOLLOW --> SAFETY
+  S_OBSTACLE["Helios-32 obstacle data"] -. "collision context" .-> SAFETY
+  SAFETY --> GATE["cmd_vel gate"]
+  GATE --> BASE["Bunker Pro 2"]
 ```
 
-Generated ROS output directories such as `build/`, `install/`, and `log/` are
-not part of the source release.
+Semantic position in the active ZED-depth profile comes from registered camera depth. LiDAR supplies obstacle and motion-safety context there; it is not presented as the source of semantic object position.
 
-## Main Features
+## Demo Gallery
 
-- RoboSense RS-Helios LiDAR launch and configuration, including RS-LiDAR plus
-  TF bringup.
-- Bunker base integration and Jetson-side robot bringup.
-- Velocity gate support for safe command filtering.
-- FAST-LIO integration tuned for the RS-Helios workflow.
-- ROS 2 Foxy Point-LIO port and RS-Helios launch/configuration workflow.
-- Phidget Spatial IMU calibration, bias/scale correction, and LiDAR/IMU time
-  synchronization tooling.
-- LIO bag analysis and coarse/fine IMU time-offset sweep utilities.
-- ZED2i RGB perception with Detectron2 Mask R-CNN instance segmentation.
-- ZED2i Keypoint R-CNN human pose and skeleton visualization.
-- RF-DETR Small detection wrapper, kept runtime-optional for ROS Foxy/Python 3.8.
-- DINOv3 ViT-S+/16 feature extraction prototype using a Python 3.8-compatible
-  local DINOv3 checkout.
-- LiDAR-only geometric clustering baseline using voxel sampling and
-  DBSCAN/Euclidean clustering.
-- Adaptive LiDAR ground highlighting with RANSAC plane fitting and a fixed
-  height fallback.
-- LiDAR human-candidate segmentation based on 3D cluster geometry, verticality,
-  and local ground contact.
-- LiDAR mask projection that projects RoboSense points into ZED2i Mask R-CNN
-  masks and publishes semantic point clouds.
-- Learning-free range-image MOS-style filter for static/dynamic LiDAR point
-  separation.
-- Gesture-triggered single-person tracking using YOLO pose for identity,
-  camera-guided LiDAR association, persistent C++ LiDAR tracklets, and
-  Kalman-filtered camera/LiDAR target state.
-- Language-conditioned semantic search with passive OpenAI CLIP perception,
-  generalized multi-object 3D semantic memory, deterministic replay, bounded
-  task services, and a ROS CLI text-query portal.
-- Phase 1 multiscale semantic windows using one bounded six-view GPU batch,
-  deterministic duplicate suppression, and whole-frame fallback when no local
-  candidate passes.
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="track_robot_ws/artifacts/semantic-search/phase1-mws-green-bottle-2026-07-27-rerun/phase1_overlay.png" alt="YOLO-World semantic-search overlay for a green bottle" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/assets/readme/human-tracking-rosbag-start-gesture.png" alt="Raw ZED rosbag frame showing the human-tracking start gesture" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/assets/readme/track-robot-base-model.png" alt="Bunker Pro 2 robot model in RViz viewport" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Semantic search</strong><br><sub>Real YOLO-World overlay from a recorded workspace run.</sub></td>
+    <td align="center"><strong>Human tracking source</strong><br><sub>Raw, unannotated ZED rosbag source frame; no inference overlay is shown.</sub></td>
+    <td align="center"><strong>Robot model</strong><br><sub>Repository-owned Bunker Pro 2 URDF visualized in RViz.</sub></td>
+  </tr>
+</table>
 
-## Build
+## Semantic Search
+
+### Find → Remember → Approach
+
+Track Robot accepts a short English object description and turns it into a bounded perception-and-navigation task:
+
+```text
+ZED2i RGB
+  → YOLO-World open-vocabulary detection
+  → ZED registered depth for 3D grounding
+  → semantic memory and target selection
+  → bounded active search or supervised Nav2 approach
+```
+
+DINOv3 can support short-term visual identity across observations. The motion-capable stages remain operator-supervised and route velocity through the normal safety supervisor and command gate.
+
+Start with the [Phase 0–3 passive YOLO-World guide](track_robot_ws/docs/guides/semantic-search/phase0-3-yolo-world-test.md). The [Phase 4B supervised Nav2 guide](track_robot_ws/docs/guides/semantic-search/phase4b-nav2-supervised-test.md) and [Phase 5A bounded active-search guide](track_robot_ws/docs/guides/semantic-search/phase5a-bounded-active-search-test.md) contain the motion authorization and validation procedures.
+
+## Human Following
+
+### Gesture → Lock → Follow
+
+The camera pipeline uses YOLO pose and ByteTrack to identify people. A two-hand start gesture authorizes a logical target lock; generic LiDAR tracklets then provide 3D geometry to camera-guided association and a three-model IMM target estimator. Camera semantics remain authoritative for identity, while LiDAR provides bounded continuation when the selected person leaves the camera field of view.
+
+<div align="center">
+  <img src="docs/assets/readme/human-tracking-rosbag-later-position.png" alt="Later raw ZED rosbag frame showing the human-tracking subject at the right side of the test scene" width="720">
+  <br>
+  <sub>Later raw, unannotated ZED frame from the same human-tracking rosbag sequence, with the subject visible at the right side of the test scene; it is source data rather than annotated model output.</sub>
+</div>
+
+Follow decisions preserve RC takeover, explicit re-lock, explicit safety arming, the motion safety supervisor, and the velocity gate. The tracking-only quick start below does not launch a follow controller or publish a base command.
+
+See the [human-tracking implementation guide](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md), [reinforcement and safety notes](track_robot_ws/src/track_robot_perception/docs/human_tracking_reinforcement.md), and [offline rosbag replay guide](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md).
+
+## Point-LIO
+
+### Sense → Estimate → Map
+
+The local ROS 2 Foxy port accepts the native RoboSense Helios-32 `PointCloud2` layout. The Phidget IMU adapter rotates measurements into the LiDAR/body frame and applies the configured timestamp offset before Point-LIO consumes them.
+
+```text
+/rslidar_points + /imu/data_raw
+  → /imu/data_lio
+  → Point-LIO
+  → /aft_mapped_to_init, /path, /cloud_registered, /Laser_map
+```
+
+The [Point-LIO RS-Helios integration guide](track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md) documents launch modes, expected topics, calibration parameters, drift capture, and offset-sweep tools.
+
+## Quick Start
+
+Clone and build the ROS workspace:
 
 ```bash
-cd ~/track_robot_ws
+git clone https://github.com/ZZY5825/Track-robot-workspace.git
+cd Track-robot-workspace/track_robot_ws
 source /opt/ros/foxy/setup.bash
 colcon build --symlink-install
 source install/setup.bash
+export ROS_DOMAIN_ID=20
 ```
 
-For focused development, build selected packages:
+### Passive semantic perception
+
+This Phase 1 entry point starts camera perception and does not launch navigation or publish `/cmd_vel`:
 
 ```bash
-colcon build --symlink-install --packages-select track_robot_perception
-colcon build --symlink-install --packages-select lidar_mos_filter
+ros2 run track_robot_bringup semantic_search_ctl start phase1 --hardware auto
+ros2 run track_robot_bringup semantic_search_ctl query "green bottle"
 ```
 
-### Bunker Pro 2 RViz2 model
-
-The persistent AgileX Bunker Pro 2 description and viewer live in
-[`src/bunker_pro2`](src/bunker_pro2). Build and open the verified static model
-with:
+Stop processes owned by the semantic-search controller when finished:
 
 ```bash
-source /opt/ros/foxy/setup.bash
-colcon build --symlink-install --packages-select bunker_pro2
-source install/setup.bash
-ros2 launch bunker_pro2 display.launch.py
+ros2 run track_robot_bringup semantic_search_ctl stop
 ```
 
-## Common Launch Commands
+### Tracking-only human pipeline
+
+With ZED image/calibration topics and `/rslidar_points` already available:
 
 ```bash
-ros2 launch track_robot_bringup jetson_base.launch.py
-ros2 launch track_robot_bringup rslidar_with_tf.launch.py
-ros2 launch track_robot_perception fast_lio_rshelios.launch.py
-ros2 launch track_robot_perception point_lio_rshelios.launch.py
-ros2 launch track_robot_perception phidget_imu.launch.py
-ros2 launch track_robot_perception lidar_ground_segment.launch.py
-ros2 launch track_robot_perception lidar_human_segment.launch.py
-ros2 launch track_robot_perception lidar_cluster_baseline.launch.py
-ros2 launch track_robot_perception lidar_mask_projector.launch.py
-ros2 launch track_robot_perception zed_mask_rcnn.launch.py
-ros2 launch track_robot_perception zed_pose_rcnn.launch.py
-ros2 launch track_robot_perception zed_dinov3_feature.launch.py
-ros2 launch lidar_mos_filter range_image_mos_filter.launch.py
 ros2 launch track_robot_perception human_tracking_simplified.launch.py
-ros2 launch track_robot_semantic_search semantic_search_phase1.launch.py \
-  start_perception:=true
-ros2 run track_robot_semantic_search semantic_search_query "a red backpack"
 ```
 
-## Model And Data Notes
+This launch performs camera tracking, gesture lock, LiDAR tracklets, association, and target-state estimation. It does not start the Bunker driver or follow controller.
 
-Large local checkpoints and datasets are intentionally not committed to Git.
-The DINOv3 ViT-S+/16 checkpoint used locally is expected at:
+### Point-LIO localization
 
-```text
-~/track_robot_ws/models/dinov3_vits16plus_pretrain_lvd1689m.pth
+With `/rslidar_points` and `/imu/data_raw` already available:
+
+```bash
+ros2 launch track_robot_perception point_lio_rshelios.launch.py
 ```
 
-That checkpoint is larger than GitHub's normal per-file push limit, so keep it
-as a local artifact or publish it through a release asset or Git LFS if it needs
-to be shared.
+Use the integration guide for the launch mode that also owns the LiDAR network and IMU driver.
+
+> Model checkpoints and recordings are local dependencies and are intentionally not committed. Review each feature guide for expected paths, model hashes, calibration, and hardware preflight.
+
+## Hardware and Software Stack
+
+| Layer | Active components |
+|---|---|
+| Mobile base | AgileX Bunker Pro 2 tracked platform |
+| Compute | NVIDIA Jetson AGX Orin |
+| RGB-D camera | Stereolabs ZED2i |
+| LiDAR | RoboSense RS-Helios-32 |
+| IMU | Phidget Spatial IMU |
+| Middleware | Ubuntu 20.04, ROS 2 Foxy |
+| Semantic perception | YOLO-World, ZED registered depth, DINOv3 short-term identity |
+| Human perception | YOLOv8 pose, ByteTrack, C++ LiDAR tracklets, three-model IMM |
+| Localization | ROS 2 Point-LIO port and IMU frame/time adapter |
+| Navigation | Nav2 with bounded search and supervised approach workflows |
+| Motion safety | RC takeover, explicit authorization, motion safety supervisor, `cmd_vel` gate |
 
 ## Documentation
 
-- `track_robot_ws/src/track_robot_perception/README.md`
-- `track_robot_ws/src/track_robot_perception/docs/fast_lio_rshelios.md`
-- `track_robot_ws/src/track_robot_perception/docs/phidget_imu_time_sync.md`
-- `track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md`
-- `track_robot_ws/src/track_robot_perception/docs/point_lio_ros2_port_assessment.md`
-- `track_robot_ws/src/track_robot_perception/docs/pretrained_lidar_feasibility.md`
-- `track_robot_ws/src/track_robot_perception/docs/human_tracking_fusion_refactor_log_2026-07-09.md`
-- `track_robot_ws/src/track_robot_semantic_search/README.md`
-- `track_robot_ws/rosbags/semantic_search/phase2_recording_guide.md`
-- `RELEASES.md`
+- [Operator guides](track_robot_ws/docs/guides/README.md)
+- [Semantic-search package](track_robot_ws/src/track_robot_semantic_search/README.md)
+- [Human-tracking implementation](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md)
+- [Human-tracking rosbag replay](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md)
+- [Point-LIO RS-Helios integration](track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md)
+- [Perception workspace](track_robot_ws/src/track_robot_perception/README.md)
+- [Release history](RELEASES.md)
