@@ -9,6 +9,7 @@ track_robot_ws/.codex/
 track_robot_ws/dataset/
 track_robot_ws/dinov3_feature_outputs/
 track_robot_ws/models/*.pth
+.superpowers/
 
 __pycache__/
 *.py[cod]
