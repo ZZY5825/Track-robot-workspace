@@ -4,7 +4,7 @@
 
 **A ROS 2 autonomy stack for language-guided object search, gesture-authorized human following, and LiDAR-inertial localization on Bunker Pro 2.**
 
-<img src="docs/assets/readme/track-robot-hero.png" alt="Bunker Pro 2 Track Robot sensor-station model in RViz" width="720">
+<img src="docs/assets/readme/track-robot-hero.png" alt="Bunker Pro 2 Track Robot with integrated PiPER arm and sensor station in RViz" width="720">
 
 ![ROS 2 Foxy](https://img.shields.io/badge/ROS_2-Foxy-22314E?logo=ros&logoColor=white)
 ![Ubuntu 20.04](https://img.shields.io/badge/Ubuntu-20.04-E95420?logo=ubuntu&logoColor=white)
