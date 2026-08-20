@@ -10,6 +10,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 LAUNCH_ROOT = PACKAGE_ROOT / 'launch'
 CONFIG_ROOT = PACKAGE_ROOT / 'config'
 CAMERA_LAUNCH = LAUNCH_ROOT / 'semantic_search_camera.launch.py'
+HARDWARE_LAUNCH = LAUNCH_ROOT / 'track_robot_hardware.launch.py'
 PLATFORM_LAUNCH = LAUNCH_ROOT / 'semantic_search_platform.launch.py'
 SENSORS_LAUNCH = LAUNCH_ROOT / 'semantic_search_sensors.launch.py'
 LIVE_LAUNCH = LAUNCH_ROOT / 'semantic_search_live.launch.py'
@@ -477,25 +478,18 @@ def test_camera_extrinsic_example_has_the_calibration_schema():
     }
 
 
-def test_platform_directly_and_independently_gates_base_and_imu():
+def test_platform_wrapper_forwards_base_and_imu_to_shared_hardware():
     source = _source(PLATFORM_LAUNCH)
     includes = _calls(PLATFORM_LAUNCH, 'IncludeLaunchDescription')
 
-    assert 'bunker_base.launch.py' in source
-    assert 'phidget_imu.launch.py' in source
+    assert 'track_robot_hardware.launch.py' in source
+    assert 'bunker_base.launch.py' not in source
+    assert 'phidget_imu.launch.py' not in source
     assert 'jetson_base.launch.py' not in source
     assert {'start_base', 'start_imu'} <= _declared_arguments(PLATFORM_LAUNCH)
-    assert len(includes) == 2
-    assert any(
-        _contains_string(call, 'start_base')
-        and _keyword(call, 'condition') is not None
-        for call in includes
-    )
-    assert any(
-        _contains_string(call, 'start_imu')
-        and _keyword(call, 'condition') is not None
-        for call in includes
-    )
+    assert len(includes) == 1
+    assert _forwards_launch_configuration(PLATFORM_LAUNCH, 'start_base')
+    assert _forwards_launch_configuration(PLATFORM_LAUNCH, 'start_imu')
     assert '<exec_depend>track_robot_perception</exec_depend>' in _source(
         PACKAGE_ROOT / 'package.xml')
 
@@ -508,7 +502,7 @@ def test_platform_forwards_configurable_base_frame_to_bunker_driver():
 
 
 def test_platform_pins_phidget_config_against_lidar_argument_leakage():
-    source = _source(PLATFORM_LAUNCH)
+    source = _source(HARDWARE_LAUNCH)
 
     assert "FindPackageShare('track_robot_perception')" in source
     assert "'config_path': PathJoinSubstitution([" in source
@@ -518,6 +512,7 @@ def test_platform_pins_phidget_config_against_lidar_argument_leakage():
 def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
     source = _source(SENSORS_LAUNCH)
     arguments = _declared_arguments(SENSORS_LAUNCH)
+    includes = _calls(SENSORS_LAUNCH, 'IncludeLaunchDescription')
 
     assert {
         'start_camera',
@@ -533,11 +528,13 @@ def test_sensors_launch_gates_each_hardware_module_and_forwards_arguments():
         'extrinsic_file',
         'allow_degraded',
     } <= arguments
-    assert 'semantic_search_camera.launch.py' in source
-    assert 'semantic_search_platform.launch.py' in source
-    assert 'rslidar_with_tf.launch.py' in source
+    assert len(includes) == 1
+    assert 'track_robot_hardware.launch.py' in source
+    assert 'semantic_search_camera.launch.py' not in source
+    assert 'semantic_search_platform.launch.py' not in source
+    assert 'rslidar_with_tf.launch.py' not in source
     for argument in ('start_camera', 'start_lidar', 'start_base', 'start_imu'):
-        assert argument in source
+        assert _forwards_launch_configuration(SENSORS_LAUNCH, argument)
 
 
 def test_integrated_live_roots_bunker_odometry_at_robot_bottom():

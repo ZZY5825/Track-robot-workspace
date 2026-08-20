@@ -4,6 +4,14 @@ The decision layer converts fused target evidence into explicit motion
 permissions. It does not bypass the local trajectory planner, motion safety
 supervisor, command gate, RC override, or Bunker watchdog.
 
+## Ownership Boundary
+
+The decision layer owns target usability and session intent: whether evidence
+supports confirmed following, bounded hold, blocked hold, RC override, fault,
+or target loss. It does not arm the base, own final obstacle clearance, or
+publish `/cmd_vel`. The safety layer may reject every decision-layer motion
+request.
+
 ## Decision States
 
 ```text
@@ -20,8 +28,8 @@ RC_OVERRIDE
 
 The behavior tree is in `config/follow_behavior_tree.xml`; thresholds are in
 `config/outdoor_decision.yaml`. Real velocity output remains disabled by
-default. The controller is also capped at 0.15 m/s until braking tests justify
-raising its independent limit.
+default. The supervised hardware-test profile caps all command layers at
+0.05 m/s linear and 0.15 rad/s angular velocity.
 
 ## Command-Only Test
 
@@ -80,12 +88,28 @@ planner, safety supervisor, and command gate. The controller remains disabled,
 and the safety supervisor remains disarmed. Do not enable either during initial
 visualization and command-only testing.
 
+## Manual Takeover and Reauthorization
+
+RC takeover is a hard transition, not a temporary pause. When `/safety/state`
+enters `STATE_RC_OVERRIDE`, the decision node publishes `BEHAVIOR_RC_OVERRIDE`
+with motion disabled and requests `/human_tracking/reset_target`. This clears
+the gesture-authorized logical target.
+
+Switching the Bunker back to CAN mode does not resume the old target or re-arm
+the safety supervisor. Resume requires both actions:
+
+1. Perform the start gesture again to authorize a new logical target.
+2. Explicitly call `/safety/arm` after confirming CAN mode and healthy inputs.
+
+This matches the autonomous-approach/Nav2 takeover behavior: manual control
+cancels the current autonomous authorization and cannot auto-resume.
+
 ## Operating Limits
 
 - Structured outdoor paths and mostly level open ground only.
 - Daylight and light rain only when perception health remains usable.
 - No drop-off, hole, water, mud, steep-slope, or low-obstacle guarantee with
   the current top-mounted sensors.
-- LiDAR-only forward motion is limited to 0.15 m/s and three seconds.
+- The supervised test profile prohibits LiDAR-only forward motion.
 - Search uses zero forward speed, a 120-degree sector, and a four-second limit.
 - A blocked local path produces a stop; there is no autonomous global detour.

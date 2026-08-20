@@ -5,6 +5,13 @@ LiDAR cloud, selects collision-free steering arcs toward the target, predicts
 whether the selected Bunker footprint will collide, slows the command when
 clearance decreases, and stops inside the braking envelope.
 
+## Ownership Boundary
+
+The safety layer owns final motion authorization, arm/disarm state, RC and
+emergency-stop takeover, obstacle and freshness checks, and zero-command
+enforcement. It may reduce or reject upstream commands. Neither perception nor
+the decision layer can bypass this final authority.
+
 ## Command Path
 
 ```text
@@ -96,8 +103,15 @@ EMERGENCY_STOP
 ```
 
 Any stale input, RC takeover, base fault, or emergency stop produces an
-immediate zero output. RC takeover also disarms the supervisor, so motion does
-not resume automatically when the sticks return to neutral.
+immediate zero output. Bunker `control_mode == 3` is the authoritative RC
+takeover signal even with centered sticks; stick movement is retained as a
+redundant takeover signal. RC takeover also disarms the supervisor, so motion
+does not resume when the sticks return to neutral or the base returns to CAN
+mode. A new explicit `/safety/arm` call is required.
+
+`/safety/controller_debug` exposes `bunker_control_mode`,
+`rc_control_mode_active`, and `rc_stick_override_active` so the takeover source
+can be diagnosed independently.
 
 ## Hardware Services
 

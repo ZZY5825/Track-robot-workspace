@@ -54,6 +54,7 @@ if(BUILD_TESTING)
   set(ENV{PYTEST_DISABLE_PLUGIN_AUTOLOAD} 1)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_cmake_pytest REQUIRED)
+  find_package(launch_testing_ament_cmake REQUIRED)
   ament_add_gtest(
     test_rotation_collision
     test/test_rotation_collision.cpp
@@ -69,6 +70,7 @@ if(BUILD_TESTING)
     test/test_nav2_safety_contract.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  add_launch_test(test/test_rc_control_mode_launch.py TIMEOUT 30)
 endif()
 
 ament_package()

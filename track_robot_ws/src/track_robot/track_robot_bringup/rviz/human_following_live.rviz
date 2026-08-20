@@ -1,0 +1,170 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Human-Following Evidence
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Observed Selected Physical Tracklet1
+        - /Filtered Logical Target1
+        - /Authorization Session1
+      Splitter Ratio: 0.5
+    Tree Height: 760
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Time
+    Name: Time
+    SyncMode: 0
+    SyncSource: RoboSense Points
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Cell Size: 0.5
+      Color: 90; 94; 100
+      Enabled: true
+      Name: Ground Grid
+      Plane: XY
+      Value: true
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Frame Timeout: 15
+      Name: TF
+      Show Axes: false
+      Show Names: false
+      Value: false
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Name: Bunker Pro 2
+      Value: true
+      Visual Enabled: true
+    - Alpha: 0.75
+      Class: rviz_default_plugins/PointCloud2
+      Color Transformer: Intensity
+      Enabled: true
+      Name: RoboSense Points
+      Queue Size: 3
+      Size (Pixels): 2
+      Style: Points
+      Topic:
+        Value: /rslidar_points
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Camera Tracking Overlay
+      Normalize Range: true
+      Topic:
+        Value: /human_tracking/target_overlay
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Camera / Fusion Target Markers
+      Topic:
+        Value: /human_tracking/fused_target_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Generic LiDAR Tracklets
+      Topic:
+        Value: /human_tracking/lidar_tracklet_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Observed Selected Physical Tracklet
+      Topic:
+        Value: /human_tracking/selected_tracklet_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Filtered Logical Target
+      Topic:
+        Value: /human_tracking/selected_target_marker
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Follow Decision
+      Topic:
+        Value: /follow/decision_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Planned Command - Controller Direction / Speed
+      Topic:
+        Value: /follow/controller_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Avoidance Trajectories
+      Topic:
+        Value: /follow/avoidance_trajectory_markers
+      Value: true
+    - Alpha: 0.3
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Enabled: true
+      Name: Local Obstacle Grid
+      Topic:
+        Value: /safety/local_obstacle_grid
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 255; 60; 60
+      Color Transformer: FlatColor
+      Enabled: true
+      Name: Filtered Safety Obstacles
+      Queue Size: 3
+      Size (Pixels): 4
+      Style: Points
+      Topic:
+        Value: /safety/filtered_obstacle_points
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Safe Command - Safety Envelope
+      Topic:
+        Value: /safety/collision_envelope_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Authorization Session
+      Topic:
+        Value: /human_following/supervisor_markers
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 30; 32; 36
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 7
+      Focal Point:
+        X: 1.5
+        Y: 0
+        Z: 0.5
+      Name: Human-Following Overview
+      Pitch: 0.65
+      Target Frame: base_link
+      Yaw: 0.75
+Window Geometry:
+  Height: 950
+  Width: 1600

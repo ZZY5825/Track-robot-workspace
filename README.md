@@ -54,6 +54,7 @@ flowchart TB
     H_TRACK --> H_ASSOC
     H_ASSOC --> H_IMM["Three-model IMM target state"]
     H_IMM --> H_FOLLOW["Guarded follow decision"]
+    H_FOLLOW --> H_AVOID["Local trajectory avoidance"]
   end
 
   subgraph LIO["Point-LIO Localization"]
@@ -64,7 +65,7 @@ flowchart TB
   end
 
   S_NAV --> SAFETY["Motion safety supervisor"]
-  H_FOLLOW --> SAFETY
+  H_AVOID --> SAFETY
   S_OBSTACLE["Helios-32 obstacle data"] -. "collision context" .-> SAFETY
   SAFETY --> GATE["cmd_vel gate"]
   GATE --> BASE["Bunker Pro 2"]
@@ -117,9 +118,9 @@ The camera pipeline uses YOLO pose and ByteTrack to identify people. A two-hand 
   <sub>Later raw, unannotated ZED frame from the same human-tracking rosbag sequence, with the subject visible at the right side of the test scene; it is source data rather than annotated model output.</sub>
 </div>
 
-Follow decisions preserve RC takeover, explicit re-lock, explicit safety arming, the motion safety supervisor, and the velocity gate. The tracking-only quick start below does not launch a follow controller or publish a base command.
+Follow decisions pass through sampled differential-drive local trajectory avoidance before an independent safety supervisor checks the selected arc, command freshness, Bunker health, and RC takeover state. Returning from RC to CAN mode never resumes motion automatically; a new gesture-authorized target session is required. The tracking-only quick start below does not launch a follow controller or publish a base command.
 
-See the [human-tracking implementation guide](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md), [reinforcement and safety notes](track_robot_ws/src/track_robot_perception/docs/human_tracking_reinforcement.md), and [offline rosbag replay guide](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md).
+See the [human-tracking implementation guide](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md), [reinforcement and safety notes](track_robot_ws/src/track_robot_perception/docs/human_tracking_reinforcement.md), [offline rosbag replay guide](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md), and [supervised live test procedure](track_robot_ws/docs/guides/human-following/live-supervised-test.md).
 
 ## Point-LIO
 
@@ -174,6 +175,21 @@ ros2 launch track_robot_perception human_tracking_simplified.launch.py
 
 This launch performs camera tracking, gesture lock, LiDAR tracklets, association, and target-state estimation. It does not start the Bunker driver or follow controller.
 
+### Shadow-mode human following
+
+The supervised runtime starts in shadow mode without a `/cmd_vel` publisher:
+
+```bash
+ros2 run track_robot_bringup human_following_ctl doctor \
+  --runtime-mode shadow --hardware auto
+ros2 run track_robot_bringup human_following_ctl start \
+  --runtime-mode shadow --hardware auto
+```
+
+Use `human_following_ctl stop` to stop only processes owned by this feature. Do
+not enable active motion from this quick start. Follow the staged
+[live supervised test procedure](track_robot_ws/docs/guides/human-following/live-supervised-test.md), beginning with Gate A, before any physical test.
+
 ### Point-LIO localization
 
 With `/rslidar_points` and `/imu/data_raw` already available:
@@ -208,6 +224,7 @@ Use the integration guide for the launch mode that also owns the LiDAR network a
 - [Semantic-search package](track_robot_ws/src/track_robot_semantic_search/README.md)
 - [Human-tracking implementation](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md)
 - [Human-tracking rosbag replay](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md)
+- [Supervised live human following](track_robot_ws/docs/guides/human-following/live-supervised-test.md)
 - [Point-LIO RS-Helios integration](track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md)
 - [Perception workspace](track_robot_ws/src/track_robot_perception/README.md)
 - [Release history](RELEASES.md)

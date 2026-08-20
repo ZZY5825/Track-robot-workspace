@@ -1,0 +1,35 @@
+follow_behavior_tree_node:
+  ros__parameters:
+    confirmed_max_linear: 0.05
+    confirmed_max_angular: 0.15
+    lidar_max_linear: 0.0
+    lidar_max_angular: 0.15
+    search_max_angular: 0.0
+target_follow_controller_node:
+  ros__parameters:
+    follow_distance: 2.0
+    max_linear_x: 0.05
+    max_angular_z: 0.15
+    linear_accel_limit: 0.05
+    angular_accel_limit: 0.15
+    allow_lidar_only_forward_motion: false
+local_trajectory_planner_node:
+  ros__parameters:
+    max_linear_x: 0.05
+    max_angular_z: 0.15
+motion_safety_supervisor_node:
+  ros__parameters:
+    max_linear_x: 0.05
+    max_angular_z: 0.15
+    require_odom: true
+    odom_timeout_sec: 0.25
+cmd_vel_gate:
+  ros__parameters:
+    max_linear_x: 0.05
+    max_angular_z: 0.15
+human_following_supervisor_node:
+  ros__parameters:
+    runtime_mode: active
+    motion_confirmed: false
+    blocked_disarm_timeout_sec: 10.0
+    uncertain_authorization_timeout_sec: 1.0

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <sstream>
@@ -100,7 +101,7 @@ public:
     safety_sub_ = create_subscription<track_robot_interfaces::msg::SafetyState>(
       safety_topic_, 10,
       [this](const track_robot_interfaces::msg::SafetyState::SharedPtr msg) {
-        safety_ = *msg; safety_time_ = steadyNow(); have_safety_ = true;
+        safetyCallback(*msg);
       });
     decision_pub_ = create_publisher<track_robot_interfaces::msg::FollowDecision>(decision_topic_, 10);
     debug_pub_ = create_publisher<std_msgs::msg::String>(debug_topic_, 10);
@@ -138,7 +139,7 @@ private:
 
   void targetCallback(const track_robot_interfaces::msg::TargetState & msg)
   {
-    if (msg.target_id < 0 || msg.track_state == msg.TRACK_NO_TARGET) {
+    if (isNoTarget(msg)) {
       target_ = msg;
       target_time_ = steadyNow();
       have_target_ = true;
@@ -148,6 +149,10 @@ private:
       confirmed_ticks_ = 0;
       lidar_ticks_ = 0;
       last_candidate_id_ = -1;
+      if (relock_required_) {
+        relock_no_target_observed_ = true;
+        releaseRelockIfReady();
+      }
       return;
     }
     if (have_reliable_target_ && msg.target_id != last_reliable_target_.target_id &&
@@ -176,6 +181,37 @@ private:
       confirmed_ticks_ = 0;
       lidar_ticks_ = 0;
       lidar_only_active_ = false;
+    }
+  }
+
+  bool isNoTarget(const track_robot_interfaces::msg::TargetState & msg) const
+  {
+    return msg.target_id < 0 || msg.track_state == msg.TRACK_NO_TARGET ||
+      msg.lock_state == msg.LOCK_NO_TARGET;
+  }
+
+  void safetyCallback(const track_robot_interfaces::msg::SafetyState & msg)
+  {
+    const bool rc_takeover_active = msg.rc_override_active ||
+      msg.state == msg.STATE_RC_OVERRIDE;
+    const bool previous_rc_takeover_active = have_safety_ &&
+      (safety_.rc_override_active || safety_.state == safety_.STATE_RC_OVERRIDE);
+    const bool entering_rc = rc_takeover_active && !previous_rc_takeover_active;
+    safety_ = msg;
+    safety_time_ = steadyNow();
+    have_safety_ = true;
+    if (entering_rc) {
+      relock_required_ = true;
+      relock_reset_succeeded_ = false;
+      relock_no_target_observed_ = false;
+      relock_reset_generation_ = queueTargetReset("rc_override");
+    }
+  }
+
+  void releaseRelockIfReady()
+  {
+    if (relock_reset_succeeded_ && relock_no_target_observed_) {
+      relock_required_ = false;
     }
   }
 
@@ -277,14 +313,16 @@ private:
 
   bool confirmedReady() const
   {
-    return age(target_time_, have_target_) <= target_timeout_sec_ && rawConfirmed(target_) &&
+    return !relock_required_ && age(target_time_, have_target_) <= target_timeout_sec_ &&
+      rawConfirmed(target_) &&
       confirmed_ticks_ >= confirmation_ticks_ &&
       (!require_health_ || (have_health_ && health_.lidar_usable));
   }
 
   bool lidarReady() const
   {
-    return age(target_time_, have_target_) <= target_timeout_sec_ && rawLidar(target_) &&
+    return !relock_required_ && age(target_time_, have_target_) <= target_timeout_sec_ &&
+      rawLidar(target_) &&
       lidar_ticks_ >= confirmation_ticks_ && lidar_only_active_ &&
       age(lidar_only_start_, true) <= lidar_only_timeout_sec_ &&
       (!require_health_ || (have_health_ && health_.lidar_usable));
@@ -292,7 +330,7 @@ private:
 
   bool uncertainTarget() const
   {
-    if (!hasLogicalTarget()) return false;
+    if (relock_required_ || !hasLogicalTarget()) return false;
     if (confirmedReady() || lidarReady()) return false;
     return have_reliable_target_ && age(last_reliable_time_, true) <= uncertain_hold_sec_;
   }
@@ -304,7 +342,7 @@ private:
 
   bool searchAllowed()
   {
-    if (!have_reliable_target_) return false;
+    if (relock_required_ || !have_reliable_target_) return false;
     if (!search_active_) {
       if (age(last_reliable_time_, true) > search_entry_max_age_sec_) return false;
       search_active_ = true;
@@ -442,7 +480,8 @@ private:
     factory_.registerSimpleCondition("SearchAllowed", [this](BT::TreeNode &) {
       return searchAllowed() ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;});
     factory_.registerSimpleCondition("HasLogicalTarget", [this](BT::TreeNode &) {
-      return hasLogicalTarget() ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;});
+      return !relock_required_ && hasLogicalTarget() ?
+             BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;});
     factory_.registerSimpleAction("SetHardStop", [this](BT::TreeNode &) {return setHardStop();});
     factory_.registerSimpleAction("SetBlockedHold", [this](BT::TreeNode &) {return setBlocked();});
     factory_.registerSimpleAction("SetConfirmedFollow", [this](BT::TreeNode &) {return setConfirmed();});
@@ -462,22 +501,72 @@ private:
     publishMarkers();
     if (decision_.behavior != last_behavior_) {
       if (decision_.behavior == decision_.BEHAVIOR_TARGET_LOST) {
-        requestTargetReset();
+        queueTargetReset("target_lost");
       }
       RCLCPP_INFO(get_logger(), "Decision %u -> %u: %s", last_behavior_, decision_.behavior,
         decision_.reason.c_str());
       last_behavior_ = decision_.behavior;
     }
+    attemptPendingTargetReset();
   }
 
-  void requestTargetReset()
+  uint64_t queueTargetReset(const std::string & reason)
   {
-    if (!reset_target_client_->service_is_ready()) {
-      RCLCPP_WARN(get_logger(), "Target lost; reset service is not available");
+    ++reset_target_generation_;
+    reset_target_pending_ = true;
+    reset_target_reason_ = reason;
+    next_reset_target_attempt_time_ = steadyNow();
+    return reset_target_generation_;
+  }
+
+  void attemptPendingTargetReset()
+  {
+    if (!reset_target_pending_ || reset_target_request_in_flight_ ||
+      steadyNow() < next_reset_target_attempt_time_)
+    {
       return;
     }
-    reset_target_client_->async_send_request(std::make_shared<std_srvs::srv::Trigger::Request>());
-    RCLCPP_WARN(get_logger(), "Target lost; requested logical target reset");
+    if (!reset_target_client_->service_is_ready()) {
+      next_reset_target_attempt_time_ = steadyNow() + std::chrono::milliseconds(200);
+      return;
+    }
+
+    reset_target_request_in_flight_ = true;
+    const uint64_t generation = reset_target_generation_;
+    const std::string reason = reset_target_reason_;
+    reset_target_client_->async_send_request(
+      std::make_shared<std_srvs::srv::Trigger::Request>(),
+      [this, generation, reason](rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future) {
+        reset_target_request_in_flight_ = false;
+        try {
+          const auto response = future.get();
+          if (generation != reset_target_generation_) {
+            RCLCPP_WARN(get_logger(), "%s; ignored stale reset response for generation %lu",
+              reason.c_str(), static_cast<unsigned long>(generation));
+            return;
+          }
+          if (response->success) {
+            reset_target_pending_ = false;
+            if (relock_required_ && relock_reset_generation_ == generation) {
+              relock_reset_succeeded_ = true;
+              releaseRelockIfReady();
+            }
+            RCLCPP_WARN(get_logger(), "%s; reset logical target", reason.c_str());
+            return;
+          }
+          RCLCPP_WARN(get_logger(), "%s; reset target failed; retrying",
+            reason.c_str());
+        } catch (const std::exception & error) {
+          if (generation != reset_target_generation_) {
+            RCLCPP_WARN(get_logger(), "%s; ignored stale reset failure for generation %lu",
+              reason.c_str(), static_cast<unsigned long>(generation));
+            return;
+          }
+          RCLCPP_WARN(get_logger(), "%s; reset target request failed: %s; retrying",
+            reason.c_str(), error.what());
+        }
+        next_reset_target_attempt_time_ = steadyNow() + std::chrono::milliseconds(200);
+      });
   }
 
   void publishDebug()
@@ -640,12 +729,17 @@ private:
   bool have_target_{false}, have_health_{false}, have_avoidance_{false}, have_safety_{false};
   bool have_reliable_target_{false}, lidar_only_active_{false}, search_active_{false};
   bool blocked_latched_{false};
+  bool relock_required_{false}, relock_reset_succeeded_{false};
+  bool relock_no_target_observed_{false};
+  bool reset_target_pending_{false}, reset_target_request_in_flight_{false};
   int confirmed_ticks_{0}, lidar_ticks_{0}, blocked_clear_ticks_{0}, last_candidate_id_{-1};
+  uint64_t reset_target_generation_{0}, relock_reset_generation_{0};
   uint8_t last_behavior_{255};
   double search_center_world_yaw_{0.0};
-  std::string hard_stop_reason_, blocked_reason_;
+  std::string hard_stop_reason_, blocked_reason_, reset_target_reason_;
   SteadyTime target_time_, health_time_, avoidance_time_, safety_time_;
   SteadyTime last_reliable_time_, lidar_only_start_, search_start_;
+  SteadyTime next_reset_target_attempt_time_;
   track_robot_interfaces::msg::TargetState target_, last_reliable_target_;
   track_robot_interfaces::msg::PerceptionHealth health_;
   track_robot_interfaces::msg::AvoidanceState avoidance_;
