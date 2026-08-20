@@ -419,6 +419,9 @@ def test_one_profile_path_is_forwarded_to_all_command_layers(entrypoint):
             parameters['max_linear_x'],
             parameters['max_angular_z'],
         ) == (0.05, 0.15)
+    assert controller['allow_lidar_only_forward_motion'] is False
+    assert safety['require_odom'] is True
+    assert safety['odom_timeout_sec'] == 0.25
     assert supervisor['blocked_disarm_timeout_sec'] == 10.0
     assert supervisor['runtime_mode'] == 'active'
     assert supervisor['motion_confirmed'] is True

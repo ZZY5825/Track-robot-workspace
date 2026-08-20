@@ -232,7 +232,7 @@ TEST(HumanFollowingSessionPolicy, ShortBlockRetainsAuthorization)
 
 TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
 {
-  HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 3.0, 1.0);
+  HumanFollowingSessionPolicy policy(RuntimeMode::Active, true, 10.0, 1.0);
   ASSERT_EQ(acceptInitialArm(policy).state, SessionState::Following);
 
   auto inputs = validInputs();
@@ -240,11 +240,11 @@ TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
   inputs.planner_blocked = true;
   inputs.now_sec = 2.0;
   ASSERT_EQ(policy.update(inputs).state, SessionState::Blocked);
-  inputs.now_sec = 4.99;
+  inputs.now_sec = 11.99;
   const auto before_timeout = policy.update(inputs);
-  inputs.now_sec = 5.0;
+  inputs.now_sec = 12.0;
   const auto timeout = policy.update(inputs);
-  inputs.now_sec = 5.1;
+  inputs.now_sec = 12.1;
   const auto repeated = policy.update(inputs);
 
   EXPECT_EQ(before_timeout.state, SessionState::Blocked);
@@ -258,10 +258,10 @@ TEST(HumanFollowingSessionPolicy, BlockTimeoutRevokesAuthorization)
   EXPECT_FALSE(repeated.request_target_reset);
 
   inputs.planner_blocked = false;
-  inputs.now_sec = 6.0;
+  inputs.now_sec = 13.0;
   EXPECT_EQ(policy.update(inputs).state, SessionState::WaitingForGesture);
   inputs.start_gesture_event = true;
-  inputs.now_sec = 7.0;
+  inputs.now_sec = 14.0;
   EXPECT_TRUE(policy.update(inputs).request_arm);
 
   HumanFollowingSessionPolicy overlap_policy(RuntimeMode::Active, true, 3.0, 10.0);

@@ -42,6 +42,20 @@ SCENARIOS = {
         ('/test/session_base_fault', 'active'),
     'test_stale_base_status_revokes_authorized_session':
         ('/test/session_base_stale_after_arm', 'active'),
+    'test_target_lost_revokes_authorized_session':
+        ('/test/session_target_lost', 'active'),
+    'test_health_stale_revokes_authorized_session':
+        ('/test/session_health_stale', 'active'),
+    'test_emergency_stop_revokes_authorized_session':
+        ('/test/session_emergency_stop', 'active'),
+    'test_required_input_stale_revokes_authorized_session':
+        ('/test/session_input_stale', 'active'),
+    'test_target_id_mismatch_revokes_authorized_session':
+        ('/test/session_target_mismatch', 'active'),
+    'test_lidar_only_cannot_initially_arm':
+        ('/test/session_lidar_initial', 'active'),
+    'test_short_block_retains_authorization':
+        ('/test/session_short_block', 'active'),
     'test_stale_arm_success_disarms_and_cannot_authorize_new_session':
         ('/test/session_stale_arm', 'active'),
 }
@@ -163,6 +177,12 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
         self.safety_armed = False
         self.base_status_fresh = True
         self.base_status_ok = True
+        self.decision_behavior = FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED
+        self.decision_target_id = None
+        self.decision_source = 'camera_lidar'
+        self.health_state = PerceptionHealth.HEALTHY
+        self.avoidance_state = AvoidanceState.STATE_DIRECT_CLEAR
+        self.safety_emergency_stop = False
         self.executor_thread.start()
         self.wait_for_graph()
 
@@ -239,7 +259,7 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
         ]
         self.fail('Timed out; recent session states: {}'.format(recent))
 
-    def publish_inputs(self, count=1):
+    def publish_inputs(self, count=1, publish_health=True):
         for _ in range(count):
             now = self.node.get_clock().now().to_msg()
 
@@ -258,23 +278,25 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
             decision = FollowDecision()
             decision.header.stamp = now
             decision.header.frame_id = 'base_link'
-            decision.behavior = FollowDecision.BEHAVIOR_FOLLOW_CONFIRMED
-            decision.logical_target_id = self.logical_target_id
+            decision.behavior = self.decision_behavior
+            decision.logical_target_id = self.logical_target_id \
+                if self.decision_target_id is None else self.decision_target_id
             decision.motion_permitted = True
             decision.decision_confidence = 0.88
-            decision.target_source = 'camera_lidar'
+            decision.target_source = self.decision_source
             decision.target_position.x = 2.5
             decision.target_position.y = 0.2
             self.decision_pub.publish(decision)
 
             health = PerceptionHealth()
             health.header.stamp = now
-            health.state = PerceptionHealth.HEALTHY
-            self.health_pub.publish(health)
+            health.state = self.health_state
+            if publish_health:
+                self.health_pub.publish(health)
 
             avoidance = AvoidanceState()
             avoidance.header.stamp = now
-            avoidance.state = AvoidanceState.STATE_DIRECT_CLEAR
+            avoidance.state = self.avoidance_state
             self.avoidance_pub.publish(avoidance)
 
             safety = SafetyState()
@@ -284,6 +306,9 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
             safety.armed = self.safety_armed
             safety.base_status_fresh = self.base_status_fresh
             safety.base_status_ok = self.base_status_ok
+            safety.emergency_stop_latched = self.safety_emergency_stop
+            if self.safety_emergency_stop:
+                safety.state = SafetyState.STATE_EMERGENCY_STOP
             self.safety_pub.publish(safety)
 
             bunker = BunkerStatus()
@@ -310,6 +335,15 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
         self.wait_until(
             lambda: self.states and self.states[-1].target_authorized,
             republish=True)
+
+    def assert_fault_revocation(self, reason):
+        self.wait_until(
+            lambda: self.disarm_calls >= 1 and self.reset_calls >= 1 and any(
+                msg.state == HumanFollowingSession.STATE_FAULT and
+                not msg.target_authorized and msg.reason == reason
+                for msg in self.states[-20:]),
+            republish=True)
+        self.assertFalse(self.states[-1].target_authorized)
 
     def assert_debug_and_markers_publish(self):
         self.wait_until(lambda: self.debug_messages and self.marker_messages)
@@ -420,6 +454,57 @@ class TestHumanFollowingSupervisor(unittest.TestCase):
                 not msg.target_authorized for msg in self.states[-20:]),
             republish=True)
         self.assertFalse(self.states[-1].target_authorized)
+
+    def test_target_lost_revokes_authorized_session(self):
+        self.start_session()
+        self.decision_behavior = FollowDecision.BEHAVIOR_TARGET_LOST
+        self.assert_fault_revocation('target_lost')
+
+    def test_health_stale_revokes_authorized_session(self):
+        self.start_session()
+        self.health_state = PerceptionHealth.STALE
+        self.assert_fault_revocation('hard_fault')
+
+    def test_emergency_stop_revokes_authorized_session(self):
+        self.start_session()
+        self.safety_emergency_stop = True
+        self.assert_fault_revocation('hard_fault')
+
+    def test_required_input_stale_revokes_authorized_session(self):
+        self.start_session()
+        self.publish_inputs(count=12, publish_health=False)
+        self.assert_fault_revocation('required_inputs_stale')
+
+    def test_target_id_mismatch_revokes_authorized_session(self):
+        self.start_session()
+        self.decision_target_id = self.logical_target_id + 1
+        self.assert_fault_revocation('logical_target_mismatch')
+
+    def test_lidar_only_cannot_initially_arm(self):
+        self.decision_behavior = FollowDecision.BEHAVIOR_FOLLOW_LIDAR_LIMITED
+        self.decision_source = 'lidar_only'
+        self.publish_inputs(count=4)
+        self.publish_gesture('start_tracking')
+        self.publish_inputs(count=8)
+        self.assertEqual(0, self.arm_calls)
+        self.assertFalse(self.states[-1].target_authorized)
+
+    def test_short_block_retains_authorization(self):
+        self.start_session()
+        self.avoidance_state = AvoidanceState.STATE_NO_SAFE_TRAJECTORY
+        self.publish_inputs(count=8)
+        self.assertTrue(self.states[-1].target_authorized)
+        self.assertEqual(
+            HumanFollowingSession.STATE_BLOCKED, self.states[-1].state)
+        self.assertEqual(0, self.disarm_calls)
+        self.assertEqual(0, self.reset_calls)
+
+        self.avoidance_state = AvoidanceState.STATE_DIRECT_CLEAR
+        self.wait_until(
+            lambda: self.states and self.states[-1].state ==
+            HumanFollowingSession.STATE_FOLLOWING,
+            republish=True)
+        self.assertTrue(self.states[-1].target_authorized)
 
     def test_stale_arm_success_disarms_and_cannot_authorize_new_session(self):
         self.delay_first_arm = True
