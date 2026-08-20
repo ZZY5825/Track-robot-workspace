@@ -4,6 +4,14 @@ The decision layer converts fused target evidence into explicit motion
 permissions. It does not bypass the local trajectory planner, motion safety
 supervisor, command gate, RC override, or Bunker watchdog.
 
+## Ownership Boundary
+
+The decision layer owns target usability and session intent: whether evidence
+supports confirmed following, bounded hold, blocked hold, RC override, fault,
+or target loss. It does not arm the base, own final obstacle clearance, or
+publish `/cmd_vel`. The safety layer may reject every decision-layer motion
+request.
+
 ## Decision States
 
 ```text
@@ -20,8 +28,8 @@ RC_OVERRIDE
 
 The behavior tree is in `config/follow_behavior_tree.xml`; thresholds are in
 `config/outdoor_decision.yaml`. Real velocity output remains disabled by
-default. The controller is also capped at 0.15 m/s until braking tests justify
-raising its independent limit.
+default. The supervised hardware-test profile caps all command layers at
+0.05 m/s linear and 0.15 rad/s angular velocity.
 
 ## Command-Only Test
 
@@ -102,6 +110,6 @@ cancels the current autonomous authorization and cannot auto-resume.
 - Daylight and light rain only when perception health remains usable.
 - No drop-off, hole, water, mud, steep-slope, or low-obstacle guarantee with
   the current top-mounted sensors.
-- LiDAR-only forward motion is limited to 0.15 m/s and three seconds.
+- The supervised test profile prohibits LiDAR-only forward motion.
 - Search uses zero forward speed, a 120-degree sector, and a four-second limit.
 - A blocked local path produces a stop; there is no autonomous global detour.

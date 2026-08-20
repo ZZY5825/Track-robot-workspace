@@ -110,6 +110,11 @@ if(BUILD_TESTING)
     test/test_human_following_readiness.py
     ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
   )
+  ament_add_pytest_test(
+    test_human_following_docs
+    test/test_human_following_docs.py
+    ENV PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+  )
 endif()
 
 ament_package()

@@ -51,6 +51,33 @@ The selected target marker represents the logical filtered target and remains
 visible during bounded prediction. Missing physical geometry is shown as a
 status label instead of silently clearing all target visualization.
 
+## Ownership Boundary
+
+Perception owns detection, gesture-selected identity, camera/LiDAR association,
+and the trusted fused target state with confidence and uncertainty. It does not
+authorize robot motion, choose a safe path, arm the base, or publish final
+velocity commands. Ambiguous or unsupported evidence must remain ambiguous,
+prediction-only, or lost for the decision layer to handle.
+
+## RC Takeover Contract
+
+The live following stack uses the same fail-closed takeover semantics as the
+autonomous-approach stack:
+
+- Bunker `control_mode == 3` is an authoritative RC takeover, even when every
+  RC stick is centered. Stick movement remains a redundant early indication.
+- RC takeover makes the motion safety supervisor publish zero velocity and
+  disarm. Returning to CAN mode does not re-arm it.
+- The decision node calls `/human_tracking/reset_target` when it first enters
+  `RC_OVERRIDE`. Camera and LiDAR detections may continue, but the previous
+  gesture-authorized logical target is discarded.
+- After returning to CAN mode, the operator must perform a new start gesture
+  and explicitly call `/safety/arm` before autonomous following can move.
+
+This prevents a previous target and motion command from resuming after manual
+control. It does not claim that the Bunker SDK stops transmitting CAN frames;
+the enforced contract is that the safe/final velocity command is zero.
+
 ## Validation
 
 Run the regression monitor during replay:

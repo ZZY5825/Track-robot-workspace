@@ -5,6 +5,13 @@ LiDAR cloud, selects collision-free steering arcs toward the target, predicts
 whether the selected Bunker footprint will collide, slows the command when
 clearance decreases, and stops inside the braking envelope.
 
+## Ownership Boundary
+
+The safety layer owns final motion authorization, arm/disarm state, RC and
+emergency-stop takeover, obstacle and freshness checks, and zero-command
+enforcement. It may reduce or reject upstream commands. Neither perception nor
+the decision layer can bypass this final authority.
+
 ## Command Path
 
 ```text
