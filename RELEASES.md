@@ -1,5 +1,66 @@
 # Releases
 
+## Unreleased
+
+This checkpoint extends the gesture-selected human tracker into an
+operator-supervised, fail-closed human-following runtime. Camera/LiDAR fusion
+still owns the target estimate; the new layers decide whether that estimate is
+safe to use, select a collision-free local command, and prevent unreviewed
+motion from reaching the Bunker base. Physical Gates A-D remain pending and
+this entry does not claim hardware readiness.
+
+### Gesture-Authorized Motion Sessions
+
+- Adds a typed human-following session state and a dedicated supervisor for
+  waiting, target validation, arming, following, blocked, RC override, fault,
+  and disarmed states.
+- Requires the start gesture, confirmed camera identity, confirmed
+  camera/LiDAR geometry, healthy perception, a ready avoidance planner, fresh
+  Bunker state, and CAN mode before requesting motion authorization.
+- Restricts stop authorization to the currently selected visual target and
+  resets the logical target when authorization is revoked.
+- Rejects stale arm-service responses and retries retained disarm and target
+  reset requests without allowing an old callback to authorize a new target.
+
+### RC Takeover And Fail-Closed Safety
+
+- Treats Bunker `control_mode == 3` as authoritative RC takeover even when the
+  sticks are centered; stick movement in CAN mode remains a redundant takeover
+  signal.
+- Immediately disarms and publishes zero for RC takeover, emergency stop,
+  stale required inputs, unhealthy Bunker status, target loss, or target-ID
+  mismatch.
+- Requires a new gesture lock after returning from RC to CAN mode. Autonomous
+  following never resumes from the previous session automatically.
+- Adds conservative shadow and supervised-test profiles. The initial physical
+  profile caps every command layer at `0.05 m/s` linear and `0.15 rad/s`
+  angular velocity and prohibits LiDAR-only forward motion.
+
+### Local Avoidance And Runtime Operation
+
+- Routes the target-follow command through a sampled differential-drive local
+  trajectory planner, rolling LiDAR obstacle grid, and independent collision
+  and stopping-distance supervisor before the final velocity gate.
+- Adds a shared sensor/base hardware launch so human following and semantic
+  search reuse the platform without coupling their feature runtimes.
+- Adds `human_following_ctl` for preflight checks, one-command shadow or
+  explicitly confirmed active startup, status inspection, fail-closed stop,
+  and owned-process cleanup.
+- Adds a dedicated RViz profile, launch-contract and safety-lifecycle tests,
+  the supervised Gate A-D procedure, and a gate report template.
+
+### Validation Boundary
+
+- The complete ROS2 Foxy dependency closure through `track_robot_bringup`
+  builds successfully across 23 packages.
+- Automated tests cover RC control-mode takeover, stick takeover in CAN mode,
+  no automatic resume, target reset/re-lock, stale and fault inputs, command
+  gate shutdown, profile limits, launch composition, readiness, and operator
+  documentation.
+- No physical Bunker motion is claimed by this source checkpoint. Operators
+  must complete the documented shadow, tracks-lifted, open-ground, and soft-
+  obstacle gates in order.
+
 ## V1.5.0-alpha.1 - 2026-07-28
 
 V1.5.0-alpha.1 records the first staged minimum working system (MWS) that
