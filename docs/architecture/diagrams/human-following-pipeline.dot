@@ -1,0 +1,48 @@
+digraph HumanFollowingPipeline {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.28",
+    nodesep="0.34",
+    ranksep="0.54",
+    splines=polyline,
+    fontname="Helvetica",
+    labelloc="t",
+    label="Gesture-Authorized Human Following",
+    fontsize=22,
+    fontcolor="#1F2937"
+  ];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10.5, margin="0.15,0.10", penwidth=1.2, color="#4B5563", fillcolor="#ECEFF1", fontcolor="#1F2937"];
+  edge [fontname="Helvetica", fontsize=8.8, color="#5B6470", fontcolor="#4B5563", penwidth=1.2, arrowsize=0.70];
+
+  zed [label="ZED2i RGB", fillcolor="#E8F1FB", color="#2F6B9A"];
+  lidar [label="RS-Helios-32 Point Cloud", fillcolor="#E8F1FB", color="#2F6B9A"];
+  health [label="RC / E-stop / Bunker Status\nPerception + Safety State", fillcolor="#FCE8E6", color="#B83A3A"];
+  { rank=same; zed; lidar; health; }
+
+  camera [label="Camera Identity Pipeline\nYOLOv8 Pose + ByteTrack\nGesture FSM → Logical Target Lock", fillcolor="#F0EAF8", color="#6F4C9B"];
+  geometry [label="LiDAR Geometry Pipeline\nGeneric clusters → persistent tracklets", fillcolor="#E4F4F1", color="#2A7F76"];
+  { rank=same; camera; geometry; }
+
+  fusion [label="Selected-Target Fusion\nCamera-guided anchor + association\nThree-model IMM TargetState", fillcolor="#E4F4F1", color="#2A7F76", penwidth=1.5];
+  planning [label="Follow Planning\nFollowDecision → target controller\n→ local trajectory avoidance", fillcolor="#FFF2D8", color="#B57900"];
+
+  supervisor [label="Human-Following Session Supervisor\nshadow / active  •  arm / disarm", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+  safety [label="Motion Safety Supervisor\nwatchdogs + collision envelope\n/follow/cmd_vel_safe", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+  { rank=same; supervisor; safety; }
+
+  gate [label="cmd_vel_gate → /cmd_vel → Bunker", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+
+  zed -> camera;
+  lidar -> geometry;
+  camera -> fusion [label="semantic identity"];
+  geometry -> fusion [label="metric geometry + continuation"];
+  fusion -> planning;
+  planning -> safety [label="/follow/cmd_vel_avoiding"];
+  camera -> supervisor [style=dashed, color="#B83A3A", fontcolor="#B83A3A", label="start / stop gesture"];
+  planning -> supervisor [style=dashed, color="#B83A3A", label="decision + avoidance state"];
+  health -> supervisor [style=dashed, color="#B83A3A", fontcolor="#B83A3A", label="fail closed"];
+  health -> safety [style=dashed, color="#B83A3A"];
+  supervisor -> safety [style=dashed, color="#B83A3A", fontcolor="#B83A3A", label="/safety/arm · /safety/disarm"];
+  safety -> gate;
+}

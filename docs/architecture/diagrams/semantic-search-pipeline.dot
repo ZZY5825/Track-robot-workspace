@@ -1,0 +1,57 @@
+digraph SemanticSearchPipeline {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.28",
+    nodesep="0.32",
+    ranksep="0.52",
+    splines=polyline,
+    fontname="Helvetica",
+    labelloc="t",
+    label="Language-Conditioned Semantic Search",
+    fontsize=22,
+    fontcolor="#1F2937"
+  ];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10.5, margin="0.14,0.10", penwidth=1.2, color="#4B5563", fillcolor="#ECEFF1", fontcolor="#1F2937"];
+  edge [fontname="Helvetica", fontsize=8.8, color="#5B6470", fontcolor="#4B5563", penwidth=1.2, arrowsize=0.70];
+
+  query [label="Natural-Language Query\nSearchForObject action", fillcolor="#FFF2D8", color="#B57900"];
+  rgb [label="ZED2i RGB", fillcolor="#E8F1FB", color="#2F6B9A"];
+  depth [label="ZED Registered Depth\nsource-time matched", fillcolor="#E8F1FB", color="#2F6B9A"];
+  lidar [label="RS-Helios-32", fillcolor="#E8F1FB", color="#2F6B9A"];
+  { rank=same; query; rgb; depth; lidar; }
+
+  visual [label="YOLO-World + CLIP\nOpen-vocabulary detection and ranking", fillcolor="#F0EAF8", color="#6F4C9B"];
+  dino [label="DINOv3\nshort-term appearance identity", fillcolor="#F7F7F7", color="#9CA3AF", fontcolor="#6B7280"];
+  obstacle [label="Local Obstacle Map\nNav2 costmaps + safety cloud", fillcolor="#E4F4F1", color="#2A7F76"];
+  { rank=same; visual; dino; obstacle; }
+
+  spatial [label="3D Spatial Observation\n2D evidence + camera-depth geometry", fillcolor="#E4F4F1", color="#2A7F76"];
+  memory [label="Bounded Semantic Memory\nglobal ID + lifecycle + confidence", fillcolor="#E4F4F1", color="#2A7F76"];
+  selector [label="Target Selection\nconfirm / reject / abstain", fillcolor="#FFF2D8", color="#B57900"];
+
+  active [label="Bounded Active Search\nrotation-only Nav2 Spin", fillcolor="#FFF2D8", color="#B57900"];
+  approach [label="Approach Planning\nSupervised Nav2", fillcolor="#FFF2D8", color="#B57900"];
+  { rank=same; active; approach; }
+
+  safety [label="Motion Safety Supervisor\nRC / E-stop / watchdogs / collision envelope", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+  gate [label="cmd_vel_gate → /cmd_vel → Bunker", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+
+  query -> visual [label="cached text embedding"];
+  rgb -> visual [label="image"];
+  visual -> dino [style=dashed, label="optional descriptor", color="#9CA3AF", fontcolor="#6B7280"];
+  visual -> spatial [label="semantic observations"];
+  dino -> spatial [style=dashed, color="#9CA3AF"];
+  depth -> spatial [label="registered depth"];
+  spatial -> memory;
+  memory -> selector;
+  selector -> active [label="no confirmed target"];
+  selector -> approach [label="approved target"];
+  lidar -> obstacle [label="obstacle geometry"];
+  obstacle -> active;
+  obstacle -> approach;
+  active -> safety;
+  approach -> safety;
+  obstacle -> safety [label="collision context"];
+  safety -> gate;
+}

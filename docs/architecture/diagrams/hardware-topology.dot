@@ -1,0 +1,59 @@
+digraph TrackRobotHardwareTopology {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.28",
+    nodesep="0.38",
+    ranksep="0.55",
+    splines=polyline,
+    fontname="Helvetica",
+    labelloc="t",
+    label="Hardware and Compute Topology",
+    fontsize=22,
+    fontcolor="#1F2937"
+  ];
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Helvetica",
+    fontsize=11,
+    margin="0.16,0.11",
+    penwidth=1.25,
+    color="#4B5563",
+    fillcolor="#ECEFF1",
+    fontcolor="#1F2937"
+  ];
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    color="#5B6470",
+    fontcolor="#4B5563",
+    penwidth=1.25,
+    arrowsize=0.72
+  ];
+
+  zed [label="Stereolabs ZED2i\nRGB + Registered Depth", fillcolor="#E8F1FB", color="#2F6B9A"];
+  lidar [label="RoboSense RS-Helios-32\n3D PointCloud2 over Ethernet", fillcolor="#E8F1FB", color="#2F6B9A"];
+  imu [label="Phidget Spatial IMU\nRaw Inertial Measurements", fillcolor="#E8F1FB", color="#2F6B9A"];
+  rc [label="RC Receiver / E-stop\nHuman Safety Authority", fillcolor="#FCE8E6", color="#B83A3A"];
+  { rank=same; zed; lidar; imu; rc; }
+
+  jetson [label="NVIDIA Jetson AGX Orin\nUbuntu 20.04  •  ROS 2 Foxy\nPerception  •  Localization  •  Navigation  •  Safety", fillcolor="#ECEFF1", color="#4B5563", penwidth=1.6];
+  description [label="Combined Robot Description\nOne robot_state_publisher / TF tree", fillcolor="#E4F4F1", color="#2A7F76"];
+
+  bunker [label="AgileX Bunker Pro 2\nBunker SDK / CAN", fillcolor="#ECEFF1", color="#4B5563", penwidth=1.5];
+  piper [label="AgileX PiPER + Gripper\nURDF / JointState / TF only", fillcolor="#F7F7F7", color="#9CA3AF", fontcolor="#6B7280"];
+  l515 [label="Arm-Mounted L515\nvisual model only", fillcolor="#F7F7F7", color="#9CA3AF", fontcolor="#6B7280"];
+  sensor_station [label="Sensor Station\nZED2i + RS-Helios mounting", fillcolor="#E8F1FB", color="#2F6B9A"];
+  { rank=same; bunker; sensor_station; piper; }
+
+  zed -> jetson [label="image / depth"];
+  lidar -> jetson [label="point cloud"];
+  imu -> jetson [label="IMU stream"];
+  rc -> jetson [label="status / override", color="#B83A3A", fontcolor="#B83A3A"];
+  jetson -> bunker [dir=both, arrowtail=normal, label="gated /cmd_vel  →\n←  odometry + status"];
+  jetson -> description [label="robot_description"];
+  description -> sensor_station [label="fixed TF"];
+  description -> piper [label="joint1…joint8", style=dashed, color="#9CA3AF", fontcolor="#6B7280"];
+  piper -> l515 [label="visual link", style=dashed, color="#9CA3AF", fontcolor="#6B7280"];
+}

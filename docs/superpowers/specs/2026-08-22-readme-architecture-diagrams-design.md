@@ -1,7 +1,7 @@
 # README Architecture Diagrams Design
 
-**Date:** 2026-08-22  
-**Status:** Approved in conversation  
+**Date:** 2026-08-22
+**Status:** Approved in conversation
 **Audience:** GitHub visitors first, with enough technical fidelity for ROS developers
 
 ## Objective
@@ -109,4 +109,3 @@ sources; generated SVG files are committed for GitHub rendering.
 - `git diff --check` passes.
 - The final diff contains only the design/plan, diagram sources/assets, and the
   README integration required for this work.
-

@@ -1,0 +1,42 @@
+digraph PointLioPipeline {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.28",
+    nodesep="0.34",
+    ranksep="0.55",
+    splines=polyline,
+    fontname="Helvetica",
+    labelloc="t",
+    label="Point-LIO Localization Pipeline",
+    fontsize=22,
+    fontcolor="#1F2937"
+  ];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10.5, margin="0.15,0.10", penwidth=1.2, color="#4B5563", fillcolor="#ECEFF1", fontcolor="#1F2937"];
+  edge [fontname="Helvetica", fontsize=8.8, color="#5B6470", fontcolor="#4B5563", penwidth=1.2, arrowsize=0.70];
+
+  lidar [label="RS-Helios-32\n/rslidar_points\nx y z intensity ring timestamp", fillcolor="#E8F1FB", color="#2F6B9A"];
+  imu [label="Phidget Spatial IMU\n/imu/data_raw", fillcolor="#E8F1FB", color="#2F6B9A"];
+  { rank=same; lidar; imu; }
+
+  native [label="Native HESAIxt32 PointCloud2 Path\nlegacy point adapter disabled by default", fillcolor="#E4F4F1", color="#2A7F76"];
+  adapter [label="IMU Frame + Time Adapter\nrotate to rslidar • offset • deadband\n/imu/data_lio", fillcolor="#E4F4F1", color="#2A7F76"];
+  { rank=same; native; adapter; }
+
+  pointlio [label="ROS 2 Point-LIO\nLiDAR-inertial state estimation and mapping", fillcolor="#F0EAF8", color="#6F4C9B", penwidth=1.5];
+  outputs [label="Public Outputs\n/aft_mapped_to_init  •  /path\n/cloud_registered  •  /Laser_map", fillcolor="#E4F4F1", color="#2A7F76"];
+
+  calibration [shape=note, label="Calibration boundary\nLiDAR pose in IMU frame + measured time offset", fillcolor="#FFF2D8", color="#B57900", fontsize=9.5];
+  frames [label="Frame Bridge\ncamera_init → body → base_link → rslidar", fillcolor="#ECEFF1", color="#4B5563"];
+  nav_note [shape=note, label="Independent capability\nPhase 4B Nav2 currently uses Bunker odometry", fillcolor="#F7F7F7", color="#9CA3AF", fontcolor="#6B7280", fontsize=9.5];
+  { rank=same; calibration; frames; nav_note; }
+
+  lidar -> native;
+  imu -> adapter;
+  native -> pointlio;
+  adapter -> pointlio;
+  calibration -> pointlio [style=dashed, color="#B57900", fontcolor="#B57900", label="extrinsic_R/T + Δt"];
+  pointlio -> outputs;
+  pointlio -> frames [label="TF"];
+  outputs -> nav_note [style=dashed, color="#9CA3AF", arrowhead=none];
+}
