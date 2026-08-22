@@ -1,0 +1,65 @@
+digraph TrackRobotSystemOverview {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.28",
+    nodesep="0.34",
+    ranksep="0.54",
+    splines=polyline,
+    fontname="Helvetica",
+    labelloc="t",
+    label="Track Robot System Architecture",
+    fontsize=22,
+    fontcolor="#1F2937"
+  ];
+  node [
+    shape=box,
+    style="rounded,filled",
+    fontname="Helvetica",
+    fontsize=11,
+    margin="0.15,0.10",
+    penwidth=1.25,
+    color="#4B5563",
+    fillcolor="#ECEFF1",
+    fontcolor="#1F2937"
+  ];
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    color="#5B6470",
+    fontcolor="#4B5563",
+    penwidth=1.25,
+    arrowsize=0.72
+  ];
+
+  physical [label="Shared Physical Platform\nZED2i  •  RS-Helios-32  •  Phidget IMU", fillcolor="#E8F1FB", color="#2F6B9A"];
+  foundation [label="Jetson AGX Orin\nROS 2 Foxy  •  Drivers  •  Robot Description  •  TF", fillcolor="#ECEFF1", color="#4B5563"];
+
+  semantic [label="Language-Conditioned\nSemantic Search", fillcolor="#F0EAF8", color="#6F4C9B"];
+  human [label="Gesture-Authorized\nHuman Following", fillcolor="#F0EAF8", color="#6F4C9B"];
+  lio [label="LiDAR-Inertial\nPoint-LIO", fillcolor="#E4F4F1", color="#2A7F76"];
+  { rank=same; semantic; human; lio; }
+
+  search_task [label="Bounded Search /\nSupervised Nav2", fillcolor="#FFF2D8", color="#B57900"];
+  follow_task [label="Follow Decision /\nLocal Avoidance", fillcolor="#FFF2D8", color="#B57900"];
+  lio_output [label="Odometry  •  Path\nRegistered Cloud  •  Map", fillcolor="#E4F4F1", color="#2A7F76"];
+  { rank=same; search_task; follow_task; lio_output; }
+
+  safety [label="Motion Safety Supervisor\nAuthorization  •  Watchdogs  •  Collision Envelope", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+  gate [label="cmd_vel_gate\nsole final /cmd_vel publisher", fillcolor="#FCE8E6", color="#B83A3A", penwidth=1.5];
+  base [label="Bunker Pro 2\nTracked Mobile Base", fillcolor="#ECEFF1", color="#4B5563", penwidth=1.5];
+  independent [shape=note, label="Independent localization capability\nPhase 4B currently uses Bunker odometry", fillcolor="#F7F7F7", color="#9CA3AF", fontcolor="#6B7280", fontsize=9];
+
+  physical -> foundation [label="sensor streams"];
+  foundation -> semantic;
+  foundation -> human;
+  foundation -> lio;
+  semantic -> search_task;
+  human -> follow_task;
+  lio -> lio_output;
+  search_task -> safety;
+  follow_task -> safety;
+  safety -> gate;
+  gate -> base [label="/cmd_vel"];
+  lio_output -> independent [style=dashed, color="#9CA3AF", arrowhead=none];
+}

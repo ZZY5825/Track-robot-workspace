@@ -36,40 +36,11 @@
 
 The capabilities share sensors and safety infrastructure, but each pipeline can be launched and validated independently.
 
-```mermaid
-flowchart TB
-  subgraph Semantic["Language-Conditioned Semantic Search"]
-    S_RGB["ZED2i RGB"] --> S_YOLO["YOLO-World"]
-    S_YOLO --> S_DEPTH["ZED registered depth"]
-    S_DEPTH --> S_MEMORY["Semantic memory and target selection"]
-    S_DINO["DINOv3 short-term identity"] -.-> S_MEMORY
-    S_MEMORY --> S_NAV["Bounded search / supervised Nav2"]
-  end
-
-  subgraph Human["Gesture-Triggered Human Following"]
-    H_RGB["ZED2i RGB"] --> H_POSE["YOLO pose + ByteTrack"]
-    H_POSE --> H_LOCK["Gesture trigger + logical target lock"]
-    H_LIDAR["Helios-32 geometry"] --> H_TRACK["C++ LiDAR tracklets"]
-    H_LOCK --> H_ASSOC["Camera-guided association"]
-    H_TRACK --> H_ASSOC
-    H_ASSOC --> H_IMM["Three-model IMM target state"]
-    H_IMM --> H_FOLLOW["Guarded follow decision"]
-    H_FOLLOW --> H_AVOID["Local trajectory avoidance"]
-  end
-
-  subgraph LIO["Point-LIO Localization"]
-    L_LIDAR["Helios-32 point cloud"] --> L_POINT["ROS 2 Point-LIO"]
-    L_IMU["Phidget Spatial IMU"] --> L_ADAPTER["IMU frame + time adapter"]
-    L_ADAPTER --> L_POINT
-    L_POINT --> L_OUTPUT["Odometry + path + registered cloud"]
-  end
-
-  S_NAV --> SAFETY["Motion safety supervisor"]
-  H_AVOID --> SAFETY
-  S_OBSTACLE["Helios-32 obstacle data"] -. "collision context" .-> SAFETY
-  SAFETY --> GATE["cmd_vel gate"]
-  GATE --> BASE["Bunker Pro 2"]
-```
+<div align="center">
+  <img src="docs/assets/readme/architecture/system-overview.svg" alt="Layered Track Robot system architecture showing semantic search, human following, independent Point-LIO localization, and the shared motion-safety boundary" width="820">
+  <br>
+  <sub>Solid arrows show runtime data flow; dashed gray links mark intentionally independent or non-integrated relationships.</sub>
+</div>
 
 Semantic position in the active ZED-depth profile comes from registered camera depth. LiDAR supplies obstacle and motion-safety context there; it is not presented as the source of semantic object position.
 
@@ -94,13 +65,9 @@ Semantic position in the active ZED-depth profile comes from registered camera d
 
 Track Robot accepts a short English object description and turns it into a bounded perception-and-navigation task:
 
-```text
-ZED2i RGB
-  → YOLO-World open-vocabulary detection
-  → ZED registered depth for 3D grounding
-  → semantic memory and target selection
-  → bounded active search or supervised Nav2 approach
-```
+<div align="center">
+  <img src="docs/assets/readme/architecture/semantic-search-pipeline.svg" alt="Semantic-search pipeline from a natural-language query and ZED imagery through open-vocabulary perception, depth grounding, semantic memory, active search, supervised Nav2, and motion safety" width="920">
+</div>
 
 DINOv3 can support short-term visual identity across observations. The motion-capable stages remain operator-supervised and route velocity through the normal safety supervisor and command gate.
 
@@ -111,6 +78,10 @@ Start with the [Phase 0–3 passive YOLO-World guide](track_robot_ws/docs/guides
 ### Gesture → Lock → Follow
 
 The camera pipeline uses YOLO pose and ByteTrack to identify people. A two-hand start gesture authorizes a logical target lock; generic LiDAR tracklets then provide 3D geometry to camera-guided association and a three-model IMM target estimator. Camera semantics remain authoritative for identity, while LiDAR provides bounded continuation when the selected person leaves the camera field of view.
+
+<div align="center">
+  <img src="docs/assets/readme/architecture/human-following-pipeline.svg" alt="Human-following architecture combining gesture-authorized camera identity, persistent LiDAR geometry, selected-target fusion, follow planning, session supervision, and fail-closed motion safety" width="920">
+</div>
 
 <div align="center">
   <img src="docs/assets/readme/human-tracking-rosbag-later-position.png" alt="Later raw ZED rosbag frame showing the human-tracking subject at the right side of the test scene" width="720">
@@ -128,12 +99,9 @@ See the [human-tracking implementation guide](track_robot_ws/src/track_robot_per
 
 The local ROS 2 Foxy port accepts the native RoboSense Helios-32 `PointCloud2` layout. The Phidget IMU adapter rotates measurements into the LiDAR/body frame and applies the configured timestamp offset before Point-LIO consumes them.
 
-```text
-/rslidar_points + /imu/data_raw
-  → /imu/data_lio
-  → Point-LIO
-  → /aft_mapped_to_init, /path, /cloud_registered, /Laser_map
-```
+<div align="center">
+  <img src="docs/assets/readme/architecture/point-lio-pipeline.svg" alt="Point-LIO localization pipeline showing native RoboSense input, Phidget IMU frame and time adaptation, public mapping outputs, calibration boundary, and TF bridge" width="920">
+</div>
 
 The [Point-LIO RS-Helios integration guide](track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md) documents launch modes, expected topics, calibration parameters, drift capture, and offset-sweep tools.
 
@@ -204,6 +172,12 @@ Use the integration guide for the launch mode that also owns the LiDAR network a
 
 ## Hardware and Software Stack
 
+<div align="center">
+  <img src="docs/assets/readme/architecture/hardware-topology.svg" alt="Track Robot hardware topology centered on the Jetson AGX Orin with ZED2i, RS-Helios-32, Phidget IMU, Bunker Pro 2, sensor station, PiPER arm, and L515 model status" width="920">
+</div>
+
+PiPER is integrated into the combined URDF, JointState, and TF model; arm control is outside the current autonomy runtime. The arm-mounted L515 is a visual model and is not presented as an active camera driver.
+
 | Layer | Active components |
 |---|---|
 | Mobile base | AgileX Bunker Pro 2 tracked platform |
@@ -226,5 +200,6 @@ Use the integration guide for the launch mode that also owns the LiDAR network a
 - [Human-tracking rosbag replay](track_robot_ws/docs/guides/human-tracking/rosbag-replay.md)
 - [Supervised live human following](track_robot_ws/docs/guides/human-following/live-supervised-test.md)
 - [Point-LIO RS-Helios integration](track_robot_ws/src/track_robot_perception/docs/point_lio_rshelios.md)
+- [Architecture diagram sources](docs/architecture/diagrams/README.md)
 - [Perception workspace](track_robot_ws/src/track_robot_perception/README.md)
 - [Release history](RELEASES.md)
