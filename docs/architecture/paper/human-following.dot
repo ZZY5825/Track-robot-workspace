@@ -1,0 +1,58 @@
+digraph TrackRobotPaperHumanFollowing {
+  graph [rankdir=TB, bgcolor="white", pad="0.08", margin="0", nodesep="0.30", ranksep="0.46", splines=polyline, outputorder=edgesfirst, fontname="Liberation Sans"];
+  node [shape=box, style="filled", fontname="Liberation Sans", fontsize=9.0, margin="0.10,0.07", penwidth=0.85, color="#586069", fillcolor="#F4F5F5", fontcolor="#202428"];
+  edge [fontname="Liberation Sans", fontsize=7.6, color="#555B61", fontcolor="#40464C", penwidth=0.85, arrowsize=0.60];
+
+  image [label=<<B>RGB image I<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">ZED2i</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  cloud [label=<<B>Point cloud P<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">RS-Helios-32</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  health [label=<<B>System health h<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">RC · E-stop · Bunker · perception</FONT>>, fillcolor="#F5ECEB", color="#87514F"];
+  { rank=same; image; cloud; }
+
+  subgraph cluster_identity {
+    label="SEMANTIC IDENTITY"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    pose [label=<<B>Person pose and tracking</B><BR/><FONT POINT-SIZE="8">YOLOv8 Pose · ByteTrack</FONT>>, fillcolor="#F0EEF3", color="#6B607B"];
+    gesture [label=<<B>Gesture state machine</B><BR/><FONT POINT-SIZE="8">start / stop authorization</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+    lock [label=<<B>Logical target lock</B><BR/><FONT POINT-SIZE="8">camera-owned identity y<SUB>t</SUB></FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    pose -> gesture [label="keypoints"];
+    pose -> lock [label="track identity"];
+    gesture -> lock [style=dashed, color="#87514F", label="authorize"];
+    { rank=same; gesture; lock; }
+  }
+
+  subgraph cluster_geometry {
+    label="METRIC GEOMETRY"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    clusters [label=<<B>Generic human-scale clusters</B><BR/><FONT POINT-SIZE="8">LiDAR geometric proposals</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    tracklets [label=<<B>Persistent tracklets</B><BR/><FONT POINT-SIZE="8">metric position and continuation g<SUB>t</SUB></FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    clusters -> tracklets [label="association"];
+  }
+
+  fusion [label=<<B>Selected-target association</B><BR/><FONT POINT-SIZE="8">camera-guided anchor · bounded matching</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+  imm [label=<<B>Three-model IMM estimator</B><BR/><FONT POINT-SIZE="8">target state x<SUB>t</SUB> and uncertainty Σ<SUB>t</SUB></FONT>>, fillcolor="#EAF3F1", color="#527D75", penwidth=1.05];
+  decision [label=<<B>Follow decision</B><BR/><FONT POINT-SIZE="8">distance · bearing · confidence</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  controller [label=<<B>Target controller</B><BR/><FONT POINT-SIZE="8">nominal velocity u<SUB>follow</SUB></FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  avoidance [label=<<B>Local trajectory avoidance</B><BR/><FONT POINT-SIZE="8">collision-aware command u<SUB>avoid</SUB></FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  session [label=<<B>Session supervisor</B><BR/><FONT POINT-SIZE="8">shadow / active · arm / disarm</FONT>>, fillcolor="#F5ECEB", color="#87514F"];
+  safety [label=<<B>Motion safety supervisor</B><BR/><FONT POINT-SIZE="8">watchdogs · collision envelope</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+  gate [label=<<B>cmd_vel_gate</B><BR/><FONT POINT-SIZE="8">u<SUB>safe</SUB> → Bunker</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+  { rank=same; decision; controller; avoidance; health; }
+  { rank=same; session; safety; gate; }
+
+  image -> pose [label="I_t"];
+  cloud -> clusters [label="P_t"];
+  lock -> fusion [label="identity y_t"];
+  tracklets -> fusion [label="geometry g_t"];
+  fusion -> imm [label="selected observation z_t"];
+  imm -> decision [label="x_t, Σ_t"];
+  decision -> controller;
+  controller -> avoidance;
+  gesture -> session [style=dashed, color="#87514F", fontcolor="#87514F", label="start / stop"];
+  decision -> session [style=dashed, color="#87514F", label="decision state"];
+  avoidance -> session [style=dashed, color="#87514F", label="avoidance state"];
+  health -> session [style=dashed, color="#87514F", label="fail closed"];
+  health -> safety [style=dashed, color="#87514F"];
+  session -> safety [style=dashed, color="#87514F", label="arm / disarm"];
+  avoidance -> safety [label="u_avoid"];
+  safety -> gate;
+}

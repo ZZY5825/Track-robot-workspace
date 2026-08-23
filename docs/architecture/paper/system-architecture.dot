@@ -1,0 +1,92 @@
+digraph TrackRobotPaperArchitecture {
+  graph [
+    rankdir=TB,
+    bgcolor="white",
+    pad="0.08",
+    margin="0",
+    nodesep="0.28",
+    ranksep="0.46 equally",
+    splines=polyline,
+    outputorder=edgesfirst,
+    fontname="Liberation Sans"
+  ];
+  node [
+    shape=box,
+    style="filled",
+    fontname="Liberation Sans",
+    fontsize=9.2,
+    margin="0.11,0.075",
+    penwidth=0.85,
+    color="#586069",
+    fillcolor="#F4F5F5",
+    fontcolor="#202428"
+  ];
+  edge [
+    fontname="Liberation Sans",
+    fontsize=7.8,
+    color="#555B61",
+    fontcolor="#40464C",
+    penwidth=0.85,
+    arrowsize=0.62
+  ];
+
+  subgraph cluster_sensing {
+    label="SENSING AND OPERATOR AUTHORITY";
+    labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+
+    zed [label=<<B>ZED2i stereo camera</B><BR/><FONT POINT-SIZE="8">RGB image I<SUB>t</SUB> · registered depth D<SUB>t</SUB></FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    lidar [label=<<B>RS-Helios-32 LiDAR</B><BR/><FONT POINT-SIZE="8">point cloud P<SUB>t</SUB></FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    imu [label=<<B>Phidget IMU</B><BR/><FONT POINT-SIZE="8">angular rate ω<SUB>t</SUB> · acceleration a<SUB>t</SUB></FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    authority [label=<<B>Operator authority</B><BR/><FONT POINT-SIZE="8">RC state · E-stop · gesture</FONT>>, fillcolor="#F5ECEB", color="#87514F"];
+    { rank=same; zed; lidar; imu; authority; }
+  }
+
+  subgraph cluster_capabilities {
+    label="ROBOT INTELLIGENCE";
+    labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+
+    semantic [label=<<B>Language-conditioned perception</B><BR/><FONT POINT-SIZE="8">open-vocabulary detection · depth grounding</FONT>>, fillcolor="#F0EEF3", color="#6B607B"];
+    human [label=<<B>Human target estimation</B><BR/><FONT POINT-SIZE="8">camera identity · LiDAR geometry · IMM fusion</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    lio [label=<<B>LiDAR-inertial estimation</B><BR/><FONT POINT-SIZE="8">Point-LIO odometry and mapping</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    obstacle [label=<<B>Local obstacle representation</B><BR/><FONT POINT-SIZE="8">Nav2 costmaps · safety cloud</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    { rank=same; semantic; human; lio; obstacle; }
+
+    search [label=<<B>Semantic search task</B><BR/><FONT POINT-SIZE="8">target selection · bounded search · approach</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+    follow [label=<<B>Human-following task</B><BR/><FONT POINT-SIZE="8">follow decision · local trajectory avoidance</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+    lio_out [label=<<B>Localization products</B><BR/><FONT POINT-SIZE="8">odometry · path · registered cloud · map</FONT>>, fillcolor="#F4F5F5", color="#646B72"];
+    { rank=same; search; follow; lio_out; }
+  }
+
+  subgraph cluster_motion {
+    label="SHARED MOTION BOUNDARY";
+    labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+
+    safety [label=<<B>Motion safety supervisor</B><BR/><FONT POINT-SIZE="8">authorization · watchdogs · collision envelope</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+    gate [label=<<B>cmd_vel_gate</B><BR/><FONT POINT-SIZE="8">sole final velocity publisher</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+    base [label=<<B>Bunker Pro 2</B><BR/><FONT POINT-SIZE="8">tracked mobile platform</FONT>>, fillcolor="#F4F5F5", color="#586069", penwidth=1.05];
+    { rank=same; safety; gate; base; }
+  }
+
+  nav_boundary [shape=note, label=<<B>Current integration boundary</B><BR/><FONT POINT-SIZE="8">Phase 4B Nav2 uses Bunker odometry;<BR/>Point-LIO remains an independent localization capability.</FONT>>, fillcolor="#FAFAF8", color="#8B9197", fontcolor="#555B61", fontsize=8.2];
+
+  zed -> semantic [label="I_t, D_t"];
+  zed -> human [label="I_t"];
+  lidar -> human [label="P_t"];
+  lidar -> lio [label="P_t"];
+  lidar -> obstacle [label="P_t"];
+  imu -> lio [label="ω_t, a_t"];
+  semantic -> search [label="semantic target"];
+  obstacle -> search [label="free space"];
+  human -> follow [label="target state x_t"];
+  obstacle -> follow [label="collision context"];
+  lio -> lio_out;
+  search -> safety [label="u_search"];
+  follow -> safety [label="u_follow"];
+  authority -> safety [style=dashed, color="#87514F", fontcolor="#87514F", label="arm / inhibit"];
+  safety -> gate [label="u_safe"];
+  gate -> base [label="/cmd_vel"];
+  lio_out -> nav_boundary [style=dashed, arrowhead=none, color="#8B9197"];
+}

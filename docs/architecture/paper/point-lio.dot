@@ -1,0 +1,41 @@
+digraph TrackRobotPaperPointLio {
+  graph [rankdir=TB, bgcolor="white", pad="0.08", margin="0", nodesep="0.30", ranksep="0.48", splines=polyline, outputorder=edgesfirst, fontname="Liberation Sans"];
+  node [shape=box, style="filled", fontname="Liberation Sans", fontsize=9.0, margin="0.10,0.07", penwidth=0.85, color="#586069", fillcolor="#F4F5F5", fontcolor="#202428"];
+  edge [fontname="Liberation Sans", fontsize=7.6, color="#555B61", fontcolor="#40464C", penwidth=0.85, arrowsize=0.60];
+
+  lidar [label=<<B>RS-Helios-32</B><BR/><FONT POINT-SIZE="8">/rslidar_points</FONT><BR/><FONT POINT-SIZE="8">x, y, z, intensity, ring, timestamp</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  imu [label=<<B>Phidget Spatial IMU</B><BR/><FONT POINT-SIZE="8">/imu/data_raw</FONT><BR/><FONT POINT-SIZE="8">ω<SUB>t</SUB>, a<SUB>t</SUB></FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  { rank=same; lidar; imu; }
+
+  subgraph cluster_frontend {
+    label="MEASUREMENT FRONT END"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    native [label=<<B>Native point-cloud path</B><BR/><FONT POINT-SIZE="8">HESAIxt32 PointCloud2 schema</FONT><BR/><FONT POINT-SIZE="8">legacy adapter disabled by default</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    adapter [label=<<B>IMU frame-time adapter</B><BR/><FONT POINT-SIZE="8">rotation · offset · deadband</FONT><BR/><FONT POINT-SIZE="8">/imu/data_lio</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    { rank=same; native; adapter; }
+  }
+
+  calibration [shape=note, label=<<B>Spatiotemporal calibration</B><BR/><FONT POINT-SIZE="8">LiDAR pose in IMU frame</FONT><BR/><FONT POINT-SIZE="8">extrinsic R, t and time offset Δt</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  estimator [label=<<B>Point-LIO estimator</B><BR/><FONT POINT-SIZE="8">iterated LiDAR-inertial state estimation</FONT><BR/><FONT POINT-SIZE="8">and incremental mapping</FONT>>, fillcolor="#F0EEF3", color="#6B607B", penwidth=1.05];
+
+  subgraph cluster_outputs {
+    label="PUBLIC ESTIMATION PRODUCTS"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    odom [label=<<B>State trajectory</B><BR/><FONT POINT-SIZE="8">/aft_mapped_to_init · /path</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    map [label=<<B>Registered geometry</B><BR/><FONT POINT-SIZE="8">/cloud_registered · /Laser_map</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    tf [label=<<B>Frame bridge</B><BR/><FONT POINT-SIZE="8">camera_init → body → base_link → rslidar</FONT>>, fillcolor="#F4F5F5", color="#646B72"];
+    { rank=same; odom; map; tf; }
+  }
+
+  boundary [shape=note, label=<<B>Current navigation boundary</B><BR/><FONT POINT-SIZE="8">Phase 4B Nav2 consumes Bunker odometry.</FONT><BR/><FONT POINT-SIZE="8">No runtime dependency on Point-LIO.</FONT>>, fillcolor="#FAFAF8", color="#8B9197", fontcolor="#555B61"];
+
+  lidar -> native [label="P_t"];
+  imu -> adapter [label="ω_t, a_t"];
+  native -> estimator [label="time-stamped points"];
+  adapter -> estimator [label="aligned IMU"];
+  calibration -> estimator [style=dashed, color="#8A6A2F", fontcolor="#745A28", label="R, t, Δt"];
+  estimator -> odom [label="pose / velocity"];
+  estimator -> map [label="registered points"];
+  estimator -> tf [label="TF"];
+  odom -> boundary [style=dashed, arrowhead=none, color="#8B9197"];
+}

@@ -1,0 +1,40 @@
+digraph TrackRobotPaperHardware {
+  graph [rankdir=LR, bgcolor="white", pad="0.08", margin="0", nodesep="0.34", ranksep="0.62", splines=polyline, outputorder=edgesfirst, fontname="Liberation Sans"];
+  node [shape=box, style="filled", fontname="Liberation Sans", fontsize=9.2, margin="0.11,0.075", penwidth=0.85, color="#586069", fillcolor="#F4F5F5", fontcolor="#202428"];
+  edge [fontname="Liberation Sans", fontsize=7.8, color="#555B61", fontcolor="#40464C", penwidth=0.85, arrowsize=0.62];
+
+  subgraph cluster_inputs {
+    label="SENSORS AND SAFETY INPUT"; labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+    zed [label=<<B>ZED2i</B><BR/><FONT POINT-SIZE="8">RGB · registered depth</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    lidar [label=<<B>RS-Helios-32</B><BR/><FONT POINT-SIZE="8">3-D PointCloud2 · Ethernet</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    imu [label=<<B>Phidget Spatial IMU</B><BR/><FONT POINT-SIZE="8">raw inertial stream · USB</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    rc [label=<<B>RC receiver / E-stop</B><BR/><FONT POINT-SIZE="8">operator safety authority</FONT>>, fillcolor="#F5ECEB", color="#87514F"];
+  }
+
+  subgraph cluster_compute {
+    label="ONBOARD COMPUTE"; labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+    jetson [label=<<B>NVIDIA Jetson AGX Orin</B><BR/><FONT POINT-SIZE="8">Ubuntu 20.04 · ROS 2 Foxy</FONT><BR/><FONT POINT-SIZE="8">perception · localization · navigation · safety</FONT>>, fillcolor="#F4F5F5", color="#4F565D", penwidth=1.1];
+    tf [label=<<B>Unified robot description</B><BR/><FONT POINT-SIZE="8">one robot_state_publisher · one TF tree</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    jetson -> tf [label="robot_description"];
+  }
+
+  subgraph cluster_platform {
+    label="PHYSICAL PLATFORM"; labelloc=t; labeljust=l; fontsize=8.4; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=12;
+    bunker [label=<<B>AgileX Bunker Pro 2</B><BR/><FONT POINT-SIZE="8">CAN control · odometry · platform state</FONT>>, fillcolor="#F4F5F5", color="#4F565D", penwidth=1.05];
+    station [label=<<B>Sensor station</B><BR/><FONT POINT-SIZE="8">ZED2i and LiDAR rigid mounting</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+    piper [label=<<B>AgileX PiPER + gripper</B><BR/><FONT POINT-SIZE="8">URDF · joint state · TF only</FONT>>, fillcolor="#FAFAF8", color="#8B9197"];
+    l515 [label=<<B>Arm-mounted L515</B><BR/><FONT POINT-SIZE="8">visual model only</FONT>>, fillcolor="#FAFAF8", color="#8B9197"];
+  }
+
+  zed -> jetson [label="USB 3 · I_t, D_t"];
+  lidar -> jetson [label="Ethernet · P_t"];
+  imu -> jetson [label="USB · ω_t, a_t"];
+  rc -> jetson [style=dashed, color="#87514F", fontcolor="#87514F", label="state / override"];
+  jetson -> bunker [dir=both, arrowtail=normal, label="gated velocity command  →\n←  odometry and state"];
+  tf -> station [label="fixed transforms"];
+  tf -> piper [style=dashed, color="#8B9197", fontcolor="#61676D", label="joint1 … joint8"];
+  piper -> l515 [style=dashed, color="#8B9197", fontcolor="#61676D", label="visual link"];
+}

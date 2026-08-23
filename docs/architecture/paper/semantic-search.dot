@@ -1,0 +1,56 @@
+digraph TrackRobotPaperSemanticSearch {
+  graph [rankdir=TB, bgcolor="white", pad="0.08", margin="0", nodesep="0.28", ranksep="0.46", splines=polyline, outputorder=edgesfirst, fontname="Liberation Sans"];
+  node [shape=box, style="filled", fontname="Liberation Sans", fontsize=9.0, margin="0.10,0.07", penwidth=0.85, color="#586069", fillcolor="#F4F5F5", fontcolor="#202428"];
+  edge [fontname="Liberation Sans", fontsize=7.6, color="#555B61", fontcolor="#40464C", penwidth=0.85, arrowsize=0.60];
+
+  query [label=<<B>Language query q</B><BR/><FONT POINT-SIZE="8">SearchForObject action</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  rgb [label=<<B>RGB image I<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">ZED2i</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  depth [label=<<B>Registered depth D<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">source-time matched</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  cloud [label=<<B>Point cloud P<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">RS-Helios-32</FONT>>, fillcolor="#EAF1F5", color="#557A91"];
+  { rank=same; query; rgb; depth; cloud; }
+
+  subgraph cluster_perception {
+    label="LANGUAGE-CONDITIONED PERCEPTION"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    detector [label=<<B>Open-vocabulary detection</B><BR/><FONT POINT-SIZE="8">YOLO-World · cached text embedding</FONT>>, fillcolor="#F0EEF3", color="#6B607B"];
+    ranking [label=<<B>Semantic ranking</B><BR/><FONT POINT-SIZE="8">CLIP similarity</FONT>>, fillcolor="#F0EEF3", color="#6B607B"];
+    descriptor [label=<<B>Appearance descriptor</B><BR/><FONT POINT-SIZE="8">optional DINOv3 embedding</FONT>>, fillcolor="#FAFAF8", color="#8B9197"];
+    detector -> ranking [label="detections"];
+    ranking -> descriptor [style=dashed, color="#8B9197", label="candidate crop"];
+    { rank=same; detector; ranking; descriptor; }
+  }
+
+  subgraph cluster_grounding {
+    label="SPATIAL GROUNDING AND MEMORY"; labelloc=t; labeljust=l; fontsize=8.3; fontcolor="#4F565D";
+    color="#B9BEC3"; fillcolor="#FBFBFA"; style="filled"; penwidth=0.7; margin=11;
+    observation [label=<<B>3-D semantic observation z<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">2-D evidence + camera-depth geometry</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    memory [label=<<B>Bounded semantic memory M<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">global ID · lifecycle · confidence</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+    selector [label=<<B>Target hypothesis</B><BR/><FONT POINT-SIZE="8">confirm · reject · abstain</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+    observation -> memory [label="update"];
+    memory -> selector [label="rank"];
+    { rank=same; observation; memory; selector; }
+  }
+
+  obstacle [label=<<B>Obstacle representation O<SUB>t</SUB></B><BR/><FONT POINT-SIZE="8">Nav2 costmaps · safety cloud</FONT>>, fillcolor="#EAF3F1", color="#527D75"];
+  active [label=<<B>Bounded active search</B><BR/><FONT POINT-SIZE="8">rotation-only Nav2 Spin</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  approach [label=<<B>Supervised approach</B><BR/><FONT POINT-SIZE="8">goal generation · Nav2</FONT>>, fillcolor="#F4F0E5", color="#8A6A2F"];
+  safety [label=<<B>Motion safety supervisor</B><BR/><FONT POINT-SIZE="8">authorization · watchdogs · collision envelope</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+  gate [label=<<B>cmd_vel_gate</B><BR/><FONT POINT-SIZE="8">u<SUB>safe</SUB> → Bunker</FONT>>, fillcolor="#F5ECEB", color="#87514F", penwidth=1.05];
+  { rank=same; active; approach; }
+  { rank=same; safety; gate; }
+
+  query -> detector [label="q"];
+  rgb -> detector [label="I_t"];
+  ranking -> observation [label="class / score / box"];
+  descriptor -> observation [style=dashed, color="#8B9197", label="appearance"];
+  depth -> observation [label="D_t"];
+  cloud -> obstacle [label="P_t"];
+  selector -> active [label="no confirmed target"];
+  selector -> approach [label="approved target"];
+  obstacle -> active [label="O_t"];
+  obstacle -> approach [label="O_t"];
+  active -> safety [label="u_search"];
+  approach -> safety [label="u_approach"];
+  obstacle -> safety [label="collision context"];
+  safety -> gate;
+}
