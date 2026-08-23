@@ -1,0 +1,32 @@
+{
+  "active_tracklet_count": 5,
+  "association_state": "UNBOUND",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "bearing_rad": 0.0,
+  "camera_visible": true,
+  "confirmed_camera_lidar_binding": false,
+  "distance_m": 0.0,
+  "figure_note": "Camera lock and LiDAR tracklets are real replay outputs; no confirmed camera-LiDAR binding was produced by this replay.",
+  "frame_id": "base_link",
+  "geometry_confidence": 0.0,
+  "identity_confidence": 0.8844456672668457,
+  "lidar_visible": false,
+  "lock_state": "TARGET_LOCKED",
+  "overall_confidence": 0.4864451289176941,
+  "position_base_valid": false,
+  "selected_tracklet_id": -1,
+  "source": "recorded_rosbag_replay",
+  "source_state": "CAMERA_ONLY",
+  "stamp": {
+    "nanosec": 633143425,
+    "sec": 1783346354
+  },
+  "target_id": 1,
+  "topics": {
+    "camera_overlay": "/human_tracking/target_overlay",
+    "point_cloud": "/rslidar_points",
+    "target_state": "/human_tracking/fused_target_state",
+    "tracklets": "/human_tracking/lidar_tracklets"
+  },
+  "track_state": "CAMERA_LOCKED"
+}
