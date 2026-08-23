@@ -1,17 +1,17 @@
 # Human-following replay evidence
 
-`human-following-replay-evidence.png` and its PDF counterpart were generated
-from the recorded ROS 2 bag `human_tracking_lidar_20260706_145900`. The figure
-combines the live perception overlay with the corresponding LiDAR point cloud,
-active tracklets, and target-state diagnostics.
+No publication result is currently committed in this directory. The earlier
+unbound diagnostic composite was withdrawn because its camera overlay and
+LiDAR tracklet snapshot were not paired by sensor timestamp.
 
-This replay confirms gesture-authorized camera target lock and LiDAR tracklet
-generation. It does **not** show a confirmed camera–LiDAR association: the
-captured state is `CAMERA_ONLY / CAMERA_LOCKED`, with
-`selected_tracklet_id = -1`. The figure labels that limitation explicitly so it
-is suitable as diagnostic evidence without implying a fusion result that the
-recording did not produce.
+`tools/visualization/capture_human_following_evidence.py` now requires the
+camera overlay, raw cloud, tracklet array, and fused target state to be within
+120 ms of one another. In its default strict mode it also requires:
 
-Machine-readable provenance and captured state are stored in
-`human-following-replay-evidence.json`. The reproducible capture utility is
-`tools/visualization/capture_human_following_evidence.py`.
+- `lidar_visible = true`;
+- `selected_tracklet_id >= 0`; and
+- the selected ID to be active in the synchronized tracklet array.
+
+The next PNG/PDF result should only be committed after those conditions pass
+on recorded replay and the selected cluster is visually checked against the
+camera target.

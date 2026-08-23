@@ -96,9 +96,13 @@ class EvidenceCapture(Node):
         self.args = args
         self.bridge = CvBridge()
         self.overlay = None
+        self.overlay_stamp = None
         self.cloud = None
+        self.cloud_stamp = None
         self.tracklets = None
+        self.tracklets_stamp = None
         self.target = None
+        self.target_stamp = None
         self.camera_target = None
         self.first_ready_time = None
         self.captured = False
@@ -120,22 +124,39 @@ class EvidenceCapture(Node):
 
     def on_overlay(self, msg):
         self.overlay = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        self.overlay_stamp = self.stamp_seconds(msg.header.stamp)
         self.maybe_capture()
 
     def on_cloud(self, msg):
         self.cloud = pointcloud_xyz(msg)
+        self.cloud_stamp = self.stamp_seconds(msg.header.stamp)
         self.maybe_capture()
 
     def on_tracklets(self, msg):
         self.tracklets = msg
+        self.tracklets_stamp = self.stamp_seconds(msg.header.stamp)
         self.maybe_capture()
 
     def on_target(self, msg):
         self.target = msg
+        self.target_stamp = self.stamp_seconds(msg.header.stamp)
         self.maybe_capture()
 
     def on_camera_target(self, msg):
         self.camera_target = msg
+
+    @staticmethod
+    def stamp_seconds(stamp):
+        return float(stamp.sec) + float(stamp.nanosec) * 1e-9
+
+    def synchronized(self, tolerance=0.12):
+        stamps = (
+            self.overlay_stamp,
+            self.cloud_stamp,
+            self.tracklets_stamp,
+            self.target_stamp,
+        )
+        return all(stamp is not None for stamp in stamps) and max(stamps) - min(stamps) <= tolerance
 
     def ready(self):
         if self.overlay is None or self.cloud is None or self.tracklets is None:
@@ -144,8 +165,18 @@ class EvidenceCapture(Node):
             return False
         if self.target.lock_state != TargetState.LOCK_TARGET_LOCKED:
             return False
+        if not self.synchronized():
+            return False
         if not self.args.allow_unbound:
-            return self.target.lidar_visible and self.target.selected_tracklet_id >= 0
+            selected_is_current = any(
+                tracklet.active and
+                tracklet.tracklet_id == self.target.selected_tracklet_id
+                for tracklet in self.tracklets.tracklets)
+            return (
+                self.target.lidar_visible and
+                self.target.selected_tracklet_id >= 0 and
+                selected_is_current
+            )
         return any(tracklet.active for tracklet in self.tracklets.tracklets)
 
     def maybe_capture(self):
