@@ -1,0 +1,85 @@
+{
+  "sources": {
+    "qualitative_overlay": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/track_robot_ws/artifacts/semantic-search/phase1-mws-green-bottle-2026-07-27-rerun/phase1_overlay.png",
+    "phase1_report": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/track_robot_ws/artifacts/semantic-search/phase1-mws-green-bottle-2026-07-27-rerun/report.json",
+    "phase0_4a_validation": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/track_robot_ws/artifacts/semantic-search/phase4a-green-bottle-2026-07-28/phase4a_validation.json"
+  },
+  "qualitative_query": {
+    "accepted_query_id": 1785176640942377,
+    "accepted_query_version": 1,
+    "observed_query_ids": [
+      1785176640942377
+    ],
+    "observed_query_versions": [
+      1
+    ],
+    "text": "green bottle"
+  },
+  "qualitative_metrics": {
+    "frame_rate_hz": 1.6,
+    "frames": 40,
+    "nonempty_frame_ratio": 1.0,
+    "nonempty_frames": 40,
+    "phase2": {
+      "association_matches": 0,
+      "association_messages": 0,
+      "diagnostic_candidate_count": 0,
+      "diagnostic_ranking_messages": 0,
+      "latest_localization_reason": "",
+      "latest_memory_mode": null,
+      "localization_messages": 0,
+      "object_count": 0,
+      "object_messages": 0,
+      "tracklet_count": 0,
+      "tracklet_messages": 0
+    },
+    "score": {
+      "count": 40,
+      "maximum": 0.61669921875,
+      "mean": 0.58482666015625,
+      "minimum": 0.533203125
+    }
+  },
+  "cross_phase_consistency": {
+    "failures": [],
+    "global_object_ids": [
+      17
+    ],
+    "localization_epoch_ids": [
+      1785248776301029482
+    ],
+    "memory_epoch_ids": [
+      4012842245455624155
+    ],
+    "planning_frames": [
+      "base_link"
+    ],
+    "query_ids": [
+      2026072813
+    ],
+    "query_versions": [
+      1
+    ],
+    "status": "PASS"
+  },
+  "activity_counts": {
+    "visual obs.": 19,
+    "LiDAR tracklets": 214,
+    "valid poses": 50,
+    "target selections": 34,
+    "planned paths": 17,
+    "ready advice": 12
+  },
+  "planner_latency_ms": {
+    "planner_p50": 5.042,
+    "planner_p95": 105.809
+  },
+  "safety": {
+    "advisory_only": true,
+    "cmd_vel_publishers": 0,
+    "motion_publishers": {},
+    "planning_only": true,
+    "status": "PASS"
+  },
+  "note": "Panels (a) and (b\u2013c) summarize two separately dated green-bottle validation runs."
+}

@@ -1,0 +1,80 @@
+{
+  "source": "recorded_rosbag_replay",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "sync_tolerance_sec": 0.12,
+  "captured_overlay_count": 281,
+  "captured_state_count": 1220,
+  "eligible_paired_frame_count": 281,
+  "selected_frames": [
+    {
+      "panel": "a",
+      "title": "Target lock",
+      "stamp": 1783346352.1234484,
+      "relative_time_sec": 0.0,
+      "source_state": "CAMERA_LIDAR",
+      "track_state": "CAMERA_LIDAR_TRACKED",
+      "selected_tracklet_id": -1,
+      "selected_tracklet_active": false,
+      "distance_m": 2.5250816345214844,
+      "overall_confidence": 0.9240149259567261,
+      "overlay_state_offset_sec": 0.009540081024169922,
+      "overlay_tracklet_offset_sec": 0.009540081024169922
+    },
+    {
+      "panel": "b",
+      "title": "3D association",
+      "stamp": 1783346357.9904735,
+      "relative_time_sec": 5.867025136947632,
+      "source_state": "CAMERA_LIDAR",
+      "track_state": "CAMERA_LIDAR_TRACKED",
+      "selected_tracklet_id": 23,
+      "selected_tracklet_active": true,
+      "distance_m": 2.2398035526275635,
+      "overall_confidence": 0.9329949617385864,
+      "overlay_state_offset_sec": 0.007509946823120117,
+      "overlay_tracklet_offset_sec": 0.007509946823120117
+    },
+    {
+      "panel": "c",
+      "title": "Lateral motion",
+      "stamp": 1783346359.9906254,
+      "relative_time_sec": 7.8671770095825195,
+      "source_state": "CAMERA_LIDAR",
+      "track_state": "CAMERA_LIDAR_TRACKED",
+      "selected_tracklet_id": 23,
+      "selected_tracklet_active": true,
+      "distance_m": 1.8806962966918945,
+      "overall_confidence": 0.858006477355957,
+      "overlay_state_offset_sec": 0.00759577751159668,
+      "overlay_tracklet_offset_sec": 0.00759577751159668
+    },
+    {
+      "panel": "d",
+      "title": "Continued fusion",
+      "stamp": 1783346361.3906305,
+      "relative_time_sec": 9.267182111740112,
+      "source_state": "CAMERA_LIDAR",
+      "track_state": "CAMERA_LIDAR_TRACKED",
+      "selected_tracklet_id": 23,
+      "selected_tracklet_active": true,
+      "distance_m": 1.9506299495697021,
+      "overall_confidence": 0.9387215375900269,
+      "overlay_state_offset_sec": 0.007394075393676758,
+      "overlay_tracklet_offset_sec": 0.007394075393676758
+    },
+    {
+      "panel": "e",
+      "title": "Safe target release",
+      "stamp": 1783346364.8575144,
+      "relative_time_sec": 12.734066009521484,
+      "source_state": "NONE",
+      "track_state": "NO_TARGET",
+      "selected_tracklet_id": -1,
+      "selected_tracklet_active": false,
+      "distance_m": 0.0,
+      "overall_confidence": 0.0,
+      "overlay_state_offset_sec": 0.024260759353637695,
+      "overlay_tracklet_offset_sec": 0.024260759353637695
+    }
+  ]
+}

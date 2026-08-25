@@ -1,0 +1,167 @@
+{
+  "source": "recorded_rosbag_replay",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "target_state_stamp": 1783346358.8325646,
+  "tracklet_stamp": 1783346358.7829175,
+  "selected_tracklet_id": 25,
+  "published_selected_score": 0.808,
+  "published_hypotheses": [
+    {
+      "id": 25,
+      "score": 0.808
+    }
+  ],
+  "association_ambiguous": false,
+  "gates": {
+    "initial_anchor_xy_gate_m": 1.0,
+    "initial_anchor_range_gate_m": 0.75,
+    "minimum_association_score": 0.65
+  },
+  "candidates": [
+    {
+      "id": 25,
+      "selected": true,
+      "position": [
+        1.7821555137634277,
+        -0.9305831789970398,
+        0.6550809741020203
+      ],
+      "anchor_distance": 0.05705700962587704,
+      "range_difference": 0.007082834995330689,
+      "projection_center_error": 49.374301899339365,
+      "projected_uv": [
+        993.2227196834754,
+        371.031891514622
+      ],
+      "score": 0.808,
+      "reason": "valid hypothesis"
+    },
+    {
+      "id": 1,
+      "selected": false,
+      "position": [
+        -5.363415718078613,
+        -0.3501207232475281,
+        0.8524621725082397
+      ],
+      "anchor_distance": 7.197162889788607,
+      "range_difference": 3.357260244194733,
+      "projection_center_error": Infinity,
+      "projected_uv": [
+        NaN,
+        NaN
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 2,
+      "selected": false,
+      "position": [
+        -5.637945652008057,
+        -2.990908622741699,
+        1.5006940364837646
+      ],
+      "anchor_distance": 7.744254419956965,
+      "range_difference": 4.364588779288274,
+      "projection_center_error": Infinity,
+      "projected_uv": [
+        NaN,
+        NaN
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 3,
+      "selected": false,
+      "position": [
+        -5.790868759155273,
+        -4.482578754425049,
+        1.2594212293624878
+      ],
+      "anchor_distance": 8.413621451630949,
+      "range_difference": 5.305520618105235,
+      "projection_center_error": Infinity,
+      "projected_uv": [
+        NaN,
+        NaN
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 4,
+      "selected": false,
+      "position": [
+        2.135892391204834,
+        -7.331934928894043,
+        1.3678312301635742
+      ],
+      "anchor_distance": 6.456741424937414,
+      "range_difference": 5.619136639823128,
+      "projection_center_error": 1756.4903987970079,
+      "projected_uv": [
+        2732.6158370036583,
+        171.45221511711162
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 5,
+      "selected": false,
+      "position": [
+        2.890251636505127,
+        -9.040592193603516,
+        1.631311058998108
+      ],
+      "anchor_distance": 8.228063786080273,
+      "range_difference": 7.473786046607351,
+      "projection_center_error": 1502.9074685633045,
+      "projected_uv": [
+        2478.547301058419,
+        177.72733830010796
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 8,
+      "selected": false,
+      "position": [
+        3.6767919063568115,
+        0.1347862333059311,
+        0.3996608853340149
+      ],
+      "anchor_distance": 2.1228344151609626,
+      "range_difference": 1.6616904518888727,
+      "projection_center_error": 357.0540327402949,
+      "projected_uv": [
+        637.5601397973737,
+        414.4251652666915
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    },
+    {
+      "id": 27,
+      "selected": false,
+      "position": [
+        4.623445510864258,
+        -3.0925114154815674,
+        0.9194048047065735
+      ],
+      "anchor_distance": 3.5740832376948464,
+      "range_difference": 3.5447912142417337,
+      "projection_center_error": 52.7296167835709,
+      "projected_uv": [
+        1031.1360913062317,
+        343.544709251237
+      ],
+      "score": null,
+      "reason": "anchor XY gate"
+    }
+  ],
+  "note": "Scores are copied from /human_tracking/target_tracker_debug; gate metrics are recomputed from synchronized messages."
+}

@@ -1,0 +1,49 @@
+{
+  "source": "four_recorded_rosbag_replays_run1",
+  "funnel": {
+    "stages": [
+      "confirmed_evaluations",
+      "anchor_gate_pass",
+      "range_gate_pass",
+      "valid_projection",
+      "published_hypotheses",
+      "score_threshold_pass",
+      "selected"
+    ],
+    "labels": [
+      "confirmed candidate\nevaluations",
+      "anchor XY\ngate",
+      "range\ngate",
+      "valid camera\nprojection",
+      "published\nhypotheses",
+      "score\nthreshold",
+      "selected\ntarget"
+    ],
+    "counts": [
+      406,
+      30,
+      30,
+      30,
+      18,
+      13,
+      10
+    ],
+    "update_count": 255,
+    "score_threshold": 0.65
+  },
+  "stage_to_stage_retention": [
+    1.0,
+    0.07389162561576355,
+    1.0,
+    1.0,
+    0.6,
+    0.7222222222222222,
+    0.7692307692307693
+  ],
+  "upstream_context": {
+    "debug_updates": 255,
+    "raw_candidate_clusters_total": 3713,
+    "active_tracklet_observations_total": 1445
+  },
+  "note": "The monotonic funnel begins at confirmed candidate evaluations. Raw clusters and active tracks are context totals because persistent tracks are not a one-to-one stage of each debug update."
+}

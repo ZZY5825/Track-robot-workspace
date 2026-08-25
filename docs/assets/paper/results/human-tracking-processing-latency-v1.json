@@ -1,0 +1,79 @@
+{
+  "source": "recorded_rosbag_replay_runtime_debug",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "interpretation": "Per-callback wall-clock processing duration published by each node; not sensor-to-actuator latency.",
+  "pipeline_stage_summary": {
+    "camera": {
+      "count": 303,
+      "median_ms": 30.039,
+      "p90_ms": 31.6066,
+      "p95_ms": 31.9905,
+      "p99_ms": 39.19948,
+      "max_ms": 5690.586
+    },
+    "tracklet": {
+      "count": 44,
+      "median_ms": 105.44,
+      "p90_ms": 134.187,
+      "p95_ms": 199.13200000000012,
+      "p99_ms": 254.30990000000003,
+      "max_ms": 284.87
+    },
+    "fusion": {
+      "count": 24,
+      "median_ms": 78.00399999999999,
+      "p90_ms": 91.6024,
+      "p95_ms": 93.56224999999999,
+      "p99_ms": 94.86106,
+      "max_ms": 95.178
+    }
+  },
+  "fresh_fusion_sample_count": 24,
+  "fusion_component_summary": {
+    "cloud_parse_ms": {
+      "count": 24,
+      "median_ms": 1.7745,
+      "p90_ms": 2.9972,
+      "p95_ms": 3.364499999999999,
+      "p99_ms": 3.57809,
+      "max_ms": 3.628
+    },
+    "projection_ms": {
+      "count": 24,
+      "median_ms": 71.5245,
+      "p90_ms": 85.3064,
+      "p95_ms": 87.55785,
+      "p99_ms": 89.14961,
+      "max_ms": 89.539
+    },
+    "association_ms": {
+      "count": 24,
+      "median_ms": 0.0,
+      "p90_ms": 0.0,
+      "p95_ms": 0.0,
+      "p99_ms": 0.0,
+      "max_ms": 0.0
+    },
+    "kalman_ms": {
+      "count": 24,
+      "median_ms": 0.3885,
+      "p90_ms": 0.4084,
+      "p95_ms": 0.4693499999999998,
+      "p99_ms": 0.49309,
+      "max_ms": 0.497
+    },
+    "publish_ms": {
+      "count": 24,
+      "median_ms": 0.1725,
+      "p90_ms": 0.2242,
+      "p95_ms": 0.25914999999999994,
+      "p99_ms": 0.32352,
+      "max_ms": 0.341
+    }
+  },
+  "topics": {
+    "camera": "/human_tracking/tracker_debug",
+    "tracklet": "/human_tracking/lidar_tracklet_debug",
+    "fusion": "/human_tracking/fusion_timing_debug"
+  }
+}

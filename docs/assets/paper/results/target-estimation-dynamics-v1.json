@@ -1,0 +1,35 @@
+{
+  "source": "recorded_rosbag_replay",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "target_id": 1,
+  "target_state_sample_count": 246,
+  "selected_tracklet_measurement_count": 84,
+  "camera_guided_anchor_count": 115,
+  "imm_probability_sample_count": 24,
+  "tracking_interval_sec": 12.800456047058105,
+  "confirmed_binding_duration_sec": 6.900472164154053,
+  "fused_path_length_m": 3.5046601015497987,
+  "target_range_min_m": 1.8865840435028076,
+  "target_range_max_m": 2.6054370403289795,
+  "estimated_speed_max_mps": 0.5680541202629829,
+  "selected_tracklet_ids": [
+    24
+  ],
+  "selected_tracklet_id_switch_count": 0,
+  "max_tracklet_state_sync_offset_sec": 0.05010700225830078,
+  "imm_models": [
+    {
+      "name": "low_dynamics",
+      "acceleration_std_mps2": 0.15
+    },
+    {
+      "name": "nominal",
+      "acceleration_std_mps2": 0.8
+    },
+    {
+      "name": "maneuvering",
+      "acceleration_std_mps2": 2.5
+    }
+  ],
+  "imm_alignment_note": "Debug probabilities are aligned to the latest received fused-state stamp; state, tracklet, and anchor trajectories retain sensor timestamps."
+}

@@ -1,0 +1,73 @@
+{
+  "source": "recorded_rosbag_replay_plus_jetson_telemetry",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "playback_rate": 0.5,
+  "idle_duration_sec": 8.0,
+  "device_sample_count": 58,
+  "process_sample_count": 141,
+  "summary": {
+    "device": {
+      "cpu_median_pct": 27.333333333333332,
+      "cpu_p95_pct": 100.0,
+      "cpu_increment_over_idle_pct": 14.833333333333332,
+      "gpu_median_pct": 0.0,
+      "gpu_p95_pct": 78.0,
+      "gpu_increment_over_idle_pct": 0.0,
+      "ram_median_mb": 13926.0,
+      "ram_increment_over_idle_mb": 2744.0,
+      "cpu_temp_p95_c": 51.453,
+      "emc_p95_pct": 0.0
+    },
+    "nodes": {
+      "camera_tracking": {
+        "sample_count": 47,
+        "cpu_median_pct": 50.085689298474406,
+        "cpu_p95_pct": 434.8454270640696,
+        "rss_median_mb": 4238.5703125,
+        "rss_peak_mb": 4238.5703125
+      },
+      "lidar_tracklets": {
+        "sample_count": 47,
+        "cpu_median_pct": 101.66465907494785,
+        "cpu_p95_pct": 103.74841588882579,
+        "rss_median_mb": 27.41015625,
+        "rss_peak_mb": 27.41015625
+      },
+      "target_fusion": {
+        "sample_count": 47,
+        "cpu_median_pct": 26.39370956753454,
+        "cpu_p95_pct": 36.642955066026595,
+        "rss_median_mb": 38.30859375,
+        "rss_peak_mb": 38.375
+      }
+    }
+  },
+  "topic_rates": {
+    "fused_target_state": {
+      "count": 1071,
+      "stamp_span_sec": 19.649391889572144,
+      "observed_rate_hz": 54.454611420715004
+    },
+    "lidar_tracklet_arrays": {
+      "count": 366,
+      "stamp_span_sec": 19.649391889572144,
+      "observed_rate_hz": 18.57563847529063
+    },
+    "camera_guided_anchors": {
+      "count": 112,
+      "stamp_span_sec": 12.600026845932007,
+      "observed_rate_hz": 8.809505039732278
+    },
+    "camera_targets": {
+      "count": 279,
+      "stamp_span_sec": 4189293.6845111847,
+      "observed_rate_hz": 6.635963504488409e-05
+    },
+    "tracker_debug": {
+      "count": 23,
+      "stamp_span_sec": 12.14993691444397,
+      "observed_rate_hz": 1.8107089900891726
+    }
+  },
+  "scope_note": "Device telemetry includes all host workloads; per-node samples identify only the three human-tracking processes."
+}

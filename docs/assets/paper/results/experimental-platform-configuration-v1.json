@@ -1,0 +1,61 @@
+{
+  "source_image": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/docs/assets/readme/track-robot-hero.png",
+  "source_type": "integrated_project_urdf_rviz_render",
+  "is_hardware_photograph": false,
+  "components": [
+    {
+      "number": 1,
+      "label": "PiPER arm",
+      "role": "6-DoF mobile manipulation",
+      "image_xy_px": [
+        225,
+        300
+      ]
+    },
+    {
+      "number": 2,
+      "label": "RealSense L515",
+      "role": "wrist-mounted depth camera",
+      "image_xy_px": [
+        160,
+        190
+      ]
+    },
+    {
+      "number": 3,
+      "label": "ZED stereo camera",
+      "role": "RGB, pose and depth observations",
+      "image_xy_px": [
+        343,
+        210
+      ]
+    },
+    {
+      "number": 4,
+      "label": "RS-Helios LiDAR",
+      "role": "32-beam geometry and obstacle sensing",
+      "image_xy_px": [
+        402,
+        166
+      ]
+    },
+    {
+      "number": 5,
+      "label": "Sensor station",
+      "role": "protected sensing / compute enclosure",
+      "image_xy_px": [
+        430,
+        278
+      ]
+    },
+    {
+      "number": 6,
+      "label": "Bunker Pro 2",
+      "role": "tracked mobile base",
+      "image_xy_px": [
+        440,
+        460
+      ]
+    }
+  ]
+}

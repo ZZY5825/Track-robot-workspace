@@ -1,0 +1,142 @@
+{
+  "schema_version": "human_following_safety_test_evidence/1.0.0",
+  "generated_on": "2026-08-24",
+  "source_worktree": ".worktrees/main-test/track_robot_ws",
+  "scope": "Automated software unit, contract, and ROS 2 launch tests; no physical fault injection or robot motion.",
+  "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 colcon test --packages-select track_robot_safety track_robot_decision --event-handlers console_cohesion+ --return-code-on-test-failure",
+  "package_results": {
+    "track_robot_safety": {
+      "ctest_targets": 4,
+      "individual_test_cases": 18,
+      "failures": 0
+    },
+    "track_robot_decision": {
+      "ctest_targets": 3,
+      "individual_test_cases": 36,
+      "failures": 0
+    }
+  },
+  "matrix_columns": [
+    "fault_or_hazard_detected",
+    "authorization_revoked",
+    "disarm_requested",
+    "target_reset",
+    "zero_velocity_command",
+    "no_automatic_resume"
+  ],
+  "scenarios": [
+    {
+      "name": "RC takeover",
+      "layer": "ROS 2 launch",
+      "test_ids": [
+        "track_robot_safety.TestRcControlMode.test_rc_mode_with_neutral_sticks_disarms_and_stays_disarmed_after_can_restore",
+        "track_robot_safety.TestRcControlMode.test_rc_stick_override_in_can_mode_disarms_without_automatic_rearm"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": null,
+        "disarm_requested": true,
+        "target_reset": null,
+        "zero_velocity_command": true,
+        "no_automatic_resume": true
+      }
+    },
+    {
+      "name": "Emergency stop",
+      "layer": "ROS 2 launch",
+      "test_ids": [
+        "track_robot_decision.TestHumanFollowingSupervisor.test_emergency_stop_revokes_authorized_session"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": true,
+        "disarm_requested": true,
+        "target_reset": true,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    },
+    {
+      "name": "Target lost",
+      "layer": "ROS 2 launch",
+      "test_ids": [
+        "track_robot_decision.TestHumanFollowingSupervisor.test_target_lost_revokes_authorized_session"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": true,
+        "disarm_requested": true,
+        "target_reset": true,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    },
+    {
+      "name": "Required input stale",
+      "layer": "ROS 2 launch",
+      "test_ids": [
+        "track_robot_decision.TestHumanFollowingSupervisor.test_required_input_stale_revokes_authorized_session"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": true,
+        "disarm_requested": true,
+        "target_reset": true,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    },
+    {
+      "name": "Base status fault/stale",
+      "layer": "ROS 2 launch",
+      "test_ids": [
+        "track_robot_decision.TestHumanFollowingSupervisor.test_bad_base_status_revokes_authorized_session",
+        "track_robot_decision.TestHumanFollowingSupervisor.test_stale_base_status_revokes_authorized_session"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": true,
+        "disarm_requested": true,
+        "target_reset": true,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    },
+    {
+      "name": "Stale nonzero command",
+      "layer": "C++ unit",
+      "test_ids": [
+        "track_robot_safety.CommandFreshness.StaleNonzeroCommandStillFailsClosed",
+        "track_robot_safety.CommandFreshness.PreviouslyReceivedCommandStillFailsClosedWhenStale"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": null,
+        "disarm_requested": null,
+        "target_reset": null,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    },
+    {
+      "name": "Obstacle in stopping sweep",
+      "layer": "C++ unit",
+      "test_ids": [
+        "track_robot_safety.RotationCollision.ObstacleInsideFiniteStoppingSweepStillBlocks"
+      ],
+      "verified": {
+        "fault_or_hazard_detected": true,
+        "authorization_revoked": null,
+        "disarm_requested": null,
+        "target_reset": null,
+        "zero_velocity_command": null,
+        "no_automatic_resume": null
+      }
+    }
+  ],
+  "limitations": [
+    "A filled matrix cell means that the named behavior is explicitly asserted by at least one passing automated test.",
+    "An unfilled cell is outside the cited test scope and must not be interpreted as a failed behavior.",
+    "The test campaign is software-only and does not establish hardware reliability or functional-safety certification."
+  ]
+}

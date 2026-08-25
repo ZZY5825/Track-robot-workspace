@@ -1,0 +1,55 @@
+{
+  "source": "recorded_rosbag_replay",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "stamps": {
+    "raw_image": 1783346357.9239745,
+    "camera_target": 1783346357.9239745,
+    "raw_cloud": 1783346357.9327815,
+    "camera_guided_cloud": 1783346357.9829636,
+    "tracklets": 1783346357.9327815,
+    "target_state": 1783346357.9327815
+  },
+  "state_group_spread_sec": 0.05018210411071777,
+  "image_camera_target_offset_sec": 0.0,
+  "camera_target_cloud_offset_sec": 0.008806943893432617,
+  "selected_tracklet_id": 22,
+  "selected_tracklet_active": true,
+  "association_state": "CONFIRMED",
+  "target_range_m": 2.257535457611084,
+  "anchor_base_xyz_m": [
+    2.0420753955841064,
+    -0.6425773501396179,
+    0.8470117449760437
+  ],
+  "selected_centroid_base_xyz_m": [
+    2.166872262954712,
+    -0.6253600716590881,
+    0.6550809741020203
+  ],
+  "anchor_tracklet_delta_xy_m": 0.12597893785785227,
+  "anchor_tracklet_delta_range_m": 0.11451820567307047,
+  "projected_centroid_error_px": 33.205015048514,
+  "raw_projected_point_count": 6383,
+  "body_roi_projected_point_count": 913,
+  "camera_guided_point_count": 293,
+  "selected_bounds_projected_point_count": 634,
+  "body_roi_type": "skeleton torso ROI",
+  "gates": {
+    "initial_anchor_xy_gate_m": 1.0,
+    "initial_anchor_range_gate_m": 0.75,
+    "max_projection_center_error_px": 220.0
+  },
+  "direct_lidar_to_camera_optical_transform": {
+    "translation_xyz_m": [
+      0.06,
+      -0.065,
+      -0.26
+    ],
+    "quaternion_xyzw": [
+      0.5,
+      -0.5,
+      0.5,
+      0.5
+    ]
+  }
+}

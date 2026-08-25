@@ -1,0 +1,157 @@
+{
+  "representation": "single_isometric_3d_urdf_stl_scene",
+  "sources": {
+    "urdf": "src/bunker_pro2/urdf/bunker_pro2.urdf",
+    "base_mesh": "src/bunker_pro2/meshes/base_link.STL",
+    "camera_info": {
+      "fx": 528.7369995117188,
+      "fy": 528.7369995117188,
+      "cx": 649.133056640625,
+      "cy": 378.0072326660156,
+      "width": 1280,
+      "height": 720,
+      "frame_id": "zed_left_camera_optical_frame"
+    },
+    "lidar_tracking_range_m": [
+      0.5,
+      10.0
+    ]
+  },
+  "sensor_origins_robot_bottom_m": {
+    "zed": [
+      0.008699999999996912,
+      -1.511365986233887e-12,
+      0.769
+    ],
+    "lidar": [
+      -0.2125,
+      -1.958635544058699e-12,
+      0.8660000000000001
+    ]
+  },
+  "zed_fov_deg": {
+    "horizontal": 100.87626386526937,
+    "vertical": 68.49937673788905
+  },
+  "visualization_clip_range_m": 2.5,
+  "solid_near_field_range_m": 1.25,
+  "robot_meshes": {
+    "main_scene_mesh_count": 14,
+    "main_scene_rendered_face_count": 23902,
+    "ghost_scene_rendered_face_counts": [
+      6515,
+      6532,
+      6804
+    ],
+    "package_roots": {
+      "bunker_pro2": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/src/bunker_pro2",
+      "piper_description": "/home/track-robot/track_robot_ws/.worktrees/readme-piper-hero-publish/src/piper_description"
+    }
+  },
+  "presentation_pose_rad_or_m": {
+    "joint1": 0.15,
+    "joint2": 1.1,
+    "joint3": -1.4,
+    "joint4": 0.0,
+    "joint5": 0.5,
+    "joint6": 0.0,
+    "joint7": 0.02,
+    "joint8": -0.02
+  },
+  "representative_ghost_poses_rad_or_m": [
+    {
+      "joint1": 1.3,
+      "joint2": 0.8,
+      "joint3": -1.2,
+      "joint4": 0.25,
+      "joint5": 0.2,
+      "joint6": 0.4,
+      "joint7": 0.018,
+      "joint8": -0.018
+    },
+    {
+      "joint1": -1.1,
+      "joint2": 0.72,
+      "joint3": -1.05,
+      "joint4": -0.3,
+      "joint5": 0.4,
+      "joint6": -0.35,
+      "joint7": 0.018,
+      "joint8": -0.018
+    },
+    {
+      "joint1": 0.05,
+      "joint2": 1.8,
+      "joint3": -2.2,
+      "joint4": 0.0,
+      "joint5": -0.4,
+      "joint6": 0.0,
+      "joint7": 0.018,
+      "joint8": -0.018
+    }
+  ],
+  "workspace": {
+    "sample_count": 30000,
+    "seed": 7,
+    "joint_names": [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6"
+    ],
+    "joint_limits_rad_or_m": {
+      "joint1": [
+        -2.618,
+        2.168
+      ],
+      "joint2": [
+        -0.044796192,
+        3.14
+      ],
+      "joint3": [
+        -2.967,
+        0.0
+      ],
+      "joint4": [
+        -1.745,
+        1.745
+      ],
+      "joint5": [
+        -1.22,
+        1.22
+      ],
+      "joint6": [
+        -2.0944,
+        2.0944
+      ]
+    },
+    "gripper_bounds_base_link_m": {
+      "min": [
+        -0.22620056344019202,
+        -0.6244136789200325,
+        -0.22861840059237853
+      ],
+      "max": [
+        1.012075332577788,
+        0.6238798576523102,
+        0.7660149929623185
+      ]
+    },
+    "surface": {
+      "type": "convex_outer_hull",
+      "sampled_point_count": 5000,
+      "surface_face_count": 558,
+      "volume_m3": 0.7894374757218631,
+      "area_m2": 4.230657018976091
+    }
+  },
+  "limitations": [
+    "The translucent surface is a convex outer bound over sampled joint-limit positions; it can include collision-invalid or unsampled interior locations.",
+    "The L515 is present as a visual URDF model; no calibrated operational FoV is claimed.",
+    "The ZED FoV is computed from recorded CameraInfo and projected schematically robot-forward because the integrated model omits the full optical-frame visual chain.",
+    "The LiDAR surface depicts horizontal coverage only; vertical FoV is not shown.",
+    "Sensor coverage is clipped to 2.5 m in the scene while the configured tracking range is 0.5\u201310.0 m."
+  ]
+}

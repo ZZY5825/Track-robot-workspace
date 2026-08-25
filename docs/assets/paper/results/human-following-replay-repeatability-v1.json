@@ -1,0 +1,129 @@
+{
+  "source": "five_independent_replays",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "playback_rate": 0.5,
+  "run_summaries": [
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 1,
+      "primary_target_id": 1,
+      "state_samples": 1002,
+      "association_samples": 44,
+      "debug_samples": 70,
+      "locked": true,
+      "first_lock_sec": 6.4999840259552,
+      "locked_duration_sec": 20.750730991363525,
+      "confirmed_association_duration_sec": 12.6511709690094,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        26
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.9959514170040485,
+        "PREDICTION_ONLY": 0.004048582995951417
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 2,
+      "primary_target_id": 1,
+      "state_samples": 972,
+      "association_samples": 44,
+      "debug_samples": 70,
+      "locked": true,
+      "first_lock_sec": 6.4999840259552,
+      "locked_duration_sec": 20.800375938415527,
+      "confirmed_association_duration_sec": 12.6511709690094,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        25
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.99581589958159,
+        "PREDICTION_ONLY": 0.0041841004184100415
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 3,
+      "primary_target_id": 1,
+      "state_samples": 996,
+      "association_samples": 43,
+      "debug_samples": 71,
+      "locked": true,
+      "first_lock_sec": 6.1504762172698975,
+      "locked_duration_sec": 20.650563955307007,
+      "confirmed_association_duration_sec": 12.500854253768921,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        25
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.9919028340080972,
+        "CAMERA_ONLY": 0.004048582995951417,
+        "PREDICTION_ONLY": 0.004048582995951417
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 4,
+      "primary_target_id": 1,
+      "state_samples": 1002,
+      "association_samples": 41,
+      "debug_samples": 71,
+      "locked": true,
+      "first_lock_sec": 6.249575138092041,
+      "locked_duration_sec": 20.70059895515442,
+      "confirmed_association_duration_sec": 12.55098009109497,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        23
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.988,
+        "CAMERA_ONLY": 0.004,
+        "LIDAR_ONLY": 0.004,
+        "PREDICTION_ONLY": 0.004
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 5,
+      "primary_target_id": 1,
+      "state_samples": 999,
+      "association_samples": 52,
+      "debug_samples": 70,
+      "locked": true,
+      "first_lock_sec": 6.4999840259552,
+      "locked_duration_sec": 20.750730991363525,
+      "confirmed_association_duration_sec": 12.60104513168335,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        23
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.9960159362549801,
+        "PREDICTION_ONLY": 0.00398406374501992
+      }
+    }
+  ],
+  "trajectory_rms_deviation_m": [
+    0.010919674419821689,
+    0.009534210264879923,
+    0.030908056218073257,
+    0.03067446671215278,
+    0.01508566738785332
+  ],
+  "mean_trajectory_rms_deviation_m": 0.01942441500055619,
+  "first_lock_mean_sec": 6.3800006866455075,
+  "first_lock_std_sec": 0.15025332668087088,
+  "confirmed_association_mean_sec": 12.591044282913208,
+  "confirmed_association_std_sec": 0.05842916148814561,
+  "tracklet_id_scope": "run_local",
+  "ground_truth_available": false
+}

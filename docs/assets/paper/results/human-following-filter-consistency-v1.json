@@ -1,0 +1,31 @@
+{
+  "source": "recorded_rosbag_replay",
+  "bag": "human_tracking_lidar_20260706_145900",
+  "run_index": 1,
+  "primary_target_id": 1,
+  "debug_update_count": 23,
+  "measurement_decisions": {
+    "accepted": 20,
+    "no measurement / prediction": 3
+  },
+  "accepted_nis_summary": {
+    "count": 20,
+    "median": 0.0175,
+    "p90": 0.2761000000000002,
+    "p95": 0.39195000000000013,
+    "maximum": 0.524
+  },
+  "covariance_trace_xy_summary": {
+    "count": 247,
+    "median": 0.029711837880313396,
+    "p90": 0.05009535700082779,
+    "p95": 0.06447968296706676,
+    "maximum": 0.7201566100120544
+  },
+  "nis_gates": {
+    "camera_anchor": 25.0,
+    "selected_tracklet": 9.21
+  },
+  "imm_sample_count": 23,
+  "ground_truth_available": false
+}

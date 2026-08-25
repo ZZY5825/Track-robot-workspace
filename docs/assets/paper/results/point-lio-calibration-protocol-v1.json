@@ -1,0 +1,23 @@
+{
+  "source": "repository_integration_configuration_and_documented_protocol",
+  "measured_mapping_result": false,
+  "status": "CALIBRATION_DATA_PENDING",
+  "time_model": "corrected_imu_stamp = raw_imu_stamp - imu_time_offset_sec",
+  "extrinsic_definition": "LiDAR pose expressed in the IMU body frame",
+  "current_default": "identity placeholder with extrinsic estimation enabled",
+  "required_evidence": [
+    "stationary IMU noise / gravity check",
+    "straight out-and-back trajectory",
+    "coarse then fine \u0394t sweep",
+    "LiDAR-only control run",
+    "endpoint drift and yaw closure",
+    "registered-map sharpness review"
+  ],
+  "expected_outputs": [
+    "/cloud_registered",
+    "/cloud_registered_body",
+    "/Laser_map",
+    "/aft_mapped_to_init",
+    "/path"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "source": "four_recorded_rosbag_replays_run1",
+  "playback_rate": 0.5,
+  "bags": [
+    {
+      "bag": "human_tracking_lidar_20260706_145752",
+      "run_index": 1,
+      "primary_target_id": 1,
+      "state_samples": 671,
+      "association_samples": 38,
+      "debug_samples": 54,
+      "locked": true,
+      "first_lock_sec": 5.44997501373291,
+      "locked_duration_sec": 14.699371814727783,
+      "confirmed_association_duration_sec": 28.15182900428772,
+      "selected_tracklet_switches": 2,
+      "selected_tracklet_ids": [
+        19,
+        29,
+        1
+      ],
+      "safe_release": false,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.4,
+        "LIDAR_ONLY": 0.5582608695652174,
+        "NONE": 0.0052173913043478265,
+        "PREDICTION_ONLY": 0.036521739130434785
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_145900",
+      "run_index": 1,
+      "primary_target_id": 1,
+      "state_samples": 1002,
+      "association_samples": 44,
+      "debug_samples": 70,
+      "locked": true,
+      "first_lock_sec": 6.4999840259552,
+      "locked_duration_sec": 20.750730991363525,
+      "confirmed_association_duration_sec": 12.6511709690094,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        26
+      ],
+      "safe_release": true,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.9959514170040485,
+        "PREDICTION_ONLY": 0.004048582995951417
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_150711",
+      "run_index": 1,
+      "primary_target_id": 1,
+      "state_samples": 977,
+      "association_samples": 11,
+      "debug_samples": 86,
+      "locked": true,
+      "first_lock_sec": 5.5996620655059814,
+      "locked_duration_sec": 9.350099086761475,
+      "confirmed_association_duration_sec": 23.749644994735718,
+      "selected_tracklet_switches": 5,
+      "selected_tracklet_ids": [
+        38,
+        6,
+        88,
+        107,
+        73,
+        125
+      ],
+      "safe_release": false,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.15914221218961624,
+        "LIDAR_ONLY": 0.36343115124153497,
+        "NONE": 0.45146726862302483,
+        "PREDICTION_ONLY": 0.025959367945823927
+      }
+    },
+    {
+      "bag": "human_tracking_lidar_20260706_150918",
+      "run_index": 1,
+      "primary_target_id": 1,
+      "state_samples": 519,
+      "association_samples": 6,
+      "debug_samples": 45,
+      "locked": true,
+      "first_lock_sec": 3.750427007675171,
+      "locked_duration_sec": 7.300323963165283,
+      "confirmed_association_duration_sec": 18.0498468875885,
+      "selected_tracklet_switches": 0,
+      "selected_tracklet_ids": [
+        12
+      ],
+      "safe_release": false,
+      "source_fractions": {
+        "CAMERA_LIDAR": 0.2261640798226164,
+        "LIDAR_ONLY": 0.5388026607538803,
+        "NONE": 0.19068736141906872,
+        "PREDICTION_ONLY": 0.04434589800443459
+      }
+    }
+  ],
+  "safe_release_definition": "NO_TARGET state observed after the primary target lock episode",
+  "note": "A release not observed before the bag/capture window ends is reported as not observed, not as a failure."
+}

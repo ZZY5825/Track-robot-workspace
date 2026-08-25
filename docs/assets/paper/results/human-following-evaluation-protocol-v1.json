@@ -1,0 +1,32 @@
+{
+  "source": "evaluation_protocol_only",
+  "measured_results": false,
+  "status": "DATA_COLLECTION_PENDING",
+  "protocols": {
+    "occlusion_recovery": [
+      "identity_preservation",
+      "reacquisition_time",
+      "covariance_growth"
+    ],
+    "multi_person_crossing": [
+      "id_switches",
+      "wrong_person_lock",
+      "score_margin",
+      "recovery"
+    ],
+    "closed_loop_following": [
+      "range_rmse",
+      "command_latency",
+      "minimum_clearance",
+      "stop_distance"
+    ]
+  },
+  "required_topics": [
+    "camera",
+    "lidar",
+    "fused_target",
+    "session",
+    "odometry",
+    "cmd_vel"
+  ]
+}
