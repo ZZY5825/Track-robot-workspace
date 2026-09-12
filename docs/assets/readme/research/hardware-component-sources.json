@@ -1,0 +1,49 @@
+{
+  "zed.png": {
+    "url": "https://cdn.shopify.com/s/files/1/0699/6927/products/Zed2ifacedawn.png?v=1742567417",
+    "sha256": "8e3a8b6fa5cce1fb1d50b3b4a04dfe7120950ce67544f941efe60f763cea0cfa",
+    "page": "https://store.stereolabs.com/products/zed-2i",
+    "accessed": "2026-09-09",
+    "use": "Manufacturer product illustration; not an installed-unit photograph"
+  },
+  "imu.jpg": {
+    "url": "https://cdn.phidgets.com/productfiles/1056/1056_0/Images/551x-/20/1056_0.jpg",
+    "sha256": "65483fc088b07f07ec0f1cb20d069c48b5620de313e40d0db281747a3d93d691",
+    "page": "https://www.phidgets.com/?prodid=48",
+    "accessed": "2026-09-09",
+    "use": "Manufacturer product illustration; not an installed-unit photograph"
+  },
+  "lidar.png": {
+    "url": "http://store.robosense.ai/cdn/shop/files/20250307144131.png?v=1770173500",
+    "page": "https://store.robosense.ai/products/helios-series",
+    "sha256": "011399021e6f7fab1e88023a94cfe8bfa90814762286df095cc237b3037b10a4",
+    "accessed": "2026-09-09",
+    "use": "Manufacturer product illustration; not an installed-unit photograph"
+  },
+  "jetson.jpg": {
+    "url": "https://www.nvidia.com/content/nvidiaGDC/us/en_US/autonomous-machines/embedded-systems/jetson-orin/_jcr_content/root/responsivegrid/nv_container_1736846491/nv_image.coreimg.jpeg/1787666716022/jetson-agx-orin-developer-kit-assets-2c50-d-2x.jpeg",
+    "sha256": "d527f777d344385b99ea94e4e4fca01a609a16f9b122ed9da805dbd5eaa9a13e",
+    "page": "https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/",
+    "accessed": "2026-09-09",
+    "use": "Manufacturer product illustration; not an installed-unit photograph"
+  },
+  "bunker-pro.jpg": {
+    "url": "https://global.agilex.ai/cdn/shop/files/Bunker_Pro__3_436c0f7f-6aee-44e5-9f22-f30b025f17e8.jpg?v=1756992932&width=1946",
+    "page": "https://global.agilex.ai/products/bunker-pro",
+    "accessed": "2026-09-09",
+    "use": "Manufacturer photograph of the bare Bunker Pro chassis; independently scaled",
+    "sha256": "31ba907151d13d9b23d0273baaa5b1970f99015ddbb0910c3954f4d76a9bdc5a"
+  },
+  "jetson-transparent.svg": {
+    "derived_from": "jetson.jpg",
+    "method": "Original photograph clipped to a manually traced device outline in SVG; PNG exported with CairoSVG. Imagegen attempts produced RGB checkerboards and were not used.",
+    "use": "Background removal only; original hardware pixels preserved.",
+    "sha256": "75c0f06f497ed7b361c9f40920cd3d7c7ac457dd69dade6463fdf19aeaf8c03d"
+  },
+  "jetson-transparent.png": {
+    "derived_from": "jetson.jpg",
+    "method": "Original photograph clipped to a manually traced device outline in SVG; PNG exported with CairoSVG. Imagegen attempts produced RGB checkerboards and were not used.",
+    "use": "Background removal only; original hardware pixels preserved.",
+    "sha256": "d6b4d9a079a4ccd73f086ae527b1e3163c9e2649aa71504b9206b5a0f77720ff"
+  }
+}

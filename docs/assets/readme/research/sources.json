@@ -1,0 +1,32 @@
+{
+  "source_repository": "https://github.com/ZZY5825/agilex-bunker-thesis",
+  "source_commit": "959d2eca578c24c6c060087e30cd786134e2575f",
+  "assets": {
+    "robot.png": {
+      "source": "imgs/chapter1/bunker-platform-refined.png",
+      "sha256": "2f07699e749e4cac7b5a65d917cb0e766eab34390748a76dbe8be1683661e38c",
+      "processing": "Unmodified copy of existing thesis PNG preview"
+    },
+    "hardware-connections.png": {
+      "source": "imgs/hardware/robot-hardware-connections-v2.png",
+      "sha256": "c22f7ebedb8ec8a92d03718cacc8febc9810d98fff8ea380c4c3c53e3a79e8ce",
+      "processing": "Unmodified copy of existing thesis PNG preview"
+    },
+    "person-tracking.png": {
+      "source": "docs/readme/person-tracking.png",
+      "sha256": "c3de3523d73270aaa0d83b51290452d01854a2141df3ab5b2aba090028621bc4",
+      "processing": "Unmodified copy of existing thesis PNG preview"
+    },
+    "localisation-cutaway.png": {
+      "source": "imgs/chapter3/common-recording-cutaway-v1.png",
+      "sha256": "17c77a974ab29250b12622ff4d5d96c6ce8a9816c13ba328f728b96aefc66666",
+      "processing": "Unmodified copy of existing thesis PNG preview"
+    },
+    "object-approach.png": {
+      "source": "imgs/chapter4/run-a-robot-scene-v1.png",
+      "sha256": "2803ec6b0df6f2fad7e5d1ca629ea8f1f0123c1d16ae92d51937c89692af1f61",
+      "processing": "Unmodified copy of existing thesis PNG preview"
+    }
+  },
+  "product_image_credits": "Hardware diagram: Stereolabs, RoboSense, Phidgets, NVIDIA and AgileX; see hardware-component-sources.json."
+}
