@@ -61,12 +61,12 @@ Semantic position in the active ZED-depth profile comes from registered camera d
 <table>
   <tr>
     <td width="33%" align="center"><img src="track_robot_ws/artifacts/semantic-search/phase1-mws-green-bottle-2026-07-27-rerun/phase1_overlay.png" alt="YOLO-World semantic-search overlay for a green bottle" width="100%"></td>
-    <td width="33%" align="center"><img src="docs/assets/readme/human-tracking-rosbag-start-gesture.png" alt="Raw ZED rosbag frame showing the human-tracking start gesture" width="100%"></td>
+    <td width="33%" align="center"><a href="docs/assets/readme/research/human-start-pose-v1.png"><img src="docs/assets/readme/research/human-start-pose-v1.png" alt="YOLO pose inference showing the person bounding box, skeleton and raised wrist keypoints" width="100%"></a></td>
     <td width="33%" align="center"><img src="docs/assets/readme/track-robot-base-model.png" alt="Bunker Pro 2 robot model in RViz viewport" width="100%"></td>
   </tr>
   <tr>
     <td align="center"><strong>Semantic search</strong><br><sub>Real YOLO-World overlay from a recorded workspace run.</sub></td>
-    <td align="center"><strong>Human tracking source</strong><br><sub>Raw, unannotated ZED rosbag source frame; no inference overlay is shown.</sub></td>
+    <td align="center"><strong>Gesture perception</strong><br><sub>Detected person, pose and raised wrists. Click to inspect the overlay.</sub></td>
     <td align="center"><strong>Robot model</strong><br><sub>Repository-owned Bunker Pro 2 URDF visualized in RViz.</sub></td>
   </tr>
 </table>
@@ -102,10 +102,12 @@ The camera pipeline uses YOLO pose and ByteTrack to identify people. A two-hand 
 </div>
 
 <div align="center">
-  <img src="docs/assets/readme/human-tracking-rosbag-later-position.png" alt="Later raw ZED rosbag frame showing the human-tracking subject at the right side of the test scene" width="720">
+  <a href="docs/assets/readme/research/human-later-pose-v1.png"><img src="docs/assets/readme/research/human-later-pose-v1.png" alt="Later recorded frame with measured person boxes, a foreground pose skeleton and lowered wrist keypoints" width="920"></a>
   <br>
-  <sub>Later raw, unannotated ZED frame from the same human-tracking rosbag sequence, with the subject visible at the right side of the test scene; it is source data rather than annotated model output.</sub>
+  <sub>YOLOv8n-pose detects the foreground person and a second person in the background. Gold wrist markers show the changed arm posture; the boxes and keypoints come from offline inference on this recorded frame.</sub>
 </div>
+
+The gallery's raised-hand frame and this later frame illustrate the pose input used by the gesture pipeline; start confirmation uses movement across multiple frames. [View the original frames and overlay method](docs/assets/readme/research/HUMAN_POSE_OVERLAYS.md).
 
 [![Two people crossing in aligned camera and LiDAR views, followed by recovery of the selected person](docs/assets/readme/research/person-tracking.png)](docs/assets/readme/research/person-tracking.png)
 

@@ -1,0 +1,19 @@
+{
+  "model": "yolov8n-pose.pt",
+  "model_sha256": "c6fa93dd1ee4a2c18c900a45c1d864a1c6f7aba75d84f91648a30b7fb641d212",
+  "ultralytics_version": "8.0.239",
+  "torch_version": "1.13.0a0+936e9305.nv22.11",
+  "inference": {
+    "device": "cpu",
+    "imgsz": 960,
+    "conf": 0.35,
+    "iou": 0.5
+  },
+  "keypoint_min_confidence": 0.35,
+  "method": "Independent image predictions, no temporal tracker or gesture state reconstructed. Largest detected box supplies foreground skeleton; all detected person boxes are shown. Wrist cue compares each wrist with its corresponding shoulder.",
+  "source_sha256": {
+    "human-tracking-rosbag-later-position.png": "8afdd9d12753a14a44562de800e87fb78d8e0095014884e591a1fa6ef9142d51",
+    "human-tracking-rosbag-start-gesture.png": "3b70fb79e5ae6d7a995d25b3c6d1f98d848ca02e87fb81a4a69a06c4bd99c99a"
+  },
+  "measurements_sha256": "7bd69df1b2cba701c07d4cfdd4876ae8451cdad6c1370844b140dd0887cbb92f"
+}
