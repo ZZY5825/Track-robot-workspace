@@ -2,9 +2,9 @@
 
 # Track Robot Workspace
 
-**A ROS 2 robot that follows a selected person, estimates its motion, and approaches objects requested in language.**
+**A ROS 2 autonomy stack for language-guided object search, gesture-authorized human following, and LiDAR-inertial localization on Bunker Pro 2.**
 
-<img src="docs/assets/readme/research/robot.png" alt="The Bunker Pro robot with its custom enclosure, roof-mounted LiDAR, stereo camera and front arm" width="680">
+<img src="docs/assets/readme/track-robot-hero.png" alt="Bunker Pro 2 Track Robot with integrated PiPER arm and sensor station in RViz" width="720">
 
 ![ROS 2 Foxy](https://img.shields.io/badge/ROS_2-Foxy-22314E?logo=ros&logoColor=white)
 ![Ubuntu 20.04](https://img.shields.io/badge/Ubuntu-20.04-E95420?logo=ubuntu&logoColor=white)
@@ -36,6 +36,14 @@ Built on an AgileX Bunker Pro with a ZED 2i, Helios-32 LiDAR, Phidget IMU and Je
   </tr>
 </table>
 
+## Physical Robot
+
+<div align="center">
+  <img src="docs/assets/readme/research/robot.png" alt="The assembled Bunker Pro with its custom enclosure, roof-mounted LiDAR, stereo camera and front arm" width="680">
+  <br>
+  <sub>The assembled platform complements the RViz model above: sensors share the custom enclosure above the tracked chassis.</sub>
+</div>
+
 ## System Architecture
 
 The capabilities share sensors and safety infrastructure, but each pipeline can be launched and validated independently.
@@ -48,28 +56,38 @@ The capabilities share sensors and safety infrastructure, but each pipeline can 
 
 Semantic position in the active ZED-depth profile comes from registered camera depth. LiDAR supplies obstacle and motion-safety context there; it is not presented as the source of semantic object position.
 
+## Demo Gallery
+
+<table>
+  <tr>
+    <td width="33%" align="center"><img src="track_robot_ws/artifacts/semantic-search/phase1-mws-green-bottle-2026-07-27-rerun/phase1_overlay.png" alt="YOLO-World semantic-search overlay for a green bottle" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/assets/readme/human-tracking-rosbag-start-gesture.png" alt="Raw ZED rosbag frame showing the human-tracking start gesture" width="100%"></td>
+    <td width="33%" align="center"><img src="docs/assets/readme/track-robot-base-model.png" alt="Bunker Pro 2 robot model in RViz viewport" width="100%"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Semantic search</strong><br><sub>Real YOLO-World overlay from a recorded workspace run.</sub></td>
+    <td align="center"><strong>Human tracking source</strong><br><sub>Raw, unannotated ZED rosbag source frame; no inference overlay is shown.</sub></td>
+    <td align="center"><strong>Robot model</strong><br><sub>Repository-owned Bunker Pro 2 URDF visualized in RViz.</sub></td>
+  </tr>
+</table>
+
 ## Semantic Search
 
 ### Find → Remember → Approach
 
 Track Robot accepts a short English object description and turns it into a bounded perception-and-navigation task:
 
-<details>
-<summary>Software pipeline: object search and approach</summary>
-
 <div align="center">
   <img src="docs/assets/readme/architecture/semantic-search-pipeline.svg" alt="Semantic-search pipeline from a natural-language query and ZED imagery through open-vocabulary perception, depth grounding, semantic memory, active search, supervised Nav2, and motion safety" width="920">
 </div>
 
-</details>
+DINOv3 can support short-term visual identity across observations. The motion-capable stages remain operator-supervised and route velocity through the normal safety supervisor and command gate.
 
 ![Run A with the robot model, RGB-D surroundings, selected bottle, recorded Nav2 plan and actual robot path](docs/assets/readme/research/object-approach.png)
 
 *From a selected bottle to an approach destination: the blue curve is the recorded Nav2 plan, and the dashed green curve is the robot path. The scene combines the robot model with recorded ZED depth in the mission's odometry frame.*
 
 DINOv3 descriptors supplement visual association. A separate offline study in the thesis also evaluates persistent appearance memory that reconnects the selected identity after the camera ID changes. [See the recovery comparison](https://github.com/ZZY5825/agilex-bunker-thesis/blob/main/imgs/chapter4/dino-persistent-identity-comparison-v3.pdf).
-
-Approach missions remain operator-supervised, with velocity requests passing through the safety supervisor and command gate.
 
 Start with the [Phase 0–3 passive YOLO-World guide](track_robot_ws/docs/guides/semantic-search/phase0-3-yolo-world-test.md). The [Phase 4B supervised Nav2 guide](track_robot_ws/docs/guides/semantic-search/phase4b-nav2-supervised-test.md) and [Phase 5A bounded active-search guide](track_robot_ws/docs/guides/semantic-search/phase5a-bounded-active-search-test.md) contain the motion authorization and validation procedures.
 
@@ -79,14 +97,15 @@ Start with the [Phase 0–3 passive YOLO-World guide](track_robot_ws/docs/guides
 
 The camera pipeline uses YOLO pose and ByteTrack to identify people. A two-hand start gesture authorizes a logical target lock; generic LiDAR tracklets then provide 3D geometry to camera-guided association and a three-model IMM target estimator. Camera semantics remain authoritative for identity, while LiDAR provides bounded continuation when the selected person leaves the camera field of view.
 
-<details>
-<summary>Software pipeline: person tracking and following</summary>
-
 <div align="center">
   <img src="docs/assets/readme/architecture/human-following-pipeline.svg" alt="Human-following architecture combining gesture-authorized camera identity, persistent LiDAR geometry, selected-target fusion, follow planning, session supervision, and fail-closed motion safety" width="920">
 </div>
 
-</details>
+<div align="center">
+  <img src="docs/assets/readme/human-tracking-rosbag-later-position.png" alt="Later raw ZED rosbag frame showing the human-tracking subject at the right side of the test scene" width="720">
+  <br>
+  <sub>Later raw, unannotated ZED frame from the same human-tracking rosbag sequence, with the subject visible at the right side of the test scene; it is source data rather than annotated model output.</sub>
+</div>
 
 [![Two people crossing in aligned camera and LiDAR views, followed by recovery of the selected person](docs/assets/readme/research/person-tracking.png)](docs/assets/readme/research/person-tracking.png)
 
@@ -102,14 +121,9 @@ See the [human-tracking implementation guide](track_robot_ws/src/track_robot_per
 
 The local ROS 2 Foxy port accepts the native RoboSense Helios-32 `PointCloud2` layout. The Phidget IMU adapter rotates measurements into the LiDAR/body frame and applies the configured timestamp offset before Point-LIO consumes them.
 
-<details>
-<summary>Software pipeline: Point-LIO integration</summary>
-
 <div align="center">
   <img src="docs/assets/readme/architecture/point-lio-pipeline.svg" alt="Point-LIO localization pipeline showing native RoboSense input, Phidget IMU frame and time adaptation, public mapping outputs, calibration boundary, and TF bridge" width="920">
 </div>
-
-</details>
 
 [![KISS-ICP and Point-LIO reconstructions with matched cutaways and vertical sections](docs/assets/readme/research/localisation-cutaway.png)](docs/assets/readme/research/localisation-cutaway.png)
 
@@ -183,6 +197,10 @@ Use the integration guide for the launch mode that also owns the LiDAR network a
 > Model checkpoints and recordings are local dependencies and are intentionally not committed. Review each feature guide for expected paths, model hashes, calibration, and hardware preflight.
 
 ## Hardware and Software Stack
+
+<div align="center">
+  <img src="docs/assets/readme/architecture/hardware-topology.svg" alt="Track Robot hardware topology centered on the Jetson AGX Orin with ZED2i, RS-Helios-32, Phidget IMU, Bunker Pro 2, sensor station, PiPER arm, and L515 model status" width="920">
+</div>
 
 [![Actual sensor components and their USB, Ethernet, CAN and clock connections to the Jetson](docs/assets/readme/research/hardware-connections.png)](docs/assets/readme/research/hardware-connections.png)
 
