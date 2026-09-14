@@ -1,0 +1,70 @@
+{
+  "release": "presentation-demos-20260914",
+  "videos": [
+    {
+      "file": "01_multisensor_overview.mp4",
+      "title": "Multi-sensor overview \u00b7 Run A",
+      "duration_s": 24,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "source_bag": "smoke_direct_20260829_225459",
+      "source_offset_s": 3.0,
+      "sha256": "0b4b5d470d0d98cc4d67ba984055af314bdbe2cad1fd82a6b41c3c08b5cb31d7",
+      "bytes": 25173613,
+      "url": "https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/01_multisensor_overview.mp4"
+    },
+    {
+      "file": "02_human_perception_fusion.mp4",
+      "title": "Two-person tracking",
+      "duration_s": 40,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "source_bag": "human_tracking_lidar_20260706_150711",
+      "source_offset_s": 3.0,
+      "sha256": "ccbd3c13872c4436524ad40580c435c8998b24c2030d22664ee07e86abff5bb3",
+      "bytes": 42280579,
+      "url": "https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02_human_perception_fusion.mp4"
+    },
+    {
+      "file": "02b_single_person_tracking.mp4",
+      "title": "Single-person tracking",
+      "duration_s": 45,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "source_bag": "human_tracking_lidar_20260706_145900",
+      "source_offset_s": 3.0,
+      "sha256": "b7f6a92bcab2365079aff47b45d41a8b018fedac3f6eb0f64414c4f5bb7ecbb8",
+      "bytes": 47827424,
+      "url": "https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02b_single_person_tracking.mp4"
+    },
+    {
+      "file": "03_clusters_markers_orbit.mp4",
+      "title": "Clusters and MarkerArray",
+      "duration_s": 28,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "source_bag": "human_tracking_lidar_20260706_150711",
+      "source_offset_s": 14.0,
+      "sha256": "3864cb0facfeb44c8dc5f421234410ac90119bd4161fccad9e755674471b9ef4",
+      "bytes": 29565503,
+      "url": "https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/03_clusters_markers_orbit.mp4"
+    },
+    {
+      "file": "04_lidar_imu_localization.mp4",
+      "title": "LiDAR\u2013IMU localization",
+      "duration_s": 50,
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "source_bag": "round1_20260830_190953",
+      "source_offset_s": 10.0,
+      "sha256": "2214d7e00af7d576e6f6a4f71d0a3fd7f83140ced73d703653696f6d8f0fc71e",
+      "bytes": 52707538,
+      "url": "https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/04_lidar_imu_localization.mp4"
+    }
+  ]
+}

@@ -15,7 +15,7 @@
 
 Built on an AgileX Bunker Pro with a ZED 2i, Helios-32 LiDAR, Phidget IMU and Jetson AGX Orin. This project brings together mechanical integration, camera–LiDAR perception, localisation and supervised navigation.
 
-**[Quick start](#quick-start)** · [Hardware](#hardware-and-software-stack) · [Documentation](#documentation) · [Project thesis](https://github.com/ZZY5825/agilex-bunker-thesis/blob/main/output/pdf/agilex-bunker-thesis-revision-2-32.pdf)
+**[Demo videos](#demo-videos)** · [Quick start](#quick-start) · [Hardware](#hardware-and-software-stack) · [Documentation](#documentation) · [Project thesis](https://github.com/ZZY5825/agilex-bunker-thesis/blob/main/output/pdf/agilex-bunker-thesis-revision-2-32.pdf)
 
 ## Core Capabilities
 
@@ -55,6 +55,53 @@ The capabilities share sensors and safety infrastructure, but each pipeline can 
 </div>
 
 Semantic position in the active ZED-depth profile comes from registered camera depth. LiDAR supplies obstacle and motion-safety context there; it is not presented as the source of semantic object position.
+
+## Demo Videos
+
+Five demos from recorded robot data, with synchronized sensor views and smooth 3D camera motion. **Click a preview to open or download the MP4.** All videos are 1080p, 30 fps, real-time playback and silent.
+
+<table>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/01_multisensor_overview.mp4"><img src="docs/assets/readme/demos/01_multisensor_overview.jpg" alt="Multi-sensor overview · Run A: ZED RGB, metric depth, LiDAR and wheel odometry." width="100%"></a>
+      <br><strong>Multi-sensor overview · Run A</strong> · 24 s
+      <br><sub>ZED RGB, metric depth, LiDAR and wheel odometry.</sub>
+      <br><a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/01_multisensor_overview.mp4">Watch / download MP4</a>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02_human_perception_fusion.mp4"><img src="docs/assets/readme/demos/02_human_perception_fusion.jpg" alt="Two-person tracking: Pose detections, camera–LiDAR overlay and fused tracking state." width="100%"></a>
+      <br><strong>Two-person tracking</strong> · 40 s
+      <br><sub>Pose detections, camera–LiDAR overlay and fused tracking state.</sub>
+      <br><a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02_human_perception_fusion.mp4">Watch / download MP4</a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02b_single_person_tracking.mp4"><img src="docs/assets/readme/demos/02b_single_person_tracking.jpg" alt="Single-person tracking: The second recording: gesture lock, person identity and 3D tracking." width="100%"></a>
+      <br><strong>Single-person tracking</strong> · 45 s
+      <br><sub>The second recording: gesture lock, person identity and 3D tracking.</sub>
+      <br><a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/02b_single_person_tracking.mp4">Watch / download MP4</a>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/03_clusters_markers_orbit.mp4"><img src="docs/assets/readme/demos/03_clusters_markers_orbit.jpg" alt="Clusters and MarkerArray: Smooth orbit around tracklet boxes, target points and the prediction gate." width="100%"></a>
+      <br><strong>Clusters and MarkerArray</strong> · 28 s
+      <br><sub>Smooth orbit around tracklet boxes, target points and the prediction gate.</sub>
+      <br><a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/03_clusters_markers_orbit.mp4">Watch / download MP4</a>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" width="50%" valign="top" align="center">
+      <a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/04_lidar_imu_localization.mp4"><img src="docs/assets/readme/demos/04_lidar_imu_localization.jpg" alt="LiDAR–IMU localization: LiDAR geometry, XYZ IMU signals and the recorded Point-LIO trajectory." width="720"></a>
+      <br><strong>LiDAR–IMU localization</strong> · 50 s
+      <br><sub>LiDAR geometry, XYZ IMU signals and the recorded Point-LIO trajectory.</sub>
+      <br><a href="https://github.com/ZZY5825/Track-robot-workspace/releases/download/presentation-demos-20260914/04_lidar_imu_localization.mp4">Watch / download MP4</a>
+    </td>
+  </tr>
+</table>
+
+These are offline visualizations of real rosbag data. Tracking overlays and marker displays are reconstructed from recorded processing outputs; the single-person demo uses a fresh perception replay of the second recording. They show perception and localization, not a live autonomous-following run. Capture dates differ across demos.
+
+[All video downloads](https://github.com/ZZY5825/Track-robot-workspace/releases/tag/presentation-demos-20260914) · [Video sources and checksums](docs/assets/readme/demos/videos.json)
 
 ## Demo Gallery
 
