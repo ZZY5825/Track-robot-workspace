@@ -1,5 +1,7 @@
 # Track Robot Documentation
 
+- [Project directories, addresses and file classification](project-directory-guide.md)
+
 This directory is the entry point for workspace-level documentation.
 Package-only documentation remains beside its package under `src/`.
 

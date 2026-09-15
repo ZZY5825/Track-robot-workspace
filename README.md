@@ -275,6 +275,8 @@ PiPER is integrated into the combined URDF, JointState, and TF model; arm contro
 
 ## Documentation
 
+- [Project directories, addresses and file classification](track_robot_ws/docs/project-directory-guide.md)
+
 - [Operator guides](track_robot_ws/docs/guides/README.md)
 - [Semantic-search package](track_robot_ws/src/track_robot_semantic_search/README.md)
 - [Human-tracking implementation](track_robot_ws/src/track_robot_perception/docs/human_tracking_progress.md)
